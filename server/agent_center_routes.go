@@ -18,6 +18,7 @@
 package server
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -116,14 +117,20 @@ func (a *agentAPI) listAgentEvaluation(c *gin.Context) {
 		divisoes = append(divisoes, d)
 	}
 	sort.Strings(divisoes)
+	// Perguntado ao motor AGORA, nao presumido.
+	//
+	//	*Um estado que so o programador pode nomear valido nao e um estado: e um campo de texto.*
+	motor := detectarMotor(c.Request.Context(), "")
 	c.JSON(http.StatusOK, gin.H{
-		"organization_id": organizationID,
-		"suites":          suites,
-		"divisions":       divisoes,
-		"states":          agent.EvalStateCatalog(),
-		// O harness existe e esta' testado, mas nao esta' ligado a um motor neste runtime.
-		"inference_available": false,
-		"note":                "as suites estão definidas; a execução contra um modelo é um passo separado e ainda não está ligada",
+		"organization_id":     organizationID,
+		"suites":              suites,
+		"divisions":           divisoes,
+		"states":              agent.EvalStateCatalog(),
+		"inference_available": motor.Disponivel,
+		"inference_model":     motor.Modelo,
+		"inference_endpoint":  motor.Endpoint,
+		"inference_reason":    motor.Motivo,
+		"note":                "as suites estao definidas; a disponibilidade de inferencia e' MEDIDA ao vivo contra o motor local, nao presumida",
 	})
 }
 
@@ -267,6 +274,58 @@ func (a *agentAPI) restoreAgentPersonas(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"organization_id": organizationID, "restored": id})
+}
+
+// runAgentEvaluation: POST /agents/evaluation/run
+//
+// CORRE a suite contra o motor local. E' POST porque gasta tempo e CPU: nao acontece por abrir um painel.
+//
+//	*Aprovar uma acao sem ver o custo e aprovar um numero que nao se leu.*
+//
+// Recusa antes de gastar quando o motor nao esta' la'. E o estado devolvido NUNCA e' PRODUCTION_APPROVED.
+func (a *agentAPI) runAgentEvaluation(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	var pedido struct {
+		PersonaID string `json:"persona_id"`
+		Division  string `json:"division"`
+		Model     string `json:"model"`
+	}
+	if err := decodeJSON(c, &pedido); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	// Teto de tempo da requisicao inteira: uma avaliacao que o utilizador nao ve terminar e' um timeout.
+	ctx, cancelar := context.WithTimeout(c.Request.Context(), 10*time.Minute)
+	defer cancelar()
+
+	rel, motor, err := executarAvaliacao(ctx, pedido.PersonaID, pedido.Division, pedido.Model)
+	if err != nil {
+		if errors.Is(err, errMotorIndisponivel) {
+			// 503: o produto esta' bem, o motor e' que nao esta' la'. Nao e' defeito do pedido.
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"organization_id": organizationID,
+				"error":           err.Error(),
+				"engine":          motor,
+				"note":            "nenhuma inferência foi executada; o motor local não está disponível",
+			})
+			return
+		}
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"organization_id": organizationID,
+		"engine":          motor,
+		"report":          rel,
+		// Repetir no topo o que o relatorio ja' diz: o painel nao deve ter de o inferir.
+		"state":         string(rel.State),
+		"inference_ran": true,
+		"note":          "avaliação real contra o motor local; o estado não é aprovação de produção",
+	})
 }
 
 // importAgentPersona: POST /agents/import

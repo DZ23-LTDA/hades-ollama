@@ -12,6 +12,7 @@ import {
   coberturaDeAvaliacao,
   contarAchados,
   contarCasos,
+  correrAvaliacaoReal,
   guardarBackup,
   lerAvaliacao,
   libertarDaQuarentena,
@@ -35,6 +36,7 @@ import {
   type Avaliacao,
   type Catalogo,
   type ListaDeBackups,
+  type ExecucaoDeAvaliacao,
   type ListaDeQuarentena,
   type ResultadoDeImportacao,
   type Equipas,
@@ -54,6 +56,7 @@ type Estado =
   | "backups"
   | "triagem"
   | "quarentena"
+  | "aval-real"
   | "drift"
   | "instalado"
   | "ausente"
@@ -86,12 +89,13 @@ export function AgentCenterPanel() {
   const [quarentena, setQuarentena] = useState<ListaDeQuarentena | null>(null);
   const [revisor, setRevisor] = useState("");
   const [quarentenaId, setQuarentenaId] = useState("");
+  const [avalReal, setAvalReal] = useState<ExecucaoDeAvaliacao | null>(null);
   const [instalacao, setInstalacao] = useState<ResultadoDeInstalacao | null>(null);
   const [alvo, setAlvo] = useState("hades");
   const [destino, setDestino] = useState(".hades/agents/revisor-exemplo.md");
 
   const correr = useCallback(
-    async (op: "list" | "catalog" | "evaluation" | "teams" | "backups" | "restore" | "triagem" | "quarentena" | "liberar" | "drift" | "install") => {
+    async (op: "list" | "catalog" | "evaluation" | "teams" | "backups" | "restore" | "triagem" | "quarentena" | "liberar" | "aval-real" | "drift" | "install") => {
       setErro(null);
       setEstado("a-carregar");
       try {
@@ -114,6 +118,9 @@ export function AgentCenterPanel() {
         } else if (op === "triagem") {
           setTriagem(await triarImportacao(manifesto));
           setEstado("triagem");
+        } else if (op === "aval-real") {
+          setAvalReal(await correrAvaliacaoReal("hades-executor", "engenharia"));
+          setEstado("aval-real");
         } else if (op === "quarentena") {
           await reterEmQuarentena(manifesto);
           setQuarentena(await listarQuarentena());
@@ -215,6 +222,14 @@ export function AgentCenterPanel() {
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
           Ver equipas
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-aval-correr"
+          onClick={() => void correr("aval-real")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          Correr avaliação real
         </button>
         <button
           type="button"
@@ -409,6 +424,25 @@ export function AgentCenterPanel() {
               ))}
             </ul>
           )}
+        </div>
+      )}
+
+      {estado === "aval-real" && (
+        <div className="space-y-1">
+          <p data-testid="agent-center-aval-real-estado" className="text-[11px] text-neutral-300">
+            estado: {avalReal?.state ?? "—"} · {avalReal?.report?.cases?.length ?? 0} caso(s) ·{" "}
+            {avalReal?.report?.failed ?? 0} falha(s) · motor: {avalReal?.engine?.model ?? "—"}
+          </p>
+          <p data-testid="agent-center-aval-real-nota" className="text-[11px] text-neutral-500">
+            {avalReal?.note ?? "corre a suite contra o motor local; não aprova para produção"}
+          </p>
+          <ul data-testid="agent-center-aval-real-casos" className="space-y-0.5 text-[11px]">
+            {(avalReal?.report?.cases ?? []).map((c) => (
+              <li key={c.id} className={c.passed ? "text-emerald-300" : "text-amber-300"}>
+                [{c.kind}] {c.id}: {c.passed ? "passou" : c.reason ?? "falhou"}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

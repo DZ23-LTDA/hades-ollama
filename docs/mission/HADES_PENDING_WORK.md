@@ -1,3 +1,53 @@
+## JANELA E-1376
+
+**A cabeca do indice e' E-1376.** Este bloco substitui a janela anterior (E-1363) e cobre o que foi feito
+desde entao. O documento seguinte continua a ser o historico; este e' o que se le' primeiro.
+
+### O QUE MUDOU ENTRE E-1364 E E-1376
+
+- **E-1364** — a confirmacao local do MFA protege contra o engano, nao contra o ataque.
+- **E-1365** — modelo canonico de persona: `AgentPersona` com validacao, hash de conteudo e render por
+  ferramenta. *Nao avaliado e um estado, e e diferente de aprovado.*
+- **E-1366** — ledger por organizacao com `requireOrganization` em `Record`, `Load` e `Entries`. *Leitura
+  tambem e scoped: ver o ledger de outra organizacao e tao grave como escrever nele.*
+- **E-1367** — surface HTTP do Agent Center (`GET /agents`, `POST /agents/install`, `GET /agents/drift`).
+- **E-1368** — catalogo com 6 personas HADES nativas, ordem estavel. *Um catalogo que muda de ordem sozinho
+  faz o painel parecer que mudou alguma coisa.*
+- **E-1369** — harness de avaliacao: 10 estados, transicoes, suites com POSITIVE/REFUSAL/INJECTION.
+  *A ausencia da capacidade e a garantia mais forte que existe.*
+- **E-1370** — equipas e presets: `Why`/`Deliverable`/`MissingTools` por papel, ciclo recusado por DFS, 4
+  presets **todos `Functional:false`**.
+- **E-1371** — backup e rollback: id derivado do CONTEUDO, `Restore` valida tudo antes de escrever.
+  *Um rollback que restaura metade e um segundo defeito.*
+- **E-1372** — ingestao segura: padrao literal com campo+trecho+motivo, `QUARANTINE` na maquina de estados.
+- **E-1373** — quarentena PERSISTENTE: sobrevive a reabertura, `Release` exige revisor e leva so' a
+  `SECURITY_REVIEWED`. *Quarentena e um estado, nao um log.*
+- **E-1374** — **o ciclo completo apanhou um defeito P2 de PERDA DE DADOS**: `Entries`/`Record` liam o mapa e
+  nao o disco -- um ledger reaberto dizia zero e um `Record` novo apagava as entradas anteriores. Corrigido
+  com `loadLocked`. *Uma lista vazia e um erro nao sao a mesma coisa.*
+- **E-1375** — harness contra o motor REAL: `qwen2.5:7b`, **estado=EVALUATED_FAILED**, positivos passam e
+  negativas falham. *Um positivo sem o negativo ao lado prova que algo aconteceu, nao que aconteceu o que se
+  diz.*
+- **E-1376** — a UI corre a avaliacao: `POST /agents/evaluation/run`, `inference_available` medido ao vivo.
+
+### ESTADO NO HEAD
+
+`2d2e1da2e` (antes deste commit) · branch `fix/checker-relogio` · PR #438 · **1169** entradas
+`go test ./internal/agent` ok 414s · `go test ./server` ok · `go vet` 0 · 20 vitest · `tsc -b` 0
+**362 rotas / 16 orfas / 0 lacuna (teto 0)** · mission/enc/non_inference 0/0/0
+
+### O QUE FALTA (dito)
+
+1. A UI a falar com o servidor **num navegador real** -- painel provado contra mock e servidor provado com
+   `httptest` nao provam que um fala com o outro.
+2. `Evaluate` correu contra `qwen2.5:7b` e **reprovou** a recusa e a injecao: o modelo nao esta' apto para
+   essas personas. Nao e' um bug do harness -- e' a medicao.
+3. Android/iOS `BLOCKED_EXTERNAL`; Windows RC `NotSigned`.
+4. Gitleaks historico (E-1217/E-1218) -- decisao do proprietario.
+5. FASE 0/1: 19 linhas `ADAPTAR` continuam hipoteses nao medidas.
+
+Veredito: **NOT_RELEASE_READY**.
+
 ## JANELA E-1363
 
 **A LACUNA DE PRODUTO FECHOU: 93 -> 0.** A cabeça do índice é **E-1363**.

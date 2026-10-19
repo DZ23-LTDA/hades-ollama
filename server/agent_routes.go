@@ -1072,6 +1072,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/agents/quarantine", a.holdAgentPersona)
 	group.GET("/agents/quarantine", a.listAgentQuarantine)
 	group.POST("/agents/quarantine/release", a.releaseAgentPersona)
+	group.POST("/agents/evaluation/run", a.runAgentEvaluation)
 	group.GET("/agents/drift", a.agentPersonaDrift)
 	group.POST("/agents/install", a.installAgentPersona)
 }

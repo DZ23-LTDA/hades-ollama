@@ -443,6 +443,44 @@ export async function libertarDaQuarentena(id: string, reviewer: string): Promis
   }
 }
 
+export interface MotorLocal {
+  available: boolean;
+  endpoint: string;
+  model?: string;
+  models?: string[];
+  reason?: string;
+}
+
+export interface ExecucaoDeAvaliacao {
+  engine?: MotorLocal;
+  report?: {
+    state?: string;
+    persona_id?: string;
+    suite_version?: string;
+    cases?: { id?: string; kind?: string; passed?: boolean; reason?: string; output?: string }[];
+    total?: number;
+    failed?: number;
+  };
+  state?: string;
+  inference_ran?: boolean;
+  note?: string;
+}
+
+/** CORRE a suite contra o motor local. POST porque gasta tempo e CPU. */
+export async function correrAvaliacaoReal(personaId: string, division: string): Promise<ExecucaoDeAvaliacao> {
+  const persona = (personaId ?? "").trim();
+  const div = (division ?? "").trim();
+  if (persona === "" || div === "") throw new InstalacaoRecusadaError("escolha persona e divisão");
+  try {
+    return await agentFetch<ExecucaoDeAvaliacao>("/api/agent/v1/agents/evaluation/run", {
+      method: "POST",
+      body: JSON.stringify({ persona_id: persona, division: div }),
+    });
+  } catch (causa) {
+    traduzir(causa);
+  }
+}
+
 export async function lerDrift(): Promise<RelatorioDeDrift> {
   try {
     return await agentFetch<RelatorioDeDrift>("/api/agent/v1/agents/drift");
