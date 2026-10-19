@@ -38,6 +38,7 @@ import { PluginsPanel } from "@/components/PluginsPanel";
 import { BusinessActionsPanel } from "@/components/BusinessActionsPanel";
 import { CompanyFactoryPanel } from "@/components/CompanyFactoryPanel";
 import { SolutionsPanel } from "@/components/SolutionsPanel";
+import { WakeupsPanel } from "@/components/WakeupsPanel";
 import { RollbackPanel } from "@/components/RollbackPanel";
 import { SigningPanel } from "@/components/SigningPanel";
 import { SbomPanel } from "@/components/SbomPanel";
@@ -352,6 +353,7 @@ export function CapabilitiesPage() {
       <BusinessActionsPanel />
       <CompanyFactoryPanel />
       <SolutionsPanel />
+      <WakeupsPanel />
 
         <CredentialsPanel />
 

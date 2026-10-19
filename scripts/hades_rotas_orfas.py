@@ -146,7 +146,17 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   existe para o cliente nao ter de inferir isso do metodo.*
 #
 # A conta: 3/10, 2/7, 1/0, 7/7 OK, 7/8, 3/5, 3/0, 5/5 OK, 4/1, 1/1 OK, 3/2, 2/4, 1/2, 1/1 OK, 1/1 OK.
-TETO_ORFAS = 31
+# 31 -> 30 no E-1343: `WakeupsPanel` consome POST /wakeups.
+#
+# A PRIMEIRA LACUNA DE ESCRITA QUE MUTA -- e a que pode ser repetida sem medo, porque o
+# servidor e' idempotente por missao. O painel mostra as DUAS listas (`wakeups` e `enqueued`)
+# porque um despertar informativo nao vira trabalho.
+#
+#   *Um despertar informativo e um trabalho enfileirado sao ambos "acordar" e nao sao a mesma
+#   coisa: um pede uma pessoa, o outro pede um worker.*
+#
+# A conta: 3/10, 2/7, 1/0, 7/7 OK, 7/8, 3/5, 3/0, 5/5 OK, 4/1, 1/1 OK, 3/2, 2/4, 1/2, 1/1 OK, 1/1 OK, 1/1 OK.
+TETO_ORFAS = 30
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (

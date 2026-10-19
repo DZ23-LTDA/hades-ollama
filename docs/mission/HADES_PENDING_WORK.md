@@ -1,3 +1,70 @@
+## JANELA E-1343
+
+A cabeça do índice é **E-1343**.
+
+- **E-1343** — **um despertar informativo e um trabalho enfileirado são ambos «acordar» e não são a mesma
+  coisa.** `WakeupsPanel` consome `POST /wakeups` — **a primeira lacuna fechada por uma rota de escrita que
+  MUTA**, e a única que pode ser repetida sem medo. O handler: *«`EnqueueMission` é idempotente por missão
+  […] é o que torna esta rota segura de chamar periodicamente.»* O painel mostra **as duas listas lado a
+  lado** — `wakeups` e `enqueued` — porque só uma delas mente: *mostrar só `enqueued` esconde missões que o
+  sistema viu; mostrar só `wakeups` sugere que todas vão correr.*
+  **O informativo não vira trabalho**: *«enfileirar uma missão que espera aprovação seria executá-la sem a
+  decisão que ela própria pediu»*. O painel escreve **«N despertar(es) informativo(s) — NÃO foram
+  enfileirados»**.
+  **Falha parcial não é sucesso**: se nada foi enfileirado e houve falhas, a rota é **500**. O painel tem
+  tipo próprio (`WakeupsSemEfeitoError`) porque o `agentFetch` não expõe o corpo do erro.
+  **O escopo é declarado, não presumido global.**
+  **SEXTA PREVISÃO CERTA DO GATE**: previ **1**, mediu **1** (31 → 30) — a primeira descida por uma rota
+  que escreve.
+- **E-1342** — solutions: POST que não muta; `integra_automaticamente` sempre falso; 32 → 31.
+- **E-1341** — company: `customers_created=0` é fronteira, não contagem; 33 → 32.
+- **E-1340** — business: orçamento não é aprovação; custo ao lado da ação; 35 → 33.
+- **E-1339** — supervisor: reconhecer não é resolver; 200-vazio não prova supervisor; 39 → 35.
+- **E-1338** — `PluginsPanel`: scope pedido não é concedido; integridade em 4 estados; 41 → 39.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **46** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **30** (era 93) |
+
+## 78% DAS LACUNAS FORAM FECHADAS — E AS ÚLTIMAS SÃO OUTRA COISA
+
+De **93** para **30**. Mas as 30 restantes são **todas escritas que mutam estado real**, e só uma
+(`wakeups`) é idempotente.
+
+| domínio | lacunas | o que muta |
+|---|---|---|
+| `scheduling` | **12** | book, cancel, no-show, reminders |
+| `auth` | 3 | MFA — enable, disable, recovery |
+| `finance` | 3 | cost, reconcile, revenue por pedido |
+| `media` | 2 | ocr, tone |
+| `commerce` | 2 | stock |
+| `business` | 2 | certify, tick |
+| `company` | 1 | factory/launch |
+| `notifications` | 1 | register |
+| `crm` | 1 | stage |
+| `inbox` | 1 | messages |
+| `service-agents` | 1 | approval-approvers |
+| `plugins` | 1 | bundle |
+
+**Isto é a fronteira honesta do contador.** *Um painel que mostra uma rota de escrita não a prova: é
+preciso um botão, uma confirmação e um teste de negação. Cada uma das 29 restantes é a sua própria
+fatia — e algumas (MFA, certify, launch) tocam em credenciais ou criam empresas.*
+
+**Nota acumulada sobre o contador — dezasseis avisos:** o gate mede o **domínio**, não a rota. Dezasseis
+medições, **seis** previsões certas.
+
+O que continua aberto: **30 rotas** sem UI (todas escritas, 29 mutam); o gate **mede prefixos**; a
+assimetria `call.raw`/`call.path`; **20 ORPHAN listados de 209**; o build **não é assinado nem
+instalado**; `sign.start`/`publish.*` inexistentes; o painel do build **não se actualiza sozinho**;
+**`gitleaks` histórico — a única falha de CI**; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não
+iniciada**.
+
+---
 ## JANELA E-1342
 
 A cabeça do índice é **E-1342**.
