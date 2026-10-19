@@ -288,7 +288,20 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   ***Sem `external_id` nao ha' deduplicacao, e o servidor nao inventa uma: um id que o servidor inventa
 #   nao deduplica nada -- deduplica o que o servidor ja' viu, e o que o servidor ja' viu e' o que ele
 #   proprio escreveu.***
-TETO_ORFAS = 4
+# 4 -> 1 no E-1362: `MfaPanel` cobre `/auth/mfa/enable`, `/disable` e `/recovery/generate`.
+#
+#   *Previ 3, mediu 3 -- tres prefixos distintos (`/enable`, `/disable`, `/recovery`), tres pontos.
+#   A decima setima previsao certa, e a decima seguida.*
+#
+#   ***ACHADO DE SEGURANCA: nenhum dos tres handlers exige reautenticacao. Verificam apenas `agent.user`;
+#   `disableMFA` e `generateRecoveryCodes` nem corpo tem. Quem tiver um bearer token valido desativa o MFA
+#   e gera codigos novos com um pedido vazio. Um segundo factor que qualquer portador do primeiro pode
+#   remover nao e' um segundo factor: e' uma cerimonia.***
+#
+#   ***O painel NAO finge uma reautenticacao que o servidor nao faz -- isso seria teatro de seguranca. Pede
+#   uma confirmacao (trava de clique) e DECLARA que e' so' isso. Uma confirmacao local protege contra o
+#   engano, nao contra o ataque; dizer qual dos dois e' e' a diferenca entre um painel e um selo.***
+TETO_ORFAS = 1
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (

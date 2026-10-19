@@ -11,18 +11,18 @@
 > modificados** com **24** ocorrencias de marca que **nao existem no commit**, e o inventario
 > divergia entre a minha maquina e o CI. => *um instrumento que mede o disco mede **tambem o
 > trabalho nao commitado** -- e publica um numero que so' e' verdadeiro onde foi gerado.*
-> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 13, `disco (limpo)`: 2869.
+> Origens medidas neste snapshot: `HEAD (sujo no disco)`: 13, `disco (limpo)`: 2872.
 
 | String | Ocorrencias |
 | --- | --- |
 | **Hades/HADES** (canonica) | **1489** |
-| DZ23 Agentic | 256 |
+| DZ23 Agentic | 257 |
 | Ollama Full | 177 |
 | Ollama Classe A+ | 99 |
-| Ollama DZ23 | 59 |
+| Ollama DZ23 | 60 |
 
-**Legadas somadas:** 591 ocorrencias
-(262 em ficheiros **migraveis**, 329 em ficheiros de **excecao**).
+**Legadas somadas:** 593 ocorrencias
+(264 em ficheiros **migraveis**, 329 em ficheiros de **excecao**).
 
 *O total **nao** decide: os mesmos numeros distribuem-se por sitios de tipos muito
 diferentes, e e' o sitio que decide.* Um ``README`` migra; um `bundle ID` nao.
@@ -81,6 +81,7 @@ hoje** e **falso sobre o que foi medido**.*
 | `scripts/classify-ci-surfaces.py` | 3 | migravel |
 | `scripts/classify_ci_surfaces_test.py` | 3 | migravel |
 | `app/ui/app/e2e/shell.spec.ts` | 2 | migravel |
+| `app/ui/app/src/components/MfaPanel.test.tsx` | 2 | migravel |
 | `apps/mobile-agentic/package-lock.json` | 2 | migravel |
 | `docs/BRANCH_PROTECTION.md` | 2 | migravel |
 | `docs/WEB_DEPENDENCY_AUDIT.md` | 2 | migravel |

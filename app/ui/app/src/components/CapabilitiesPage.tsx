@@ -56,6 +56,7 @@ import { CrmStagePanel } from "@/components/CrmStagePanel";
 import { ApproversPanel } from "@/components/ApproversPanel";
 import { CompanyCockpitPanel } from "@/components/CompanyCockpitPanel";
 import { InboxIngestPanel } from "@/components/InboxIngestPanel";
+import { MfaPanel } from "@/components/MfaPanel";
 import { RollbackPanel } from "@/components/RollbackPanel";
 import { SigningPanel } from "@/components/SigningPanel";
 import { SbomPanel } from "@/components/SbomPanel";
@@ -388,6 +389,7 @@ export function CapabilitiesPage() {
       <ApproversPanel />
       <CompanyCockpitPanel />
       <InboxIngestPanel />
+      <MfaPanel />
 
         <CredentialsPanel />
 

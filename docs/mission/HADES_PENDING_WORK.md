@@ -1,3 +1,52 @@
+## JANELA E-1362
+
+A cabeça do índice é **E-1362**.
+
+- **E-1362** — **ACHADO P1: nenhum dos três handlers de MFA exige reautenticação.** `MfaPanel` cobre
+  `/auth/mfa/enable`, `/disable` e `/recovery/generate`. Os três verificam **apenas** `agent.user`;
+  `disableMFA` e `generateRecoveryCodes` **nem corpo têm** — um bearer token válido desativa o MFA e gera
+  códigos novos com um pedido vazio. *Um segundo factor que qualquer portador do primeiro pode remover não
+  é um segundo factor: é uma cerimónia.* **Registado como finding, não corrigido** (a correcção é no
+  servidor). O painel **não finge**: exige confirmação, **declara** que é trava de clique, e mostra o
+  achado no topo. **33.ª medição: previ 3, mediu 3** (4 → 1).
+- **E-1361** — inbox: 201 nova vs 200 reentrega; dedup só por `external_id`; 5 → 4.
+- **E-1360** — empresa: fábrica NÃO abre; 422 traz o RELATÓRIO; isolamento precisa de 2.ª org; 7 → 5.
+- **E-1359** — aprovadores: ato mais sensível; lista vazia = portão ABERTO; 8 → 7.
+
+## A distância
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **17** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **1** (era 93) |
+
+## A ÚLTIMA ROTA
+
+`plugins/bundle` — **`POST /plugins/bundle`**, **201 CREATED**. **Fecha fechado (403)** sem
+`OLLAMA_AGENT_PLUGIN_BUNDLE_DIR`. `ResolvePluginBundlePath` faz `filepath.Abs` em ambos e
+**`filepath.EvalSymlinks` antes de comparar** — *um caminho que passa por um symlink não é o caminho que
+se vê*. Corpo: `{manifest: PluginManifest, bundle_path, signature: SignedArtifact}`.
+
+## O ACHADO P1, escrito por extenso
+
+| operação | corpo | reautenticação |
+|---|---|---|
+| `/auth/mfa/enable` | `{secret}` | **nenhuma** |
+| `/auth/mfa/disable` | **vazio** | **nenhuma** |
+| `/auth/mfa/recovery/generate` | **vazio** | **nenhuma** |
+
+A correcção correcta é **no servidor**: exigir senha, TOTP actual ou código de recuperação antes de
+desactivar o MFA e antes de gerar códigos novos. **Não é corrigível nesta fatia** — e um painel que pedisse
+a senha para a enviar a um servidor que a ignora seria **teatro de segurança**.
+
+O que continua aberto: **1 rota**; **build não assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; **`gitleaks` histórico — a única falha de CI**; instalação limpa `BLOCKED_EXTERNAL`; **sem
+catraca contra testes flaky**; **FASE 30 não iniciada**. Achados abertos: **MFA sem reautenticação (P1,
+NOVO)**; o transporte descarta corpo e status de erro; o A1 nunca foi avaliado.
+
+---
 ## JANELA E-1361
 
 A cabeça do índice é **E-1361**.
