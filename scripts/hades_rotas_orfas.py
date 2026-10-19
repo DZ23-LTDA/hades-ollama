@@ -83,7 +83,10 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #
 #   *Uma funcao de cliente sem chamador e' a mesma familia do teste que prova o que o
 #   produto nao usa -- mas corrigir isso nao move um contador que mede prefixos.*
-TETO_ORFAS = 48
+# 48 -> 43 no E-1335: o `OmnichannelPanel` consome `/omnichannel/connectors`,
+# `/omnichannel/events` e `/omnichannel/dlq`. `omnichannel` tem 6 rotas; 3 consumidas.
+# Previsao: 5. Setima tentativa de prever num instrumento que ja' errou cinco vezes.
+TETO_ORFAS = 43
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (

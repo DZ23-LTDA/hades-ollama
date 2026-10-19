@@ -1,3 +1,50 @@
+## JANELA E-1335
+
+A cabeça do índice é **E-1335**.
+
+- **E-1335** — **a DLQ declara a sua própria durabilidade — e o segredo aparece pelo nome.** `omnichannel`
+  tinha **6 rotas** e nenhum componente. Entregues `omnichannelClient.ts` + `OmnichannelPanel.tsx`,
+  consumindo `/omnichannel/connectors`, `/omnichannel/events` e `/omnichannel/dlq`.
+  **(1) Durabilidade não se presume, e o handler diz porquê:** *«O ESTADO acompanha a lista: durabilidade
+  não se presume, e falha de persistência precisa ser visível para quem opera — uma fila "em memória"
+  que se apresenta como durável é pior que a ausência dela.»* O painel escreve **«fila em memória — não
+  sobrevive a reinício»** quando `persisted=false`, e mostra o último erro de persistência **com a fila
+  de pé**. *Uma fila que promete durabilidade que não tem é pior do que uma fila que admite que a perde.*
+  **(2) `secret_env` é o NOME da variável, não o segredo.** *«O valor nunca é guardado nem devolvido pela
+  API.»* **Terceira vez que este padrão aparece** (E-1325 `TokenEnv`, E-1329 PII mascarada, aqui) — é a
+  mesma família: **o identificador nunca viaja como o conteúdo.**
+  **(3) `organization_id` do evento vem do conector, não do payload** — isolamento de tenant na
+  ingestão. **(4) A DLQ não é uma lista de erros genéricos**: traz `reason` e `attempts`. **(5) Fila
+  vazia não é fila ausente.** **(6) 503 não é lista vazia.**
+  **PREVISÃO CERTA, SEGUNDA VEZ.** Previ 5; mediu 5. *Duas em sete: o instrumento continua errado, e
+  continuar a prever é a única forma de saber quanto.*
+- **E-1334** — catálogo de agentes usado no painel; mock com ordem trocada; tecto 48 inalterado.
+- **E-1333** — `ApprovalsPanel` com `role_checked`/quórum/`overdue`/notificação; 53 → 48.
+- **E-1332** — `SalesPanel` com a conta aberta; frete não declarado ≠ R$ 0,00; 61 → 53.
+- **E-1331** — `InboxPanel`; `reply_blocked` não esconde a conversa; 68 → 61.
+- **E-1330** — detalhe do contacto com consentimento real; teto 68 inalterado e explicado.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **59** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **43** (era 93) |
+
+**Os maiores domínios ainda sem UI:** `auth` **4**, `supervisor` **4** (parcial), `finance` **4**,
+`business` **4** (parcial), `plugins` **3**, `media` **2**, `company` **2**.
+
+**Nota acumulada sobre o contador — oito avisos:** o gate mede o **domínio**, não a rota. Sete medições,
+**duas** previsões certas (E-1331 e E-1335). Corrigi-lo é trabalho próprio.
+
+O que continua aberto: **43 rotas** sem UI; o gate **mede prefixos**; a assimetria `call.raw`/`call.path`;
+**20 ORPHAN listados de 211**; o build **não é assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; o painel do build **não se actualiza sozinho**; **`gitleaks` histórico — a única falha de
+CI**; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1334
 
 A cabeça do índice é **E-1334**.

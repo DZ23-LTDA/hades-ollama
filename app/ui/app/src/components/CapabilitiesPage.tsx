@@ -31,6 +31,7 @@ import { CRMPanel } from "@/components/CRMPanel";
 import { InboxPanel } from "@/components/InboxPanel";
 import { SalesPanel } from "@/components/SalesPanel";
 import { ApprovalsPanel } from "@/components/ApprovalsPanel";
+import { OmnichannelPanel } from "@/components/OmnichannelPanel";
 import { RollbackPanel } from "@/components/RollbackPanel";
 import { SigningPanel } from "@/components/SigningPanel";
 import { SbomPanel } from "@/components/SbomPanel";
@@ -338,6 +339,7 @@ export function CapabilitiesPage() {
       <InboxPanel />
       <SalesPanel />
       <ApprovalsPanel />
+      <OmnichannelPanel />
 
         <CredentialsPanel />
 
