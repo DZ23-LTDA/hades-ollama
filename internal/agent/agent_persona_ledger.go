@@ -71,6 +71,37 @@ func (l *PersonaLedger) scopePath(scope string) string {
 	return filepath.Join(l.root, "personas", sanitizeIDComponent(scope)+".json")
 }
 
+// loadLocked garante que o escopo esta' carregado do disco. Chamador segura o mutex.
+//
+// Sem isto, um ledger REABERTO (processo novo) respondia «zero instalacoes» com o ficheiro cheio -- e um
+// `Record` novo persistia SO a sua entrada, apagando as antigas.
+//
+//	*Uma lista vazia e um erro nao sao a mesma coisa -- e uma lista vazia que devia ter conteudo e' pior.*
+func (l *PersonaLedger) loadLocked(scope string) error {
+	if _, ok := l.byScope[scope]; ok {
+		return nil
+	}
+	l.byScope[scope] = map[string]PersonaLedgerEntry{}
+	if l.root == "" {
+		return nil
+	}
+	raw, err := os.ReadFile(l.scopePath(scope))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	var lista []PersonaLedgerEntry
+	if err := json.Unmarshal(raw, &lista); err != nil {
+		return fmt.Errorf("%w: decode: %v", ErrPersonaLedgerCorrupt, err)
+	}
+	for _, e := range lista {
+		l.byScope[scope][PersonaLedgerKey(e)] = e
+	}
+	return nil
+}
+
 // Record grava uma instalacao. Devolve a entrada efectiva e se foi CRIADA agora.
 //
 // Idempotente pela chave: repetir o mesmo pedido nao duplica.
@@ -96,8 +127,8 @@ func (l *PersonaLedger) Record(scope string, entry PersonaLedgerEntry) (PersonaL
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	if l.byScope[scope] == nil {
-		l.byScope[scope] = map[string]PersonaLedgerEntry{}
+	if err := l.loadLocked(scope); err != nil {
+		return PersonaLedgerEntry{}, false, err
 	}
 	chave := PersonaLedgerKey(entry)
 	if existente, jaExiste := l.byScope[scope][chave]; jaExiste {
@@ -183,6 +214,11 @@ func (l *PersonaLedger) Entries(scope string) []PersonaLedgerEntry {
 	_ = requireOrganization(scope)
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if err := l.loadLocked(strings.TrimSpace(scope)); err != nil {
+		// Leitura nao devolve erro hoje; devolver nil e' o mesmo que hoje, mas o ficheiro corrompido deixa
+		// de ser lido como «vazio».
+		return nil
+	}
 	escopo := l.byScope[strings.TrimSpace(scope)]
 	chaves := make([]string, 0, len(escopo))
 	for chave := range escopo {
