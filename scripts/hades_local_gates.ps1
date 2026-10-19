@@ -1363,4 +1363,30 @@ if (-not $fumpt) {
 }
 $passos += 'gofumpt'
 
+# E-1297: O VEREDICTO FINAL TEM DE OLHAR PARA $falhas.
+#
+# Ate' aqui o script terminava SEMPRE com "... VERDES", sem verificar $falhas. Os dois `exit 1`
+# existentes (L384 e L518) cobriam as seccoes que corriam ANTES deles; as seccoes 15+ -- incluindo os
+# E2E de Playwright -- registavam a falha em $falhas e o veredicto final dizia VERDES na mesma.
+#
+# Medido na ronda 100: o output tinha `FALHA: 2` (seccoes 73 e 75) e a ultima linha era
+#   "GATES LOCAIS: gofmt + build + ... + gofumpt VERDES"
+# Ou seja: o gate contava as falhas e depois ignorava-as no rodape'.
+#
+#     *Um gate que conta as falhas e depois as ignora no veredicto nao e' um gate rigoroso: e' um
+#     relatorio com um rodape' optimista.*
+#
+# Esta e' a terceira variante do mesmo defeito nesta linhagem, e a pior das tres:
+#   E-1291: o gate NAO ARRANCAVA         (16 erros de parse, 0 linhas de output)
+#   E-1294: o gate parava na seccao 14   (64 seccoes nunca corriam)
+#   E-1296: o gate media com o ambiente errado (2 falsos vermelhos)
+#   E-1297: o gate reporta VERDE com falhas registadas
+# As tres primeiras eram invisiveis; esta e' PIOR porque o output final afirma o contrario do que
+# as seccoes mediram, e quem le' so' a ultima linha conclui que esta' tudo bem.
+if ($falhas.Count -gt 0) {
+    ''
+    "GATES LOCAIS: $($falhas.Count) falha(s)"
+    $falhas | ForEach-Object { "  - $_" }
+    exit 1
+}
 "GATES LOCAIS: $($passos -join ' + ') VERDES"
