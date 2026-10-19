@@ -1,3 +1,30 @@
+## JANELA E-1287
+
+**Ronda 105. O oitavo provider fechado nos três elos: `ProjectDetectPanel` consome `project.detect`.**
+
+- **E-1287** — `projectDetectClient.ts` + `ProjectDetectPanel.tsx` + **12 testes**, montado em
+  `CapabilitiesPage`. A E-1286 deu rota ao `ProjectDetector`, mas **nenhum consumidor na UI**: a rota
+  era inalcançável a partir do produto.
+- **Os valores foram lidos antes de escrito, 12.ª vez:** stacks `go`/`node`/`expo`/`python`/`rust`/
+  `dotnet`/`flutter` e gestores `go-modules`/`npm`/`pnpm`/`yarn`/`bun`/`poetry`/`uv`/`cargo`/`nuget`/
+  `pub` — **todos extraídos de `project_detector.go`**, nenhum inventado.
+- **Não tem campo de raiz:** `input` `toHaveLength(0)` e corpo do pedido `{}`. Um único botão, com
+  instalar/construir/assinar/publicar/build proibidos.
+- **A prova não promete toolchain:** o teste exige "NÃO prova que a toolchain esteja instalada" e
+  `toolchain.doctor`. E quando há alvos mas **nenhum gestor**, o painel diz "NENHUM gestor de pacotes
+  reconhecido" em vez de mostrar uma lista que parece boa.
+- **Os avisos do detector são mostrados:** `avisos` tem `omitempty`; o painel mostra-os quando existem
+  e não inventa um estado quando não.
+
+Medido: **12 testes PASS** · `npx vitest run` **128 ficheiros / 921 testes** (era 127/909) ·
+`tsc -b` 0 · `eslint .` 0 erros · `vite build` 0 · `BUNDLE_BUDGET=PASS` ·
+`npx playwright test` **117 passed / 10 skipped**.
+
+**Lacuna:** sem E2E do painel. O detector **não alimenta** o `BuildProvider`.
+**2 providers sem rota nem painel** (`CapabilityResolver`, `PublishingProvider`).
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1286
 
 **Ronda 104. O `ProjectDetector` ganhou porta: `POST /project/detect`.**
