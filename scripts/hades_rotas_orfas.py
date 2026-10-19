@@ -244,7 +244,18 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   ***O caminho de entrada e' resolvido DENTRO do workspace da missao pelo `containedPath`. O painel NAO
 #   reimplementa essa verificacao: uma segunda verdade sobre o que esta' «dentro» seria uma segunda
 #   fronteira, e a mais fraca e' a que fica.***
-TETO_ORFAS = 10
+# 10 -> 8 no E-1358: `NotificationsPanel` (/notifications/register) e `CrmStagePanel`
+# (/crm/opportunities/:id/stage).
+#
+#   *Dois prefixos distintos, duas rotas, DOIS pontos. Previ 2, mediu 2 -- a decima terceira previsao certa.*
+#
+#   ***O token de push tem `json:"-"`: nao tem como sair no JSON. Um campo que nao se pode serializar
+#   nao precisa de ser redigido -- redigi-lo na mesma e' dizer que quem escreveu o handler sabia que o
+#   campo existia.***
+#
+#   ***Fase terminal de CRM nao reabre: "reopening would erase the outcome". Reabrir apagaria o
+#   resultado -- e o resultado e' a unica coisa que o funil existe para guardar.***
+TETO_ORFAS = 8
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
