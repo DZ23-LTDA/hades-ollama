@@ -9,6 +9,15 @@
 //
 //	*Uma rota que existe e não é consumida é uma promessa do backend, não uma
 //	funcionalidade do produto.*
+//
+// ARMADILHA DO CONTRATO: o `agentFetch` aceita `/retention` e acrescenta o prefixo em
+// runtime -- mas o `scripts/verify-contracts.mjs` compara o path CRU. Um cliente sem o
+// prefixo funciona no produto e reprova no gate. Todos os outros clientes o passam
+// explicito; este passou a fazer o mesmo.
+//
+//	*Um cliente que funciona em runtime e reprova no contrato nao esta' errado no produto:
+//	esta' fora da convencao que o gate mede -- e a convencao e' o que mantem as chamadas
+//	verificaveis.*
 import { agentFetch } from "@/lib/agenticClient";
 
 /** Limites do contrato do servidor. Validar aqui evita um 400 previsível. */
@@ -73,7 +82,7 @@ export function validarPolitica(
 export async function obterPoliticaDeRetencao(
   init?: RequestInit,
 ): Promise<RespostaDeRetencao> {
-  return agentFetch<RespostaDeRetencao>("/retention", init);
+  return agentFetch<RespostaDeRetencao>("/api/agent/v1/retention", init);
 }
 
 export async function definirPoliticaDeRetencao(
@@ -81,7 +90,7 @@ export async function definirPoliticaDeRetencao(
   memoriasPorProjecto: number,
   init?: RequestInit,
 ): Promise<PoliticaDeRetencao> {
-  return agentFetch<PoliticaDeRetencao>("/retention", {
+  return agentFetch<PoliticaDeRetencao>("/api/agent/v1/retention", {
     method: "PUT",
     body: JSON.stringify({
       max_age_days: idadeEmDias,
@@ -102,7 +111,7 @@ export interface ResultadoDeAplicacao {
 export async function aplicarPoliticaDeRetencao(
   init?: RequestInit,
 ): Promise<ResultadoDeAplicacao> {
-  return agentFetch<ResultadoDeAplicacao>("/retention/apply", {
+  return agentFetch<ResultadoDeAplicacao>("/api/agent/v1/retention/apply", {
     method: "POST",
     ...init,
   });

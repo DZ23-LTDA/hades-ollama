@@ -1,3 +1,38 @@
+## JANELA E-1321
+
+A cabeça do índice é **E-1321**.
+
+- **E-1321** — **o gate de contrato compara o path CRU, e o `agentFetch` aceita o path sem prefixo.**
+  Escrevi `agentFetch("/retention")`. Em runtime funcionava — o painel leu e gravou a política. O
+  `verify-contracts.mjs` reprovou: `routeMatches(call.raw, route.path)` compara o path **cru**
+  (`/retention`) com o path **com prefixo** (`/api/agent/v1/retention`).
+  *Um cliente que funciona em runtime e reprova no contrato não está errado no produto: está fora da
+  convenção que o gate mede — e a convenção é o que mantém 202 chamadas verificáveis.*
+  **E o CI apanhou-o, o que é o sistema a funcionar.** O job `Preserve Class A+ surfaces` reportou os
+  três paths em 12 minutos. Na minha bateria local eu **não corria** o `verify-contracts.mjs`.
+  *Um gate que não está na bateria local é um gate que só existe no CI, e a distância entre os dois é o
+  tempo de uma ronda.*
+  **A investigação:** suspeitei do gate, não do cliente. Instrumentei-o e vi que **os dois lados
+  estavam lá** — 3 rotas no backend, 3 chamadas no frontend. O desalinhamento estava num argumento:
+  `matches` usa `call.raw`, não `call.path`. Todos os 202 clientes existentes passam o prefixo
+  **explícito**; o meu era o único a omiti-lo.
+  **Correcção:** os três paths passaram a `/api/agent/v1/retention` e `.../retention/apply`, com a
+  armadilha documentada no topo do ficheiro.
+  **O que NÃO fiz:** não alarguei o `verify-contracts.mjs` para aceitar as duas formas.
+  *Um gate que se alarga para acomodar o defeito deixa de medir o que media.*
+- **E-1320** — `RetentionPanel`; teto 93 → 90.
+- **E-1319** — auditoria de rotas órfãs.
+- **E-1318** — `PodarDisco` ligado ao arranque.
+
+## O que continua aberto
+
+**O `verify-contracts.mjs` não está na bateria local** — só corre no CI, e foi por isso que o defeito
+viajou até ao PR. **20 ORPHAN listados de 256**: o gate só mostra os primeiros 20 e o total não tem
+catraca. **90 rotas** ainda sem superfície no UI; o build **não é assinado nem instalado**;
+`sign.start`/`publish.*` inexistentes; `gitleaks`; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não
+iniciada**.
+
+---
 ## JANELA E-1320
 
 A cabeça do índice é **E-1320**.
