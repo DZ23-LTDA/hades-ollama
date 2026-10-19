@@ -129,5 +129,37 @@ class RepositorioRealTest(unittest.TestCase):
         self.assertEqual([], checker.avaliar(medicoes), medicoes)
 
 
+class CatracaDoGateDeGofmtTest(unittest.TestCase):
+    """E-1396: o gate do `gofmt` tem de varrer TODOS os `.go` rastreados, nao uma lista fixa.
+
+    O defeito real (E-1393): o gate media `internal/agent`, `internal/multillm` e **UM** ficheiro de
+    `server/`. O CI mede o repositorio inteiro. Resultado medido: `server/agent_center_routes.go`
+    ficou fora do conjunto protegido e o gate local disse OK enquanto o CI reprovava.
+
+    *Um gate que mede um subconjunto nao e' um gate mais rapido: e' um gate que aprova o que nao viu.*
+
+    Estas verificacoes sao textuais de proposito: nao precisam de PowerShell, logo correm tambem onde
+    ele nao existe, e nao dependem de o `gofmt` estar instalado.
+    """
+
+    def setUp(self) -> None:
+        self.fonte = (SCRIPTS / "hades_local_gates.ps1").read_text(encoding="utf-8", errors="replace")
+
+    def test_nao_voltou_a_lista_fixa_de_alvos(self) -> None:
+        # A forma antiga, que media um subconjunto:
+        #     gofmt -l internal/agent internal/multillm server/agent_routes.go
+        self.assertNotIn("gofmt -l internal/agent", self.fonte)
+        self.assertNotIn("-l internal/agent internal/multillm", self.fonte)
+
+    def test_varre_os_ficheiros_rastreados_pelo_git(self) -> None:
+        self.assertIn("git -C $repo ls-files '*.go'", self.fonte)
+
+    def test_usa_lotes(self) -> None:
+        # Uma invocacao unica com ~1790 argumentos excede o limite de linha de comando do Windows,
+        # FALHA, e devolve lista vazia -- que parece "tudo bem". O lote nao e' estilo.
+        self.assertIn("$gofmtLote", self.fonte)
+        self.assertIn("[Math]::Min(", self.fonte)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
