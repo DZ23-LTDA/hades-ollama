@@ -87,4 +87,51 @@ test.describe(`Agent Center no browser (${MODO})`, () => {
     const corpo = (await page.getByTestId("agent-center-catalogo").innerText()).toLowerCase();
     expect(corpo).not.toContain("não está ligado");
   });
+
+  /**
+   * O CICLO: escrever no servidor pelo browser, e ler de volta.
+   *
+   * `install` grava no ledger (escrita); `backup` guarda (escrita); `drift` reconcilia por hash (LEITURA do que
+   * o painel acabou de escrever). Se o painel inventasse o estado, o drift viria vazio.
+   *
+   * Discriminante: `agent-center-instalado` diz quantos BYTES foram renderizados (numero vindo do servidor), e
+   * `agent-center-resumo` so' aparece com o relatorio do servidor.
+   *
+   * NAO cobre `update` nem `remove`: essas duas accoes nao existem como botao no painel; estao declaradas como
+   * lacuna no E-1382 e nao se fingem aqui.
+   */
+  test("install -> backup -> drift: escreve no servidor e le de volta", async ({ page }) => {
+    await page.goto("/capabilities");
+
+    const destino = page.getByTestId("agent-center-destino");
+    await expect(destino).toBeVisible({ timeout: 20_000 });
+
+    // O destino e' RELATIVO e sem `..` -- o servidor recusa absoluto (INSTALACAO_RECUSADA). Medido: a
+    // primeira versao deste teste mandou `C:\\...` e foi recusada; o produto estava certo e o teste errado.
+    await destino.fill("e2e-destino-" + Date.now());
+
+    await page.getByTestId("agent-center-instalar").click();
+
+    // `agent-center-recusado` e' o caminho de recusa: se aparecer, o teste falha com a mensagem do servidor
+    // em vez de ficar a esperar 20s por um elemento que nunca vem.
+    const instalado = page.getByTestId("agent-center-instalado");
+    await expect(instalado.or(page.getByTestId("agent-center-recusado"))).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("agent-center-recusado")).toHaveCount(0);
+
+    const textoInstalado = (await instalado.innerText()).replace(/\s+/g, " ").trim();
+    // O numero de bytes vem do servidor: e' o tamanho do conteudo renderizado, nao uma constante do painel.
+    expect(textoInstalado).toMatch(/\d+ bytes/);
+
+    // BACKUP (outra escrita)
+    await page.getByTestId("agent-center-backup-btn").click();
+    const contagem = page.getByTestId("agent-center-bk-contagem");
+    await expect(contagem).toBeVisible({ timeout: 20_000 });
+    expect(await contagem.innerText()).toMatch(/\d+/);
+
+    // DRIFT (leitura do que acabou de ser escrito)
+    await page.getByTestId("agent-center-drift").click();
+    await expect(page.getByTestId("agent-center-resumo")).toBeVisible({ timeout: 20_000 });
+    const resumo = (await page.getByTestId("agent-center-resumo").innerText()).replace(/\s+/g, " ").trim();
+    expect(resumo.length).toBeGreaterThan(5);
+  });
 });
