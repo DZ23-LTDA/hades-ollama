@@ -1,3 +1,52 @@
+## JANELA E-1331
+
+A cabeça do índice é **E-1331**.
+
+- **E-1331** — **`reply_blocked` não é um erro, é a decisão central desta fatia.** `inbox` era o maior
+  domínio restante (**8 rotas**), com SLA, atribuição, handoff e conhecimento, e nenhum componente
+  `*nbox*` (confirmado por glob **antes** de escrever — regra do E-1326). Entregues `inboxClient.ts` +
+  `InboxPanel.tsx`, consumindo `/inbox/conversations`, `/inbox/conversations/:id` e `/inbox/metrics`.
+  **(1) Um bloqueio de resposta não esconde a conversa.** O servidor: *«O consentimento do contato é
+  anexado à visão para o atendente saber, sem consultar outro lugar, se pode responder.»* O painel
+  mostra o bloqueio **com o motivo** e **continua a mostrar a conversa e as mensagens**. O teste
+  verifica as **duas** coisas ao mesmo tempo — era o único que falharia se o painel escondesse a
+  conversa ao ver o bloqueio. *Uma conversa que se pode ler e não se pode responder não é uma conversa
+  bloqueada: é uma conversa com uma porta fechada.*
+  **(2) Segundos não são minutos.** `125` aparece como **«2 min 5 s»**; o valor cru não aparece.
+  **(3) `deduplicated` não é mensagem nova** — marcada «(reentrega — não é mensagem nova)».
+  **(4) `last_message` é uma prévia** — o próprio tipo o diz; o painel acrescenta **(prévia)**.
+  **(5) 503 não é lista vazia**; e `reply_blocked=false` diz «pode responder».
+  **O número:** 68 → **61**, exactamente as 7 rotas do domínio `inbox`. Terceira fatia consecutiva com
+  o efeito de prefixo — **e a primeira em que a previsão escrita ANTES da medição bateu certo**.
+- **E-1330** — detalhe do contacto com consentimento real; teto 68 inalterado e explicado.
+- **E-1329** — `CRMPanel` com PII mascarada; 75 → 68.
+- **E-1328** — `CommercePanel`; 85 → 75.
+- **E-1327** — `SchedulingPanel`; 87 → 85.
+- **E-1326** — falso progresso: painel já existia, sobrescrito e restaurado (teto inalterado).
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **77** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **61** (era 93) |
+
+**Os maiores domínios ainda sem UI:** `sales` **8**, `service-agents` **6**, `omnichannel` **5**,
+`auth` **4**, `supervisor` **4** (parcial), `finance` **4**, `business` **4** (parcial), `plugins` **3**,
+`media` **2**, `company` **2**.
+
+**Nota acumulada sobre o contador — quatro avisos:** E-1328 (3 de 10), E-1329 (2 de 8, 1 de detalhe
+aberta), E-1330 (**1 consumida, contador inalterado**), E-1331 (3 de 8, previsão certeira). O gate mede
+o **domínio**; corrigi-lo continua a ser trabalho próprio.
+
+O que continua aberto: **61 rotas** sem UI; o gate **mede prefixos**; a assimetria `call.raw`/`call.path`;
+**20 ORPHAN listados de 229**; o build **não é assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; o painel do build **não se actualiza sozinho**; `gitleaks`; instalação limpa
+`BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1330
 
 A cabeça do índice é **E-1330**.

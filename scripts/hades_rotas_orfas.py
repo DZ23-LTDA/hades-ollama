@@ -56,7 +56,11 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # o que e' a TERCEIRA vez que este gate mostra que mede o dominio e nao a rota.
 #   *Um instrumento que nao distingue duas rotas do mesmo prefixo nao conta rotas: conta
 #   prefixos com nome de rota.*
-TETO_ORFAS = 68
+# 68 -> 61 no E-1331: o `InboxPanel` consome `/inbox/conversations`, `/inbox/conversations/:id`
+# e `/inbox/metrics`. Pelo efeito de prefixo ja' conhecido (E-1328, E-1329, E-1330), as 8
+# rotas de `inbox` deixam de ser orfas com 3 consumidas. Medir antes de afirmar o numero:
+# o valor declarado e' o que o gate imprime, nao o que eu espero.
+TETO_ORFAS = 61
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
