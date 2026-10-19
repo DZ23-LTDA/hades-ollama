@@ -115,8 +115,16 @@ test.describe(`Agent Center no browser (${MODO})`, () => {
     // `agent-center-recusado` e' o caminho de recusa: se aparecer, o teste falha com a mensagem do servidor
     // em vez de ficar a esperar 20s por um elemento que nunca vem.
     const instalado = page.getByTestId("agent-center-instalado");
-    await expect(instalado.or(page.getByTestId("agent-center-recusado"))).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByTestId("agent-center-recusado")).toHaveCount(0);
+    const recusado = page.getByTestId("agent-center-recusado");
+    await expect(instalado.or(recusado)).toBeVisible({ timeout: 20_000 });
+
+    // E-1399: o teste CONTINUA a exigir sucesso -- mas quando o servidor recusa, a falha tem de dizer PORQUE.
+    //
+    // Antes isto era `expect(recusado).toHaveCount(0)`, e o CI ficou vermelho com "unexpected value 1" e mais
+    // nada: nem a mensagem do servidor, nem o motivo. *Um vermelho que so' diz "1 onde eu queria 0" obriga a
+    // adivinhar; a mensagem de recusa estava no DOM e ninguem a leu.*
+    const motivo = (await recusado.count()) > 0 ? (await recusado.innerText()).replace(/\s+/g, " ").trim() : "";
+    expect(motivo, "o servidor recusou a instalacao e o motivo tem de vir no erro").toBe("");
 
     const textoInstalado = (await instalado.innerText()).replace(/\s+/g, " ").trim();
     // O numero de bytes vem do servidor: e' o tamanho do conteudo renderizado, nao uma constante do painel.
