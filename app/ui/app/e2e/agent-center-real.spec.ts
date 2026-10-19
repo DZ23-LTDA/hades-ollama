@@ -124,6 +124,25 @@ test.describe(`Agent Center no browser (${MODO})`, () => {
     // nada: nem a mensagem do servidor, nem o motivo. *Um vermelho que so' diz "1 onde eu queria 0" obriga a
     // adivinhar; a mensagem de recusa estava no DOM e ninguem a leu.*
     const motivo = (await recusado.count()) > 0 ? (await recusado.innerText()).replace(/\s+/g, " ").trim() : "";
+
+    if (!BACKEND_REAL) {
+      // E-1404: o E-1403 encontrou a causa no spec irmao (`agent-center-ciclo.spec.ts`), e ela e' a MESMA aqui.
+      //
+      // `UI_FIXTURE` nao tem servidor: `e2e/` nao tem uma unica rota de fixture. O painel bate no servidor
+      // estatico, recebe 404, e `traduzir()` converte o 4xx em `InstalacaoRecusadaError` com o motivo
+      // literal "not found" -- foi esse o texto que o CI mostrou no job 118293886676.
+      //
+      // Ate' aqui esta linha exigia SUCESSO nos dois modos. Nao podia passar: o modo nao tem o que ela pedia.
+      //
+      //   *Corrigir so' um dos dois ficheiros com a mesma premissa e' deixar metade do defeito de pe'.*
+      //
+      // Em vez de exigir sucesso, exige-se o comportamento honesto que o modo permite provar: o painel
+      // mostra o motivo real do servidor em vez de um erro generico. E o teste termina aqui, porque backup,
+      // drift e restore escrevem e leem estado NO SERVIDOR.
+      expect(motivo, "sem servidor, o painel tem de mostrar o motivo real do 4xx").toBe("not found");
+      return;
+    }
+
     expect(motivo, "o servidor recusou a instalacao e o motivo tem de vir no erro").toBe("");
 
     const textoInstalado = (await instalado.innerText()).replace(/\s+/g, " ").trim();
