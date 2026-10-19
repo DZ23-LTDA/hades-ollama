@@ -51,7 +51,7 @@ Pacotes que vivem em `dist/` e nao correspondem a um alvo de produto. *Sem esta 
 - **macOS**: **BLOCKED_EXTERNAL (medido, nao suposto)**: `GOOS=darwin CGO_ENABLED=0` falha com `undefined: GetCPUMem` -- o `GetCPUMem` do darwin vive em `discover/gpu_darwin.go`, que usa `import "C"` (Metal/Foundation), e o Go exclui ficheiros com `import "C"` quando CGO=0. Desbloqueio: o `dz23-macos-build.yaml` em `macos-latest` (Xcode + CGO).
 - **Android**: **o `app.json`/`eas.json` existem; o APK não**
 - **iOS**: **BLOCKED_EXTERNAL**: exige macOS/Xcode + conta Apple
-- **Web/PWA**: bundle auto-coerente: 5/5 assets referenciados presentes; build de 2026-10-19 19:04 (sem SHA de fonte -- Vite nao o declara); servido por HTTP; o `manifest` existe
+- **Web/PWA**: bundle auto-coerente: 5/5 assets referenciados presentes; build de 2026-10-19 19:11 (sem SHA de fonte -- Vite nao o declara); servido por HTTP; o `manifest` existe
 
 ## Os workflows, contados
 
