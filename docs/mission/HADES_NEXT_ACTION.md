@@ -1,3 +1,36 @@
+## JANELA E-1318
+
+A cabeça do índice é **E-1318**.
+
+- **E-1318** — **a função de limpeza existia e nunca corria.** Entreguei `PodarDisco()` no E-1317 com
+  quatro testes verdes — e **nenhum chamador no produto**. O `storeDeBuilds()` chamava
+  `CarregarDoDisco()` e devolvia. Um servidor que arranca com 500 ficheiros e fica parado nunca volta a
+  chamar `podar` (que só corre a cada build novo), portanto o disco nunca descia.
+  *Uma função de limpeza sem chamador é a mesma família do store que persistia e nunca escrevia: código
+  que existe e não acontece.*
+  **É a SEGUNDA VEZ no mesmo subsistema.** No E-1316 o defeito foi `persistir()` escrito e nunca
+  invocado; agora `PodarDisco()` escrito e nunca invocado. Os dois passaram nos testes porque o teste
+  chamava a função diretamente.
+  *Um teste que chama a função que o produto não chama prova que a função funciona, não que o produto a
+  usa.*
+  Entregue `PodarDisco()` no arranque, depois do `CarregarDoDisco()`; `MaxBuildsGuardadosParaTeste()`
+  expõe o teto; teste `TestArranqueDoStoreAplicaRetencao` com 212 ficheiros.
+  **Um `nolintlint` FALSO:** com o typecheck do teste quebrado, o `golangci-lint` reportou dois
+  `//nolint:nilerr` como «unused» **noutro ficheiro**. Corrigidos os imports, 0 issues.
+  *Um linter que reporta noutro ficheiro quando um terceiro não compila ensina a procurar o defeito onde
+  ele não está.*
+- **E-1317** — retenção nos dois sítios; `misspell` resolvido por `ignore-rules`.
+- **E-1316** — persistência do store ligada ao `DataRoot`.
+- **E-1315** — botão de iniciar build.
+
+## O que continua aberto
+
+Build **não assinado nem instalado**; `sign.start`/`publish.*` inexistentes; o painel de estado **não se
+atualiza sozinho**; **a poda no arranque corre uma vez** — um servidor com uptime longo volta a crescer
+até ao próximo build, e não há poda periódica; `gitleaks`; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30
+não iniciada**.
+
+---
 ## JANELA E-1317
 
 A cabeça do índice é **E-1317**.

@@ -205,6 +205,13 @@ func (s *BuildStore) podar() {
 	}
 }
 
+// MaxBuildsGuardadosParaTeste expoe o tecto de retencao para os testes de integracao do servidor
+// poderem verificar a poda sem duplicar o numero.
+//
+//	*Um limite que o teste tem de adivinhar nao e' um limite: e' um numero magico partilhado por
+//	dois ficheiros que um dia divergem.*
+func MaxBuildsGuardadosParaTeste() int { return maxBuildsGuardados }
+
 // PodarDisco aplica a retencao aos registos que ja' estao em disco, sem depender de o mapa em memoria
 // ter passado do tecto.
 //

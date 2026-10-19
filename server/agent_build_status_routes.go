@@ -54,11 +54,19 @@ func (a *agentAPI) storeDeBuilds() *agent.BuildStore {
 		if a.runtime != nil {
 			if raiz := strings.TrimSpace(a.runtime.DataRoot()); raiz != "" {
 				a.builds = agent.NovoBuildStoreComDirectorio(filepath.Join(raiz, "builds"))
-				if _, interrompidos := a.builds.CarregarDoDisco(); interrompidos > 0 {
-					// Um build que estava a correr quando o processo morreu esta' interrompido, nao a
-					// correr: `CarregarDoDisco` ja' o marcou FALHOU com motivo.
-					_ = interrompidos
-				}
+				// Os builds abandonados sao marcados FALHOU com motivo pelo `CarregarDoDisco`; o
+				// numero nao precisa de ser devolvido a ninguem -- o estado de cada build ja' o diz.
+				_, _ = a.builds.CarregarDoDisco()
+
+				// A RETENCAO TEM DE CORRER SEM ALGUEM A CHAMAR.
+				//
+				// O `podar()` so' corre quando um build NOVO entra. Um servidor que arranca com 500
+				// ficheiros em disco e fica parado nunca volta a chamar `podar` -- e o disco nunca
+				// desce. `PodarDisco` no arranque fecha esse caso.
+				//
+				//	*Uma funcao de limpeza sem chamador e' a mesma familia do store que persistia e
+				//	nunca escrevia: codigo que existe e nao acontece.*
+				a.builds.PodarDisco()
 				return
 			}
 		}

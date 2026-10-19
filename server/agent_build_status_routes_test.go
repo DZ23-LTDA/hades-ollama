@@ -16,6 +16,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -219,6 +221,56 @@ func TestLogsDeBuildDizSeTruncou(t *testing.T) {
 
 // TestEstadoDeBuildPrecisaDeID cobre o param vazio (defensivo: gin nao casa a rota sem id, mas o
 // handler nao pode confiar nisso).
+// TestArranqueDoStoreAplicaRetencao prova que a retencao corre SEM ninguem a chamar.
+//
+// O `podar()` so' corre quando um build NOVO entra. Um servidor que arranca com ficheiros a mais e
+// fica parado nunca volta a chamar `podar` -- e o disco nunca desce.
+//
+//	*Uma funcao de limpeza sem chamador e' a mesma familia do store que persistia e nunca escrevia:
+//	codigo que existe e nao acontece.*
+func TestArranqueDoStoreAplicaRetencao(t *testing.T) {
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "builds")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	// Escreve mais ficheiros do que o tecto, todos terminais.
+	for i := range agent.MaxBuildsGuardadosParaTeste() + 12 {
+		corpo := `{"id":"x` + itoaDeTeste(i) + `","alvo":"w","estado":"CONCLUIDO","iniciado_em":"2026-01-01T00:00:00Z"}`
+		if err := os.WriteFile(filepath.Join(sub, "x"+itoaDeTeste(i)+".json"), []byte(corpo), 0o644); err != nil {
+			t.Fatalf("escrever %d: %v", i, err)
+		}
+	}
+	antes, _ := os.ReadDir(sub)
+	if len(antes) <= agent.MaxBuildsGuardadosParaTeste() {
+		t.Fatalf("o teste devia comecar acima do tecto, tem %d", len(antes))
+	}
+
+	a := &agentAPI{}
+	a.builds = agent.NovoBuildStoreComDirectorio(sub)
+	_, _ = a.builds.CarregarDoDisco()
+	removidos := a.builds.PodarDisco()
+	if removidos == 0 {
+		t.Fatal("o arranque devia ter podado")
+	}
+	depois, _ := os.ReadDir(sub)
+	if len(depois) > agent.MaxBuildsGuardadosParaTeste() {
+		t.Fatalf("depois da poda o disco devia ficar dentro do tecto, tem %d", len(depois))
+	}
+}
+
+func itoaDeTeste(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	var b []byte
+	for n > 0 {
+		b = append([]byte{byte('0' + n%10)}, b...)
+		n /= 10
+	}
+	return string(b)
+}
+
 func TestEstadoDeBuildPrecisaDeID(t *testing.T) {
 	api := &agentAPI{}
 	gin.SetMode(gin.TestMode)
