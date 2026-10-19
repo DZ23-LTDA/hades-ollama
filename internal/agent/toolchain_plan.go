@@ -227,13 +227,13 @@ func CatalogoDeAlvos() []AlvoDeclarado {
 			// uild.start responde 422 ErrSemProviderParaAlvo, que e' a verdade. E' melhor um
 			// alvo que recusa do que um alvo que responde 200 com o artefacto errado.
 			Nome:      "windows-installer",
-			Descricao: "instalador .exe nao assinado (Inno Setup) -- SEM PROVIDER: o build.start recusa",
+			Descricao: "instalador .exe nao assinado (Inno Setup)",
 			Exigencias: []ToolRequirement{
 				{Nome: "go", Comando: "go", Obrigatorio: true, Motivo: "compilar o binario que o instalador empacota", VersaoMinima: "1.22", ArgsDeVersao: []string{"version"}},
 				{Nome: "inno-setup", Comando: "iscc", Obrigatorio: true, Motivo: "compilar o instalador .iss"},
 				{Nome: "powershell", Comando: "powershell", Obrigatorio: true, Motivo: "scripts de build e de instalador"},
 			},
-			Independen: []string{"implementar o ProviderDeInstaladorWindows e provar com um .iss real"},
+			Independen: []string{"rever o runbook de assinatura Authenticode no repo"},
 		},
 		{
 			Nome:      "macos",

@@ -1,3 +1,39 @@
+## JANELA E-1310
+
+A cabeça do índice é **E-1310**.
+
+- **E-1310** — o quarto alvo deixou de recusar: existe o **`ProviderDeInstaladorWindows`**. O E-1308
+  separou `windows` de `windows-installer` porque o provider de binários nunca invocaria o Inno Setup;
+  o alvo ficou a responder **412**. Agora o `build.start` escolhe o provider **pelo alvo**.
+  **Medido:** `windows-installer` → **200**, **`HadesSetup-teste.exe` 3 363 167 B**, magic `4D 5A`,
+  string `Inno Setup` dentro do binário, e `Get-AuthenticodeSignature` →
+  **`Status = NotSigned`**, `SignerCert = (nenhum)` — **não assinado, que é o requisito da RC**.
+  **8 testes PASS**, lint 0. O provider **não adivinha o nome** do artefacto (lista o destino antes e
+  depois e mede o que apareceu), **não apaga o `dist`**, e **recusa** com dois `.iss` em vez de
+  escolher por nós.
+- **E-1309** — o artefacto **corre** no alvo: binário Windows executado devolveu
+  `HADES-ARTEFACTO-OK so=windows arch=amd64`; ELF e Mach-O **não** produziram a marca (negativo
+  discriminante). O discriminante é a **marca na saída**, não o exit code.
+- **E-1308** — o alvo `windows` prometia um instalador que nenhum provider produzia.
+- **E-1307** — o `build.start` passou a construir. Quatro defeitos: mensagem `0 blocker(s)`, espera
+  circular, `GOOS` do host, catálogo sem `macos`.
+- **E-1306** — `POST /build/start`, a primeira rota do Release Hub que executa.
+
+## Estado por alvo
+
+| alvo | build | formato | execução no alvo |
+|---|---|---|---|
+| `windows` | **200** | PE `.exe` | **EXECUTADO** — `so=windows arch=amd64` |
+| `linux` | **200** | ELF | **NÃO EXECUTADO** (sem host Linux) |
+| `macos` | **200** | Mach-O | **NÃO EXECUTADO** (sem host macOS) |
+| `windows-installer` | **200** | Inno Setup `.exe` | **NÃO INSTALADO** — não assinado, como a RC exige |
+
+O que continua aberto: **nenhum instalador foi instalado nem executado**; o `.iss` usado é de
+**teste** (`HADES Teste`), não o `app/ollama.iss` canónico; `build.status`/`logs`/`cancel`/`artifacts`
+não existem; **nenhum artefacto assinado** (por desenho); `gitleaks (historico do PR)`; build Android e
+arranque do app (`BLOCKED_EXTERNAL`); `INSTALLED=NAO` (E-1252); **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1309
 
 A cabeça do índice é **E-1309**.

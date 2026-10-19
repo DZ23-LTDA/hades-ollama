@@ -178,7 +178,22 @@ func (a *agentAPI) iniciarBuild(c *gin.Context) {
 		return
 	}
 
-	resultado, err := agent.ProviderDeBuildGo{}.Construir(
+	// O PROVIDER E' ESCOLHIDO PELO ALVO, e so' existem dois.
+	//
+	//   alvos de binario     -> ProviderDeBuildGo      (go build)
+	//   windows-installer    -> ProviderDeInstaladorWindows (iscc)
+	//
+	// O E-1308 separou windows de windows-installer exactamente porque o provider de binarios
+	// nunca invocaria o Inno Setup. Este despacho e' o que da' sentido a essa separacao; sem ele o
+	// windows-installer continuaria a responder 422.
+	var provider agent.BuildProvider
+	if strings.EqualFold(alvo, agent.AlvoDoInstaladorWindows) {
+		provider = agent.ProviderDeInstaladorWindows{}
+	} else {
+		provider = agent.ProviderDeBuildGo{}
+	}
+
+	resultado, err := provider.Construir(
 		c.Request.Context(),
 		plano,
 		agent.OpcoesDeBuild{
