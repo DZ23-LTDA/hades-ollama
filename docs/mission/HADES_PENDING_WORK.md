@@ -1,3 +1,43 @@
+## JANELA E-1325
+
+A cabeça do índice é **E-1325**.
+
+- **E-1325** — **a quarta das 93 passou a ser produto. Teto 88 → 87.** `/deployments` mostra os
+  providers de deploy configurados, e o contrato tem **duas armadilhas de segurança** que o painel
+  resolveu em vez de contornar.
+  **(1) `TokenEnv` é o NOME da variável, não o token** — o painel escreve «token lido de `VERCEL_TOKEN`
+  (nome da variável, não o valor)», e o teste exige essa frase. *Um campo chamado «token» que mostra o
+  nome da variável é lido como o token por quem tem pressa — e a pressa é o estado normal de quem
+  opera.*
+  **(2) `base_url` pode trazer credenciais em userinfo** — `https://user:senha@host/`. `redigirBaseURL`
+  remove o userinfo, o painel mostra o selo **«credenciais removidas»** e um aviso que diz que a
+  configuração no servidor não foi alterada. O teste verifica que **`senha-secreta` e `utilizador` NÃO
+  aparecem** — é esse o teste que falharia com o defeito presente. *Uma credencial escondida sem aviso
+  é uma credencial que ninguém sabe que existe.*
+  **(3) Lista vazia não é «pronto»** — sem provider não há para onde publicar, e o painel di-lo.
+  **(4) Um provider configurado não é uma publicação feita** — escrito na fronteira, exigido por teste.
+  **(5) Só lê**, testado.
+  **O padrão das quatro rotas fechou:** `/retention`, `/traces`, `/routing`, `/deployments` — prefixo
+  explícito e só-GET provado, nas quatro, antes do CI.
+- **E-1324** — `RoutingPanel`; teto 89 → 88.
+- **E-1323** — `TracesPanel`; teto 90 → 89.
+- **E-1322** — o gate de contrato na bateria local.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **103** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **87** (era 93) |
+
+O que continua aberto: **87 rotas** sem UI; a assimetria `call.raw`/`call.path` no
+`verify-contracts.mjs`; **20 ORPHAN listados de 253** sem catraca no total; o build **não é assinado nem
+instalado**; `sign.start`/`publish.*` inexistentes; o painel do build **não se actualiza sozinho**;
+`gitleaks`; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1324
 
 A cabeça do índice é **E-1324**.

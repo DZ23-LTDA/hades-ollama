@@ -35,7 +35,8 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # transformar uma regressao em aprovacao.
 # 90 -> 89 no E-1323: `/traces` passou a ser consumido pelo `TracesPanel`.
 # 89 -> 88 no E-1324: `/routing` passou a ser consumido pelo `RoutingPanel`.
-TETO_ORFAS = 88
+# 88 -> 87 no E-1325: `/deployments` passou a ser consumido pelo `DeploymentsPanel`.
+TETO_ORFAS = 87
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
