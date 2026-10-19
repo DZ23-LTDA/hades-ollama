@@ -105,6 +105,9 @@ type Server struct {
 	multiProvider *multillm.Gateway
 	multiRegistry *multillm.Registry
 	agentRuntime  *agent.Runtime
+	// agentRuntimeErr guarda PORQUE o runtime nao arrancou. Sem isto o unico rasto era um log, e a
+	// API respondia 404 como se as rotas nao existissem (E-1378).
+	agentRuntimeErr error
 }
 
 func init() {
@@ -1951,6 +1954,7 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 			// Degrade gracefully: the agentic layer is optional. If it cannot
 			// initialize (misconfigured Redis/Postgres/OTLP/push, etc.), keep
 			// serving the core Ollama API instead of refusing to start.
+			s.agentRuntimeErr = err
 			slog.Error("agent runtime unavailable; serving core Ollama routes only", "error", err)
 		} else {
 			createdRuntime = runtime
@@ -2036,6 +2040,21 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 			agentAPI.chatHandlers = s.withInferenceRequestLogging("/api/agent/v1/chat", s.ChatHandler)
 			agentAPI.register(r)
 		}
+	}
+	// E-1378: o Agent Center nao montou. Em vez de deixar 404 -- que diz «a rota nao existe» -- dizemos a
+	// verdade com 503 e o motivo real.
+	//
+	//   *Um estado que mente e' pior do que nenhum.*
+	//
+	// O wildcard so' e' seguro AQUI: nenhuma rota `/api/agent/v1/*` foi registada, e o `registerDesktopLocalRoutes`
+	// nao monta nada sob esse prefixo quando a API e' nil.
+	if agentAPI == nil {
+		motivo := ""
+		if s.agentRuntimeErr != nil {
+			motivo = s.agentRuntimeErr.Error()
+		}
+		r.Any("/api/agent/v1/*rest", agentAPINaoMontada(motivo))
+		slog.Warn("Agent Center unavailable; /api/agent/v1 answers 503", "reason", motivo)
 	}
 	s.registerDesktopLocalRoutes(r, agentAPI)
 	// Codex uses this existing Ollama listener for both native and Ollama
