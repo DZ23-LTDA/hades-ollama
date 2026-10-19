@@ -1,6 +1,6 @@
-## JANELA E-1376
+## JANELA E-1377
 
-**A cabeca do indice e' E-1376.** Este bloco substitui a janela anterior (E-1363) e cobre o que foi feito
+**A cabeca do indice e' E-1377.** Este bloco substitui a janela anterior (E-1363) e cobre o que foi feito
 desde entao. O documento seguinte continua a ser o historico; este e' o que se le' primeiro.
 
 ### O QUE MUDOU ENTRE E-1364 E E-1376
@@ -29,6 +29,9 @@ desde entao. O documento seguinte continua a ser o historico; este e' o que se l
   negativas falham. *Um positivo sem o negativo ao lado prova que algo aconteceu, nao que aconteceu o que se
   diz.*
 - **E-1376** — a UI corre a avaliacao: `POST /agents/evaluation/run`, `inference_available` medido ao vivo.
+- **E-1377** — gate de contrato painel<->servidor, e o painel que lia `catalog_note` de um servidor que
+  emitia `note`: mostrava «catalogo nao ligado» sempre. *Um painel que le uma chave que ninguem emite nao
+  mostra o vazio: mostra o fallback.*
 
 ### ESTADO NO HEAD
 

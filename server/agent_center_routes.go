@@ -95,14 +95,17 @@ func (a *agentAPI) listAgentCatalog(c *gin.Context) {
 		"personas":        personas,
 		// O catalogo embutido nao tem avaliacoes. Dizer isso e' diferente de omitir o campo.
 		"evaluations_available": false,
-		"note":                  "catálogo embutido: nenhuma destas personas foi avaliada; `evaluation` vazio significa NÃO AVALIADO",
+		// `catalog_note`, e nao `note`: e o nome que o painel LE. Duas chaves para a mesma coisa sao
+		// duas verdades que um dia divergem -- e o painel ja tinha ficado com a que ninguem emite.
+		"catalog_note": "catálogo embutido: nenhuma destas personas foi avaliada; `evaluation` vazio significa NÃO AVALIADO",
 	})
 }
 
 // listAgentEvaluation: GET /agents/evaluation
 //
-// Devolve as suites embutidas e a maquina de estados. NAO corre avaliacao: `Evaluate` precisa de uma
-// funcao de inferencia, e ligar o harness ao motor e' um passo separado e provado a parte.
+// Devolve as suites embutidas e a maquina de estados. NAO corre avaliacao -- para isso existe
+// `POST /agents/evaluation/run`. Aqui `inference_available` e' MEDIDO ao vivo contra o motor local
+// (E-1376), nao presumido: a avaliacao corre, mas so' quando alguem a pede.
 //
 //	*Uma suite que declara casos e nao corre nao e' uma avaliacao: e' o roteiro dela.*
 func (a *agentAPI) listAgentEvaluation(c *gin.Context) {

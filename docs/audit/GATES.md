@@ -88,6 +88,7 @@ que passam: *quem os corre é o auditor, e o resultado é do estado em que ele o
 | 78 | TIMEOUT DO CI: o `-timeout` declarado nos `go test` do agent |
 | 79 | EXTENSAO nos MOTORES REAIS: Chromium e Edge |
 | 80 | FIREFOX: a extensao INSTALA e ARRANCA num Firefox real |
+| 81 | CONTRATO painel<->servidor do Agent Center |
 | 81 | GOFUMPT: o CI usa-o, e o gate local tem de o usar tambem |
 
 ## Como correr a bateria completa

@@ -444,6 +444,20 @@ if ($LASTEXITCODE -eq 3) {
 } else { '    OK' }
 
 ''
+''
+# E-1377: o CONTRATO painel<->servidor. *O `rotas_orfas` prova que a rota tem consumidor; nao prova que o
+# consumidor LE o que o produtor EMITE.* Achado real: o painel lia `catalog_note` e o servidor emitia `note`
+# -- com o catalogo LIGADO, o painel mostrava sempre a frase do catalogo desligado.
+'--- 81. CONTRATO painel<->servidor do Agent Center'
+$saidaContrato = & python -X utf8 scripts/hades_agent_contract_check.py 2>&1
+$saidaContrato | Select-Object -Last 3 | ForEach-Object { "    " + $_.ToString().Substring(0, [Math]::Min(110, $_.ToString().Length)) }
+if ($LASTEXITCODE -ne 0) {
+  $falhas.Add("hades_agent_contract_check.py (exit $LASTEXITCODE)")
+  '    FALHA'
+} else { '    OK' }
+$passos += 'agent-contract'
+
+
 if ($falhas.Count -gt 0) {
   "GATES LOCAIS: $($falhas.Count) falha(s)"
   $falhas | ForEach-Object { "  - $_" }
