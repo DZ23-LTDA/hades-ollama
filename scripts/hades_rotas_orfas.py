@@ -186,7 +186,11 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   *Dezanove medicoes, seis previsoes certas. O gate agrupa por prefixo, e `scheduling`
 #   (14 rotas) tem 3 leituras ainda nao consumidas: cada uma pode arrastar mais do que uma
 #   entrada. Restam `slots` e `reschedule/slots`.*
-TETO_ORFAS = 24
+# 24 -> 23 no E-1349: `SlotsPanel` consome GET /scheduling/slots.
+#
+#   *`OpenSlots` nao e' `Availability`: um horario "livre" as 03:00 de um domingo nao e' livre --
+#   esta' fora do turno. A funcao nao mudou de comportamento; mudou de promessa.*
+TETO_ORFAS = 23
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (

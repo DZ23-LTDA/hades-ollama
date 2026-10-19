@@ -1,3 +1,46 @@
+## JANELA E-1349
+
+A cabeça do índice é **E-1349**.
+
+- **E-1349** — **`OpenSlots` não é `Availability` — e o handler diz porquê (ADV-60).** `SlotsPanel` consome
+  `GET /scheduling/slots`. O comentário: *«`Availability` decide apenas por agendamentos — não olha turno,
+  fechamento por data, intervalo nem fuso; um slot marcado livre ali pode estar às 03:00 de um domingo com a
+  empresa fechada»*. E fecha: *«A função não mudou de comportamento — mudou de promessa.»*
+  O painel escreve a promessa inteira: **«dentro do turno, fora de fechamento e livre de ocupação»**.
+  **`date` é obrigatório — vazio não é «hoje»**: o painel recusa antes de chamar.
+  **`step` tem tecto de 240**; a duração de cada slot é **medida** contra o passo.
+  **Zero horários não é dia livre.** E um slot com `free=false` numa lista de abertos é **contradição
+  mostrada**, não escondida.
+  **VIGÉSIMA MEDIÇÃO — PRIMEIRA PREVISÃO CERTA EM QUATRO RONDAS:** previ **1**, mediu **1** (24 → 23).
+- **E-1348** — scheduling/waitlist: janela PEDIDA ≠ slot OFERECIDO; oferta sem prazo não é oferta; 26 → 24.
+- **E-1347** — scheduling/reminders/due: `now` não vem do corpo; é só a metade pendente; 28 → 26.
+- **E-1346** — commerce: `on_hand`/`reserved`/`available` são três; saldo derivado e conferido; 30 → 28.
+- **E-1345** — RetentionPanel flaky: `setState` fora de `act`.
+- **E-1344** — verify-contracts: `call.raw` vs `call.path`.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **39** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **23** (era 93) |
+
+## O QUE RESTA EM `scheduling` — 8 DAS 23
+
+O painel consome **5 leituras** (`services`, `appointments`, `reminders/due`, `waitlist`, `slots`).
+Resta **1 leitura** (`slots/reschedule`) e **8 escritas**.
+
+**Nota acumulada — vinte avisos:** o gate mede o **domínio**, não a rota. Vinte medições, **sete**
+previsões certas — e a sétima veio depois de quatro erradas seguidas.
+
+O que continua aberto: **23 rotas** sem UI; o gate **mede prefixos**; **20 ORPHAN de 209**; o build **não é
+assinado nem instalado**; `sign.start`/`publish.*` inexistentes; **`gitleaks` histórico — a única falha de
+CI**; instalação limpa `BLOCKED_EXTERNAL`; **não há catraca contra novos testes flaky**; **FASE 30 não
+iniciada**.
+
+---
 ## JANELA E-1348
 
 A cabeça do índice é **E-1348**.
