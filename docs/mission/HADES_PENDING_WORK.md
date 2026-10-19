@@ -1,3 +1,62 @@
+## JANELA E-1359
+
+A cabeça do índice é **E-1359**.
+
+- **E-1359** — **Definir quem aprova é o ato mais sensível, e o próprio código o diz.** `ApproversPanel`
+  consome `PUT /service-agents/approval-approvers`. O E-429 registou o incidente: um `RoleViewer` redefiniu
+  a lista para `["eu-mesmo"]` e recebeu **HTTP 200**; agora `requireApprovalApprover` exige **owner/admin**
+  e a trilha grava o ator **da sessão**. *Definir quem aprova é definir quem pode autorizar tudo o resto.*
+  **Lista vazia não é «sem aprovadores»: é «sem checagem de papel»** (`role_checked: len(approvers) > 0`).
+  **Duas identidades:** `changed_by` do corpo vs trilha da sessão. **A trilha pode falhar** e a resposta
+  declara (`audit_recorded`/`audit_reason`). **30.ª medição: previ 1, mediu 1** (8 → 7).
+- **E-1358** — push token com `json:"-"`; 501 ≠ 503; fase terminal de CRM não reabre; 10 → 8.
+- **E-1357** — media/ocr+tone: caminho contido no workspace; 502 ≠ erro do pedido; 12 → 10.
+- **E-1356** — waitlist+no-show: faltar ≠ cancelar; fila vazia = `offered:false`; 15 → 12.
+
+## A distância
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **23** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **7** (era 93) |
+
+## AS 7 RESTANTES
+
+| domínio | n | rotas |
+|---|---|---|
+| `auth` | 3 | `/auth/mfa/disable` · `/auth/mfa/enable` · `/auth/mfa/recovery/generate` |
+| `inbox` | 1 | `/inbox/messages` |
+| `business` | 1 | `/business/certify` |
+| `company` | 1 | `/company/factory/launch` |
+| `plugins` | 1 | `/plugins/bundle` |
+
+Nenhuma partilha prefixo: **cada uma renderá exactamente 1**.
+
+## Superfícies adjacentes não duplicadas
+
+`ApprovalsPanel` (existente) **aprova decisões** (`/service-agents/approvals`); `ApproversPanel` (novo)
+**define quem aprova** (`/service-agents/approval-approvers`). **São dois atos distintos**: um decide um
+caso, o outro decide quem decide. Sem colisão de `data-testid`.
+
+## Lições já lidas nos handlers restantes
+
+- `/inbox/messages`: **201 nova, 200 reentrega** via `external_id` — *webhook duplicado não vira mensagem
+  duplicada*.
+- `/plugins/bundle`: **fecha fechado** (403) sem `OLLAMA_AGENT_PLUGIN_BUNDLE_DIR`.
+- `/business/certify`: corpo **opcional**; a prova de isolamento **sempre precisa de uma SEGUNDA
+  organização** — *um teste de isolamento com uma só organização prova que uma organização se vê a si
+  mesma*.
+- `/company/factory/launch`: a fábrica **não cria cliente nem emite registro legal**.
+- `/auth/mfa/*`: **fatia própria** — credenciais, reautenticação, teste de negação.
+
+O que continua aberto: **7 rotas** sem UI; **build não assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; **`gitleaks` histórico — a única falha de CI**; instalação limpa `BLOCKED_EXTERNAL`; **sem
+catraca contra testes flaky**; **FASE 30 não iniciada**. Achados abertos: **o transporte descarta corpo e
+status de erro**; **o A1 nunca foi avaliado**.
+
+---
 ## JANELA E-1358
 
 A cabeça do índice é **E-1358**.

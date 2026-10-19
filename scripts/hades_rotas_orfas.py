@@ -255,7 +255,17 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #
 #   ***Fase terminal de CRM nao reabre: "reopening would erase the outcome". Reabrir apagaria o
 #   resultado -- e o resultado e' a unica coisa que o funil existe para guardar.***
-TETO_ORFAS = 8
+# 8 -> 7 no E-1359: `ApproversPanel` (PUT /service-agents/approval-approvers).
+#
+#   *Previ 1, mediu 1 -- um prefixo, uma rota, UM ponto. A decima quarta previsao certa.*
+#
+#   ***Definir quem aprova e' definir quem pode autorizar tudo o resto. Uma lista de aprovadores que
+#   qualquer um reescreve nao e' uma lista de aprovadores: e' um campo de texto que decide permissoes.***
+#
+#   ***Uma lista vazia e um portao aberto sao o mesmo numero e duas afirmacoes diferentes -- e o
+#   servidor tem a honestidade de o dizer (`role_checked: len(approvers) > 0`) em vez de deixar o painel
+#   inferir.***
+TETO_ORFAS = 7
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (

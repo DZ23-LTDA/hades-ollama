@@ -53,6 +53,7 @@ import { WaitlistOpsPanel } from "@/components/WaitlistOpsPanel";
 import { MediaPanel } from "@/components/MediaPanel";
 import { NotificationsPanel } from "@/components/NotificationsPanel";
 import { CrmStagePanel } from "@/components/CrmStagePanel";
+import { ApproversPanel } from "@/components/ApproversPanel";
 import { RollbackPanel } from "@/components/RollbackPanel";
 import { SigningPanel } from "@/components/SigningPanel";
 import { SbomPanel } from "@/components/SbomPanel";
@@ -382,6 +383,7 @@ export function CapabilitiesPage() {
       <MediaPanel />
       <NotificationsPanel />
       <CrmStagePanel />
+      <ApproversPanel />
 
         <CredentialsPanel />
 
