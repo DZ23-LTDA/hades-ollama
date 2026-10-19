@@ -1,3 +1,54 @@
+## JANELA E-1361
+
+A cabeça do índice é **E-1361**.
+
+- **E-1361** — **201 nova e 200 reentrega são estados distintos.** `InboxIngestPanel` consome
+  `POST /inbox/messages`. O handler devolve **201** quando cria e **200** quando `Deduplicated` — a mesma
+  entrega duas vezes devolve a original, não duplica. *Uma reentrega contada como mensagem nova inflaciona
+  a caixa de entrada — e a caixa inflacionada faz o utilizador procurar uma conversa que nunca aconteceu.*
+  **A dedup é só pelo `external_id`**, e o servidor não inventa a chave. **32.ª medição: previ 1, mediu 1**
+  (5 → 4). `InboxPanel` existe mas **não consome** esta rota — sem duplicação (verificado).
+- **E-1360** — empresa: fábrica NÃO abre (artefactos+checklist); 422 traz o RELATÓRIO; isolamento precisa
+  de 2.ª org; 7 → 5.
+- **E-1359** — aprovadores: ato mais sensível; lista vazia = portão ABERTO; duas identidades; 8 → 7.
+- **E-1358** — push token com `json:"-"`; 501 ≠ 503; fase terminal de CRM não reabre; 10 → 8.
+
+## A distância
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **20** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **4** (era 93) |
+
+## AS 4 RESTANTES
+
+| domínio | n | rotas |
+|---|---|---|
+| `auth` | 3 | `/auth/mfa/disable` · `/auth/mfa/enable` · `/auth/mfa/recovery/generate` |
+| `plugins` | 1 | `/plugins/bundle` |
+
+**A fatia de MFA é própria:** as três tocam credenciais, devem **recusar sem reautenticação** e exigem
+teste de negação explícito. As três partilham o prefixo `/auth/mfa/` — **o gate conta 3 rotas, e são 3
+prefixos distintos** (`/auth/mfa/disable`, `/enable`, `/recovery`) ⇒ **3 pontos**.
+
+**`/plugins/bundle` (1):** **fecha fechado (403)** sem `OLLAMA_AGENT_PLUGIN_BUNDLE_DIR`.
+`ResolvePluginBundlePath` faz `filepath.Abs` em ambos e **`filepath.EvalSymlinks` antes de comparar** —
+*um caminho que passa por um symlink não é o caminho que se vê*. **201 CREATED** no sucesso.
+
+## Lição desta ronda, corrigida a meio
+
+Um teste exigia que a reentrega **não** contivesse «criada» — mas o texto diz *«não foi criada outra»*.
+**A negação é o que se quer.** A asserção passou a exigir a ausência do marcador `· nova ·`.
+*Uma asserção que proíbe a palavra que a própria negação usa está a testar o dicionário, não o estado.*
+
+O que continua aberto: **4 rotas** sem UI; **build não assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; **`gitleaks` histórico — a única falha de CI**; instalação limpa `BLOCKED_EXTERNAL`; **sem
+catraca contra testes flaky**; **FASE 30 não iniciada**. Achados abertos: **o transporte descarta corpo e
+status de erro**; **o A1 nunca foi avaliado**.
+
+---
 ## JANELA E-1360
 
 A cabeça do índice é **E-1360**.

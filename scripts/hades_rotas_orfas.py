@@ -277,7 +277,18 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   ***A certificacao devolve o RELATORIO mesmo quando falha (422 com `C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollamart` E `error`). Um relatorio
 #   que so' aparece quando tudo corre bem e' um premio, nao um diagnostico -- e o diagnostico e' o que se
 #   le' quando algo falhou.***
-TETO_ORFAS = 5
+# 5 -> 4 no E-1361: `InboxIngestPanel` (POST /inbox/messages).
+#
+#   *Previ 1, mediu 1 -- um prefixo. A decima sexta previsao certa.*
+#
+#   ***201 nova e 200 reentrega sao ESTADOS DISTINTOS. Uma reentrega contada como mensagem nova inflaciona
+#   a caixa de entrada -- e a caixa inflacionada faz o utilizador procurar uma conversa que nunca
+#   aconteceu.***
+#
+#   ***Sem `external_id` nao ha' deduplicacao, e o servidor nao inventa uma: um id que o servidor inventa
+#   nao deduplica nada -- deduplica o que o servidor ja' viu, e o que o servidor ja' viu e' o que ele
+#   proprio escreveu.***
+TETO_ORFAS = 4
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
