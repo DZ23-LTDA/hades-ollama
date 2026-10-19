@@ -1,3 +1,51 @@
+## JANELA E-1337
+
+A cabeça do índice é **E-1337**.
+
+- **E-1337** — **`omitempty` num booleano faz «ausente» significar `false` — e o painel não lhe pode
+  chamar «desconhecido».** `SessionPanel` consome `GET /auth/session`. `auth` tem **13 rotas**, mas só
+  **uma** é leitura sem parâmetro; as outras 12 são escritas (logout, MFA, OAuth, SAML) — **o painel não
+  as chama e não inventa botões**.
+  **`Public()` é a fronteira dos segredos, e é legível no código:** limpa `MFASecretCiphertext` e
+  `RecoveryCodesCiphertext`, e `omitempty` faz o resto. O teste verifica que `mfa_secret`,
+  `recovery_codes` e `Ciphertext` não aparecem em nenhum sítio da árvore renderizada. *A fronteira não
+  está no painel: está na função que o servidor chama antes de serializar.*
+  **O achado: `mfa_enabled` tem `omitempty`** ⇒ ausente é `false`, nunca «desconhecido». O teste proíbe
+  a palavra. *Um campo booleano com `omitempty` que se leia como «não sei» transforma um «desligado» em
+  dúvida, e a dúvida num alarme falso.*
+  **`mode: "local"` não é sessão inválida** (200, `authenticated: false`). **Erro de rede não é sessão
+  anónima** — o teste distingue `sessao-erro` de `sem-utilizador`.
+  **TERCEIRA PREVISÃO CERTA DO GATE.** Previ **1**, mediu **1** (42 → 41). *Dez medições, três
+  previsões certas — e as três últimas foram as únicas em que contei as rotas de LEITURA em vez de contar
+  as rotas do domínio.*
+- **E-1336** — `FinancePanel`: líquido com cobertura ao lado; recebível não é receita; 43 → 42.
+- **E-1335** — `OmnichannelPanel`: DLQ declara durabilidade, segredo pelo nome; 48 → 43.
+- **E-1334** — catálogo de agentes usado no painel; mock com ordem trocada; tecto 48 inalterado.
+- **E-1333** — `ApprovalsPanel` com `role_checked`/quórum/`overdue`; 53 → 48.
+- **E-1332** — `SalesPanel` com a conta aberta; frete não declarado ≠ R$ 0,00; 61 → 53.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **57** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **41** (era 93) |
+
+**Os maiores domínios ainda sem UI:** `supervisor` **4** (parcial), `business` **4** (parcial),
+`plugins` **3**, `media` **2**, `company` **2**.
+
+**Nota acumulada sobre o contador — dez avisos:** o gate mede o **domínio**, não a rota. Dez medições,
+**três** previsões certas. As três certas foram as que contaram **rotas de leitura**.
+
+O que continua aberto: **41 rotas** sem UI; o gate **mede prefixos**; a assimetria `call.raw`/`call.path`;
+**20 ORPHAN listados de 211**; o build **não é assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; o painel do build **não se actualiza sozinho**; **`gitleaks` histórico — a única falha de
+CI**; instalação limpa `BLOCKED_EXTERNAL`; **12 rotas de `auth` sem UI por serem escritas — declarado,
+não escondido**; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1336
 
 A cabeça do índice é **E-1336**.

@@ -98,7 +98,11 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   *Nove medicoes, duas previsoes certas. O instrumento nao esta' a melhorar: eu e' que
 #   continuo a supor que uma rota consumida e' uma lacuna fechada, e o gate mede outra
 #   coisa. Continuar a prever e' a unica forma de o manter honesto.*
-TETO_ORFAS = 42
+# 42 -> 41 no E-1337: o `SessionPanel` consome `/auth/session`. `auth` tem 13 rotas, mas
+# so' UMA e' leitura sem parametro -- as outras 12 sao escritas (logout, MFA, OAuth, SAML),
+# acoes do utilizador que o painel nao chama e nao inventa.
+# Previsao: 1. Nona tentativa.
+TETO_ORFAS = 41
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
