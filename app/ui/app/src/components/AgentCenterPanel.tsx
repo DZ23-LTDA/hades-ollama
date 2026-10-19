@@ -12,6 +12,8 @@ import {
   coberturaDeAvaliacao,
   contarCasos,
   lerAvaliacao,
+  lerEquipas,
+  resumoDeEquipas,
   descreverCatalogo,
   listarCatalogo,
   descreverDrift,
@@ -24,6 +26,7 @@ import {
   validarDestino,
   type Avaliacao,
   type Catalogo,
+  type Equipas,
   type ItemDeDrift,
   type ListaDeAgentes,
   type RelatorioDeDrift,
@@ -36,6 +39,7 @@ type Estado =
   | "carregado"
   | "catalogo"
   | "avaliacao"
+  | "equipas"
   | "drift"
   | "instalado"
   | "ausente"
@@ -60,12 +64,13 @@ export function AgentCenterPanel() {
   const [relatorio, setRelatorio] = useState<RelatorioDeDrift | null>(null);
   const [catalogo, setCatalogo] = useState<Catalogo | null>(null);
   const [avaliacao, setAvaliacao] = useState<Avaliacao | null>(null);
+  const [equipas, setEquipas] = useState<Equipas | null>(null);
   const [instalacao, setInstalacao] = useState<ResultadoDeInstalacao | null>(null);
   const [alvo, setAlvo] = useState("hades");
   const [destino, setDestino] = useState(".hades/agents/revisor-exemplo.md");
 
   const correr = useCallback(
-    async (op: "list" | "catalog" | "evaluation" | "drift" | "install") => {
+    async (op: "list" | "catalog" | "evaluation" | "teams" | "drift" | "install") => {
       setErro(null);
       setEstado("a-carregar");
       try {
@@ -78,6 +83,9 @@ export function AgentCenterPanel() {
         } else if (op === "evaluation") {
           setAvaliacao(await lerAvaliacao());
           setEstado("avaliacao");
+        } else if (op === "teams") {
+          setEquipas(await lerEquipas());
+          setEstado("equipas");
         } else if (op === "drift") {
           setRelatorio(await lerDrift());
           setEstado("drift");
@@ -159,6 +167,14 @@ export function AgentCenterPanel() {
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
           Ver critérios de avaliação
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-equipas-btn"
+          onClick={() => void correr("teams")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          Ver equipas
         </button>
         <button
           type="button"
@@ -272,6 +288,33 @@ export function AgentCenterPanel() {
             {(avaliacao?.states ?? []).length} estados declarados ·{" "}
             {(avaliacao?.states ?? []).filter((s) => s.terminal).length} terminal(is)
           </p>
+        </div>
+      )}
+
+      {estado === "equipas" && (
+        <div className="space-y-1">
+          <p data-testid="agent-center-eq-resumo" className="text-[11px] text-neutral-300">
+            {resumoDeEquipas(equipas).total} equipa(s) · {resumoDeEquipas(equipas).funcionais} funcional(is)
+            · {resumoDeEquipas(equipas).comFalta} com ferramentas em falta ·{" "}
+            {resumoDeEquipas(equipas).invalidas} inválida(s)
+          </p>
+          {/* *Um preset que nunca correu nao e' uma equipa: e' uma proposta de equipa.* */}
+          {resumoDeEquipas(equipas).funcionais === 0 && (
+            <p data-testid="agent-center-eq-nao-provado" className="text-[11px] text-amber-300">
+              {equipas?.note ?? "nenhuma equipa foi provada numa missão real"}
+            </p>
+          )}
+          <ul data-testid="agent-center-eq-lista" className="space-y-1 text-[11px] text-neutral-300">
+            {(equipas?.teams ?? []).map((i) => (
+              <li key={i.team.id}>
+                <span className="font-mono">{i.team.id}</span> · {i.team.roles.length} papel(is) ·{" "}
+                {i.validation.ok ? "válida" : `INVÁLIDA (${(i.validation.problems ?? []).length})`} ·{" "}
+                {(i.validation.missing_tools ?? []).length > 0
+                  ? `falta: ${(i.validation.missing_tools ?? []).join(", ")}`
+                  : "sem ferramentas em falta declaradas"}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

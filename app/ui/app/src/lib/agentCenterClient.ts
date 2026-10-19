@@ -98,6 +98,60 @@ export interface Avaliacao {
   note?: string;
 }
 
+/** Um papel dentro de um preset de equipa. */
+export interface PapelDeEquipa {
+  persona_id: string;
+  role: string;
+  responsibility: string;
+  deliverable: string;
+  depends_on?: string[];
+  why: string;
+  missing_tools?: string[];
+  risk?: string;
+  requires_approval?: string[];
+}
+
+export interface PresetDeEquipa {
+  id: string;
+  name: string;
+  version: string;
+  description?: string;
+  division: string;
+  source: string;
+  license: string;
+  roles: PapelDeEquipa[];
+  max_agents: number;
+  max_parallel: number;
+  stop_condition: string;
+  /** Comeca `false`. So' uma missao representativa o promove. */
+  functional: boolean;
+  evidence_of_functionality?: string;
+}
+
+export interface ValidacaoDeEquipa {
+  ok: boolean;
+  problems?: string[];
+  missing_personas?: string[];
+  missing_tools?: string[];
+  cycles?: string[][];
+}
+
+export interface ItemDeEquipa {
+  team: PresetDeEquipa;
+  validation: ValidacaoDeEquipa;
+  covered_divisions: string[];
+  missing_divisions: string[];
+  summary: string;
+}
+
+export interface Equipas {
+  version?: string;
+  count?: number;
+  teams?: ItemDeEquipa[];
+  functional_count?: number;
+  note?: string;
+}
+
 export interface ResultadoDeInstalacao {
   organization_id?: string;
   entry?: EntradaDeAgente;
@@ -211,6 +265,31 @@ export async function lerAvaliacao(): Promise<Avaliacao> {
   } catch (causa) {
     traduzir(causa);
   }
+}
+
+/** Le' os presets JA' VALIDADOS pelo servidor. O painel nao revalida: mostra o veredicto recebido. */
+export async function lerEquipas(): Promise<Equipas> {
+  try {
+    return await agentFetch<Equipas>("/api/agent/v1/agents/teams");
+  } catch (causa) {
+    traduzir(causa);
+  }
+}
+
+/**
+ * Conta as equipas que se dizem funcionais e as que declararam ferramentas em falta.
+ *
+ * *Um numero sem a sua qualidade ao lado e' um numero que se cita mal*: "4 equipas" e "4 equipas, 0
+ * funcionais, 3 com ferramentas em falta" sao a mesma contagem e duas afirmacoes diferentes.
+ */
+export function resumoDeEquipas(e: Equipas | null): { total: number; funcionais: number; comFalta: number; invalidas: number } {
+  const itens = e?.teams ?? [];
+  return {
+    total: itens.length,
+    funcionais: e?.functional_count ?? itens.filter((i) => i.team.functional).length,
+    comFalta: itens.filter((i) => (i.validation.missing_tools ?? []).length > 0).length,
+    invalidas: itens.filter((i) => !i.validation.ok).length,
+  };
 }
 
 export async function lerDrift(): Promise<RelatorioDeDrift> {

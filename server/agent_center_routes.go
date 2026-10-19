@@ -126,6 +126,52 @@ func (a *agentAPI) listAgentEvaluation(c *gin.Context) {
 	})
 }
 
+// listAgentTeams: GET /agents/teams
+//
+// Devolve os presets embutidos JA' VALIDADOS contra o catalogo, com o que falta declarado.
+//
+// Um preset invalido nao e' escondido: vai na resposta com `ok: false` e os problemas. Esconder um preset
+// quebrado faria o painel parecer que a equipa existe.
+//
+//	*Um estado que mente e' pior do que nenhum.*
+func (a *agentAPI) listAgentTeams(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	equipas := agent.Teams()
+	type item struct {
+		Team       agent.AgentTeam      `json:"team"`
+		Validation agent.TeamValidation `json:"validation"`
+		Covered    []string             `json:"covered_divisions"`
+		Missing    []string             `json:"missing_divisions"`
+		Summary    string               `json:"summary"`
+	}
+	itens := make([]item, 0, len(equipas))
+	funcionais := 0
+	for _, eq := range equipas {
+		v := agent.ValidateTeam(eq, agent.CatalogLookup)
+		cob, falt := agent.TeamCoverage(eq, agent.CatalogLookup)
+		if eq.Functional {
+			funcionais++
+		}
+		itens = append(itens, item{
+			Team: eq, Validation: v, Covered: cob, Missing: falt,
+			Summary: agent.DescribeTeam(eq, v, cob, falt),
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"organization_id": organizationID,
+		"version":         agent.TeamPresetVersion(),
+		"count":           len(itens),
+		"teams":           itens,
+		// Nenhum preset correu uma missao real: dizer isto e' diferente de omitir o campo.
+		"functional_count": funcionais,
+		"note":             "nenhum preset completou uma missão representativa com ferramentas reais; `functional:false` significa NÃO PROVADO",
+	})
+}
+
 // agentPersonaDrift: GET /agents/drift
 func (a *agentAPI) agentPersonaDrift(c *gin.Context) {
 	organizationID := a.organizationID(c)
