@@ -33,7 +33,8 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 93 -> 90 no E-1320: `/retention`, `/retention/apply` e o PUT `/retention` passaram a ser
 # consumidos pelo `RetentionPanel`. O teto DESCEU porque o numero desceu -- subir seria
 # transformar uma regressao em aprovacao.
-TETO_ORFAS = 90
+# 90 -> 89 no E-1323: `/traces` passou a ser consumido pelo `TracesPanel`.
+TETO_ORFAS = 89
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (

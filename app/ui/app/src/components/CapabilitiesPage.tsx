@@ -22,6 +22,7 @@ import { BuildStatusPanel } from "@/components/BuildStatusPanel";
 import { CredentialsPanel } from "@/components/CredentialsPanel";
 import { SmokePanel } from "@/components/SmokePanel";
 import { RetentionPanel } from "@/components/RetentionPanel";
+import { TracesPanel } from "@/components/TracesPanel";
 import { RollbackPanel } from "@/components/RollbackPanel";
 import { SigningPanel } from "@/components/SigningPanel";
 import { SbomPanel } from "@/components/SbomPanel";
@@ -320,6 +321,7 @@ export function CapabilitiesPage() {
           diferentes e por isso sao dois paineis. */}
       <BuildStatusPanel />
       <RetentionPanel />
+      <TracesPanel />
 
         <CredentialsPanel />
 

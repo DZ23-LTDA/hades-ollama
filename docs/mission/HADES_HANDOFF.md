@@ -1,3 +1,43 @@
+## JANELA E-1323
+
+A cabeça do índice é **E-1323**.
+
+- **E-1323** — **a segunda das 93 passou a ser produto. Teto 90 → 89.** `/traces` era uma rota de
+  leitura com backend pronto e nenhuma forma de ver o que devolvia.
+  Entregues `tracesClient.ts` + `TracesPanel.tsx`, montado no `CapabilitiesPage`.
+  **As decisões que o painel não pode errar:**
+  **(1) `duration_ns` não é duração para humano** — o `time.Duration` do Go serializa como inteiro de
+  nanossegundos; o painel diz `4.82 s` e o teste exige que `4820000000` **não apareça**.
+  **(2) Um span sem `end_at` está ABERTO, não concluído.** *Um span aberto mostrado como concluído é um
+  trace que mente sobre o tempo que levou.*
+  **(3) O erro vence o rótulo** — `status:"ok"` + `error` preenchido é FALHADO.
+  **(4) Lista vazia e `spans:null` não são erro.** **(5) Só lê** — um teste exige `method === "GET"` em
+  todas as chamadas.
+  **O prefixo explícito, aprendido no E-1321:** `/api/agent/v1/traces`, não `/traces`. A armadilha foi
+  aplicada **antes** de o CI a apanhar. *Uma lição que só se aplica onde doeu não é uma lição: é um
+  remendo.*
+  **Um defeito meu no teste:** `texto()` lia `props.children` de um nível, mas os números estão em
+  `<span>` aninhados — três asserções falharam sem números. Passou a ler o `toJSON()` recursivamente.
+  *Uma função de teste que só lê um nível mede um nível.*
+- **E-1322** — o gate de contrato na bateria local.
+- **E-1321** — o gate compara o path cru; o cliente omitia o prefixo.
+- **E-1320** — `RetentionPanel`; teto 93 → 90.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **105** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **89** (era 93) |
+
+O que continua aberto: **89 rotas** sem UI; a assimetria `call.raw`/`call.path` no
+`verify-contracts.mjs`; **20 ORPHAN listados de 255** sem catraca no total; o build **não é assinado nem
+instalado**; `sign.start`/`publish.*` inexistentes; o painel do build **não se actualiza sozinho**;
+`gitleaks`; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1322
 
 A cabeça do índice é **E-1322**.
