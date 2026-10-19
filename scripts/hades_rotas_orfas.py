@@ -66,7 +66,13 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # para o valor medido.
 #   *Uma previsao que acerta uma vez nao e' um metodo: e' uma coincidencia que se pode
 #   repetir ou nao.*
-TETO_ORFAS = 53
+# Medido: 48, nao os 50 previstos. `service-agents` tem 6 rotas e cairam 5 com 2
+# consumidas (`/service-agents/approvals` e `/service-agents/audit`); `/service-agents`
+# (a lista) continua orfa. Quinta leitura do mesmo gate: previsoes erradas por 2 (E-1328),
+# errada por 5 (E-1329), certa (E-1331), errada por 1 (E-1332), errada por 2 (E-1333).
+#   *Cinco medicoes, uma previsao certa: o instrumento e' que esta' errado, nao a minha
+#   contabilidade.*
+TETO_ORFAS = 48
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (

@@ -1,3 +1,54 @@
+## JANELA E-1333
+
+A cabeça do índice é **E-1333**.
+
+- **E-1333** — **a fila de aprovação humana passou a ter superfície — é a FASE 4 e a FASE 11
+  juntas.** `service-agents` tinha **6 rotas** e `service_agent_approvals.go` **45 KB** (quórum,
+  política, fingerprint, expiração, notificação cross-processo) sem nenhum componente. Entregues
+  `approvalsClient.ts` + `ApprovalsPanel.tsx`, consumindo `/service-agents/approvals` e
+  `/service-agents/audit`.
+  **(1) `role_checked=false` é uma declaração que o painel não pode esconder.** O tipo: *«`false` é
+  declarado: sem lista configurada o sistema exige ator identificado, mas NÃO verifica se ele pode
+  aprovar — e isso precisa aparecer no registro, em vez de virar confiança implícita.»* O painel escreve
+  **«sem lista de aprovadores — apenas ator identificado»**. *Uma aprovação que não verificou QUEM
+  aprovou não é a mesma aprovação.*
+  **(2) Quórum é parcial, não binário** — «2 de 3 aprovações», nunca «pendente» a seco. **(3) `overdue`
+  separa pendente de esquecido** — «PASSOU DO LIMIAR». **(4) A notificação pode ter falhado com a fila
+  de pé** — «a fila não avisa ninguém» quando não há canal. **(5) O fingerprint é truncado** —
+  identificador, não conteúdo. **(6) A falha da auditoria não apaga a fila**; e sem trilha durável a
+  leitura diz «nada é guardado» — o servidor: *«Sem trilha durável a leitura é recusa declarada, não
+  lista vazia: vazio pareceria "nada aconteceu".»*
+  **QUINTA LEITURA DO GATE, E A CONTA FICA FEITA:** errada por 2 (E-1328), errada por 5 (E-1329),
+  **certa (E-1331)**, errada por 1 (E-1332), errada por 2 (E-1333). *Cinco medições, uma previsão
+  certa: o instrumento é que está errado, não a minha contabilidade.*
+- **E-1332** — `SalesPanel` com a conta aberta; frete não declarado ≠ R$ 0,00; 61 → 53.
+- **E-1331** — `InboxPanel`; `reply_blocked` não esconde a conversa; 68 → 61.
+- **E-1330** — detalhe do contacto com consentimento real; teto 68 inalterado e explicado.
+- **E-1329** — `CRMPanel` com PII mascarada; 75 → 68.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **64** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **48** (era 93) |
+
+**Os maiores domínios ainda sem UI:** `omnichannel` **5**, `auth` **4**, `supervisor` **4** (parcial),
+`finance` **4**, `business` **4** (parcial), `plugins` **3**, `media` **2**, `company` **2**.
+
+**Nota acumulada sobre o contador — seis avisos:** o gate mede o **domínio**, não a rota. Cinco medições,
+uma previsão certa. Corrigi-lo é trabalho próprio, e continua a ser a dívida de instrumento mais clara
+do projecto.
+
+O que continua aberto: **48 rotas** sem UI; o gate **mede prefixos**; a assimetria `call.raw`/`call.path`;
+**20 ORPHAN listados de 216**; o build **não é assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; o painel do build **não se actualiza sozinho**; **`gitleaks` histórico — 2 de 17
+check-runs deste HEAD, e as duas falhas são gitleaks**; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30
+não iniciada**.
+
+---
 ## JANELA E-1332
 
 A cabeça do índice é **E-1332**.
