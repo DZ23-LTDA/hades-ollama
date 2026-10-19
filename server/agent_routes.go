@@ -230,6 +230,14 @@ type agentAPI struct {
 	auth         *agent.AuthStore
 	oauthClients *agent.OAuthClientStore
 	authRequired bool
+
+	// FASE 28.7: o store dos builds iniciados por `build.start`.
+	//
+	// E' por instancia e com lazy init: um singleton de package seria estado partilhado entre
+	// testes e esconderia o facto de dois servidores nao partilharem builds. O zero value de
+	// `sync.Once` funciona, por isso `&agentAPI{}` nos testes continua valido.
+	builds       *agent.BuildStore
+	buildsOnce   sync.Once
 	push         *agent.PushService
 	grok         *grok.Client
 	samlMu       sync.Mutex
@@ -904,6 +912,13 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/build/start", a.iniciarBuild)
 	group.POST("/build/verify", a.verificarBuild)
 	group.POST("/build/smoke", a.executarSmoke)
+	// FASE 28.7 do adendo V3: o estado do build. O E-1306 recusou-se a inventar estas rotas
+	// porque nao havia store; agora ha'. Nenhuma delas escreve, assina ou publica.
+	group.GET("/build/status/:id", a.estadoDeBuild)
+	group.GET("/build/logs/:id", a.saidaDoBuild)
+	group.GET("/build/artifacts/:id", a.artefactosDoBuild)
+	group.GET("/build/registos", a.registosDeBuild)
+	group.POST("/build/cancel/:id", a.cancelarBuild)
 	group.POST("/publish/rollback", a.planearRollback)
 	group.POST("/publish/preflight/:canal", a.preflightDePublicacao)
 	group.POST("/sbom/generate", a.gerarSBOM)

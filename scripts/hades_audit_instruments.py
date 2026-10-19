@@ -93,7 +93,23 @@ BASELINE_ORACULO = (
 #     rotas `toolchain/*` e das duas `install/*`.
 #   - A credencial NAO e' lida: o detalhe reporta tamanho e declara "conteudo NAO lido".
 # Medido: o instrumento conta 33 residuais (era 32). O teto sobe para o numero MEDIDO.
-TETO_ROTAS = 33
+#
+# E-1313: o instrumento conta 37 residuais (era 33). O teto sobe para o numero MEDIDO.
+#
+# A JUSTIFICACAO, porque subir um tecto e' exactamente o que este gate existe para impedir:
+#   - as 5 rotas novas (`build/status`, `build/logs`, `build/artifacts`, `build/registos`,
+#     `build/cancel`) sao propriedade do HOST e do ARTEFACTO local: respondem sobre um build que
+#     correu nesta maquina. *Nao ha' organizacao a filtrar numa resposta que nao menciona
+#     organizacao nenhuma.* E' o mesmo criterio das `toolchain/*`, das `install/*` e do
+#     `build/start`, que ja' estavam contados nos 33.
+#   - `iniciarBuild` passou a registar no store e a devolver `build_id`; o instrumento conta-o uma
+#     vez, nao duas.
+#   - NENHUMA das rotas novas aceita um identificador de organizacao, tenant ou utilizador. Uma
+#     rota sem escopo que nao recebe escopo nao e' uma fuga: e' uma rota sem escopo.
+#
+# O QUE ESTE NUMERO **NAO** PODE FAZER: subir sem uma rota nova que o justifique. Se um dia o
+# instrumento contar 38 e o diff nao tiver uma rota nova, e' um achado, nao um tecto a subir.
+TETO_ROTAS = 37
 
 LINHA_CANDIDATO = re.compile(r"^\s*(\S+?)\s*::\s*([A-Za-z0-9_]+)\s*\(")
 LINHA_RESIDUAL = re.compile(r"handlers SEM escopo[^\d]*(\d+)")

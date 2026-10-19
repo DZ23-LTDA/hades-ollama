@@ -1,0 +1,353 @@
+package agent
+
+// FASE 28.7: testes do store de builds.
+//
+// Estes testes fixam as DUAS promessas que um store de estado pode quebrar sem falhar em nada:
+//
+//  1. cancelar um build que ja' terminou tem de FALHAR, nao devolver sucesso. Um `cancelar` que
+//     devolve `nil` sobre um build concluido e' um botao que mente sobre o que fez.
+//  2. um build cancelado NAO pode ser "des-cancelado" pelo `Terminar`. Se o provider acabar depois
+//     do cancelamento chegar, o estado final tem de continuar CANCELADO -- senao o utilizador ve'
+//     "cancelado" e o store diz "concluido", e um dos dois esta' a mentir.
+//
+//	*Um cancelamento que o resultado desfaz nao e' um cancelamento: e' uma sugestao.*
+
+import (
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+)
+
+// TestStoreBuildRegistarEObter prova o caminho felizesimo: nasce, e' encontrado, e nasce NA_FILA.
+func TestStoreBuildRegistarEObter(t *testing.T) {
+	s := NovoBuildStore()
+	id, err := s.Registar("windows", "/tmp/proj", "/tmp/dest")
+	if err != nil {
+		t.Fatalf("registar: %v", err)
+	}
+	if len(id) != 24 {
+		t.Fatalf("ID devia ter 24 caracteres hex, tem %d: %q", len(id), id)
+	}
+	r, err := s.Obter(id)
+	if err != nil {
+		t.Fatalf("obter: %v", err)
+	}
+	if r.Estado != BuildNaFila {
+		t.Fatalf("estado devia ser NA_FILA: %q", r.Estado)
+	}
+	if r.Alvo != "windows" || r.Raiz != "/tmp/proj" || r.Destino != "/tmp/dest" {
+		t.Fatalf("campos mal guardados: %+v", r)
+	}
+	// As invariantes de fronteira vem do store, nao do chamador.
+	if !r.NadaAssinado || !r.NadaPublicado {
+		t.Fatalf("um build nunca assina nem publica: %+v", r)
+	}
+	if !r.Cancelavel {
+		t.Fatal("um build NA_FILA tem de ser cancelavel")
+	}
+	if r.TerminadoEm != nil {
+		t.Fatal("um build NA_FILA nao tem terminado_em")
+	}
+}
+
+// TestStoreBuildDoisIDsSaoDiferentes prova que o ID nao e' previsivel nem reutilizado.
+func TestStoreBuildDoisIDsSaoDiferentes(t *testing.T) {
+	s := NovoBuildStore()
+	vistos := map[string]bool{}
+	for i := range 50 {
+		id, err := s.Registar("linux", "/r", "/d")
+		if err != nil {
+			t.Fatalf("registar %d: %v", i, err)
+		}
+		if vistos[id] {
+			t.Fatalf("ID repetido apos %d registos: %q", i, id)
+		}
+		vistos[id] = true
+	}
+}
+
+// TestStoreBuildIniciarMudaParaAExecutar e' a transicao NA_FILA -> A_EXECUTAR.
+func TestStoreBuildIniciarMudaParaAExecutar(t *testing.T) {
+	s := NovoBuildStore()
+	id, _ := s.Registar("windows", "/r", "/d")
+	ctx, err := s.Iniciar(id)
+	if err != nil {
+		t.Fatalf("iniciar: %v", err)
+	}
+	if ctx == nil {
+		t.Fatal("iniciar devia dar contexto")
+	}
+	if ctx.Err() != nil {
+		t.Fatal("o contexto nao devia estar cancelado a nascenca")
+	}
+	r, _ := s.Obter(id)
+	if r.Estado != BuildAExecutar {
+		t.Fatalf("estado devia ser A_EXECUTAR: %q", r.Estado)
+	}
+}
+
+// TestStoreBuildIniciarDuasVezesRecusa impede dois executores no mesmo build.
+func TestStoreBuildIniciarDuasVezesRecusa(t *testing.T) {
+	s := NovoBuildStore()
+	id, _ := s.Registar("windows", "/r", "/d")
+	if _, err := s.Iniciar(id); err != nil {
+		t.Fatalf("primeiro iniciar: %v", err)
+	}
+	if _, err := s.Iniciar(id); err == nil {
+		t.Fatal("segundo iniciar devia ser recusado -- dois executores no mesmo build")
+	}
+}
+
+// TestStoreBuildCancelarDevolveContextoCancelado prova que o cancelamento chega ao executor.
+//
+// Sem isto, `cancelar` mudaria o estado no store e deixaria o processo a correr -- que e' a pior
+// combinacao possivel: o utilizador le' "cancelado" e o trabalho continua.
+func TestStoreBuildCancelarDevolveContextoCancelado(t *testing.T) {
+	s := NovoBuildStore()
+	id, _ := s.Registar("windows", "/r", "/d")
+	ctx, err := s.Iniciar(id)
+	if err != nil {
+		t.Fatalf("iniciar: %v", err)
+	}
+	if err := s.Cancelar(id); err != nil {
+		t.Fatalf("cancelar: %v", err)
+	}
+	select {
+	case <-ctx.Done():
+		// Bom: o contexto foi cancelado.
+	case <-time.After(2 * time.Second):
+		t.Fatal("o contexto do build nao foi cancelado -- o executor continuaria a correr")
+	}
+	r, _ := s.Obter(id)
+	if r.Estado != BuildCancelado {
+		t.Fatalf("estado devia ser CANCELADO: %q", r.Estado)
+	}
+	if r.Cancelavel {
+		t.Fatal("um build cancelado nao e' cancelavel outra vez")
+	}
+}
+
+// TestStoreBuildCancelarTerminadoRecusa separa o cancelamento honesto do falso.
+//
+//	*Um cancelamento que devolve sucesso sobre um build ja' terminado e' um botao que mente sobre o
+//	que fez -- e o utilizador so' descobre quando pergunta pelo resultado.*
+func TestStoreBuildCancelarTerminadoRecusa(t *testing.T) {
+	casos := []struct {
+		nome     string
+		terminar func(s *BuildStore, id string)
+	}{
+		{"concluido", func(s *BuildStore, id string) {
+			_ = s.Terminar(id, &ResultadoDeBuild{Artefatos: []Artefato{{Nome: "x"}}}, nil, "")
+		}},
+		{"falhou", func(s *BuildStore, id string) {
+			_ = s.Terminar(id, nil, errors.New("go build falhou"), "")
+		}},
+		{"cancelado", func(s *BuildStore, id string) {
+			_ = s.Cancelar(id)
+		}},
+	}
+	for _, c := range casos {
+		t.Run(c.nome, func(t *testing.T) {
+			s := NovoBuildStore()
+			id, _ := s.Registar("windows", "/r", "/d")
+			_, _ = s.Iniciar(id)
+			c.terminar(s, id)
+			err := s.Cancelar(id)
+			if !errors.Is(err, ErrBuildJaTerminou) {
+				t.Fatalf("cancelar build %s devia dar ErrBuildJaTerminou, deu %v", c.nome, err)
+			}
+		})
+	}
+}
+
+// TestStoreBuildTerminarDepoisDeCanceladoNaoDesCancela e' o teste mais forte deste ficheiro.
+//
+// CENARIO REAL: o utilizador pede cancelamento; o processo `go build` demora a morrer; o provider
+// acaba e chama `Terminar` com sucesso. Se o store aceitasse, o estado final seria CONCLUIDO.
+//
+//	*Um build que o utilizador cancelou e que depois se declara CONCLUIDO e' um cancelamento que
+//	mentiu, e o historico passa a contar a versao de quem acabou por ultimo.*
+func TestStoreBuildTerminarDepoisDeCanceladoNaoDesCancela(t *testing.T) {
+	s := NovoBuildStore()
+	id, _ := s.Registar("windows", "/r", "/d")
+	_, _ = s.Iniciar(id)
+	if err := s.Cancelar(id); err != nil {
+		t.Fatalf("cancelar: %v", err)
+	}
+	// O provider acaba DEPOIS do cancelamento, com sucesso.
+	if err := s.Terminar(id, &ResultadoDeBuild{Explicacao: "acabou apesar do cancelamento"}, nil, "saida"); err != nil {
+		t.Fatalf("terminar: %v", err)
+	}
+	r, _ := s.Obter(id)
+	if r.Estado != BuildCancelado {
+		t.Fatalf("o estado TEM de continuar CANCELADO; ficou %q -- o Terminar des-cancelou", r.Estado)
+	}
+	// O resultado nao se perde: fica guardado para diagnostico.
+	if r.Resultado == nil {
+		t.Fatal("o resultado devia ficar guardado para diagnostico, mesmo cancelado")
+	}
+	if r.SaidaDoComando != "saida" {
+		t.Fatalf("a saida devia ficar guardada: %q", r.SaidaDoComando)
+	}
+}
+
+// TestStoreBuildTerminarComErroFicaFALHOU e' a transicao de falha.
+func TestStoreBuildTerminarComErroFicaFALHOU(t *testing.T) {
+	s := NovoBuildStore()
+	id, _ := s.Registar("windows", "/r", "/d")
+	_, _ = s.Iniciar(id)
+	if err := s.Terminar(id, nil, errors.New("iscc nao encontrado"), "erro no iscc"); err != nil {
+		t.Fatalf("terminar: %v", err)
+	}
+	r, _ := s.Obter(id)
+	if r.Estado != BuildFalhou {
+		t.Fatalf("estado devia ser FALHOU: %q", r.Estado)
+	}
+	if !strings.Contains(r.Erro, "iscc") {
+		t.Fatalf("o erro devia ficar guardado: %q", r.Erro)
+	}
+	if r.TerminadoEm == nil {
+		t.Fatal("um build terminado tem de ter terminado_em")
+	}
+	if r.Cancelavel {
+		t.Fatal("um build terminado nao e' cancelavel")
+	}
+}
+
+// TestStoreBuildSaidaTruncada impede que um build ruidoso consuma memoria sem tecto.
+//
+//	*Uma saida sem limite e' uma fuga de memoria com autorizacao do compilador.*
+func TestStoreBuildSaidaTruncada(t *testing.T) {
+	s := NovoBuildStore()
+	id, _ := s.Registar("windows", "/r", "/d")
+	_, _ = s.Iniciar(id)
+	enorme := strings.Repeat("A", maxSaidaGuardada+5000)
+	_ = s.Terminar(id, nil, nil, enorme)
+	r, _ := s.Obter(id)
+	if len(r.SaidaDoComando) >= len(enorme) {
+		t.Fatalf("a saida devia ser truncada; guardou %d de %d", len(r.SaidaDoComando), len(enorme))
+	}
+	if !strings.Contains(r.SaidaDoComando, "truncada") {
+		t.Fatal("a saida truncada tem de DIZER que foi truncada -- um corte silencioso esconde o resto")
+	}
+}
+
+// TestStoreBuildDesconhecido devolve erro em vez de zero-value.
+//
+//	*Um store que devolve um registo vazio para um ID inexistente e' um store que inventa builds.*
+func TestStoreBuildDesconhecido(t *testing.T) {
+	s := NovoBuildStore()
+	if _, err := s.Obter("nao-existe"); !errors.Is(err, ErrBuildDesconhecido) {
+		t.Fatalf("Obter devia dar ErrBuildDesconhecido, deu %v", err)
+	}
+	if err := s.Cancelar("nao-existe"); !errors.Is(err, ErrBuildDesconhecido) {
+		t.Fatalf("Cancelar devia dar ErrBuildDesconhecido, deu %v", err)
+	}
+	if _, err := s.Iniciar("nao-existe"); !errors.Is(err, ErrBuildDesconhecido) {
+		t.Fatalf("Iniciar devia dar ErrBuildDesconhecido, deu %v", err)
+	}
+	if err := s.Terminar("nao-existe", nil, nil, ""); !errors.Is(err, ErrBuildDesconhecido) {
+		t.Fatalf("Terminar devia dar ErrBuildDesconhecido, deu %v", err)
+	}
+}
+
+// TestStoreBuildListarMaisRecentesPrimeiro prova a ordenacao.
+func TestStoreBuildListarMaisRecentesPrimeiro(t *testing.T) {
+	s := NovoBuildStore()
+	agora := time.Unix(1000, 0)
+	s.agora = func() time.Time { return agora }
+	id1, _ := s.Registar("a", "/r", "/d")
+	agora = time.Unix(2000, 0)
+	id2, _ := s.Registar("b", "/r", "/d")
+	agora = time.Unix(1500, 0)
+	// Forca a ordem por IniciadoEm: o id2 e' o mais recente.
+	l := s.Listar()
+	if len(l) != 2 {
+		t.Fatalf("esperados 2: %d", len(l))
+	}
+	if l[0].ID != id2 || l[1].ID != id1 {
+		t.Fatalf("ordem errada: primeiro %q (quer %q), segundo %q", l[0].ID, id2, l[1].ID)
+	}
+}
+
+// TestStoreBuildObterDevolveCopia impede que um chamador mute o estado interno.
+//
+//	*Um store que devolve o seu proprio ponteiro nao tem estado: tem um boato.*
+func TestStoreBuildObterDevolveCopia(t *testing.T) {
+	s := NovoBuildStore()
+	id, _ := s.Registar("windows", "/r", "/d")
+	r, _ := s.Obter(id)
+	r.Estado = BuildConcluido
+	r.Alvo = "MUTADO"
+	r2, _ := s.Obter(id)
+	if r2.Estado != BuildNaFila {
+		t.Fatalf("mutar a copia mudou o store: estado=%q", r2.Estado)
+	}
+	if r2.Alvo != "windows" {
+		t.Fatalf("mutar a copia mudou o alvo: %q", r2.Alvo)
+	}
+}
+
+// TestStoreBuildPersisteEmDisco prova a escrita de diagnostico, quando ha' directorio.
+func TestStoreBuildPersisteEmDisco(t *testing.T) {
+	dir := t.TempDir()
+	s := NovoBuildStoreComDirectorio(dir)
+	id, _ := s.Registar("windows", "/r", "/d")
+	_, _ = s.Iniciar(id)
+	if err := s.Terminar(id, &ResultadoDeBuild{Explicacao: "ok"}, nil, "saida-limpa"); err != nil {
+		t.Fatalf("terminar: %v", err)
+	}
+	corpo, err := os.ReadFile(filepath.Join(dir, id+".json"))
+	if err != nil {
+		t.Fatalf("o registo devia estar em disco: %v", err)
+	}
+	if !strings.Contains(string(corpo), "CONCLUIDO") {
+		t.Fatalf("o JSON em disco devia ter o estado: %s", corpo)
+	}
+}
+
+// TestStoreBuildPodarNaoDescartaEmCurso prova que o tecto de memoria nunca mata um build a correr.
+//
+//	*Um tecto que descarta o build que esta' a correr e' um limite que apaga o trabalho para o qual
+//	foi pedido.*
+func TestStoreBuildPodarNaoDescartaEmCurso(t *testing.T) {
+	s := NovoBuildStore()
+	// Enche o store com builds terminados.
+	for range maxBuildsGuardados + 20 {
+		id, _ := s.Registar("linux", "/r", "/d")
+		_, _ = s.Iniciar(id)
+		_ = s.Terminar(id, nil, nil, "")
+	}
+	// Um build a correr, registado por ultimo.
+	emCurso, _ := s.Registar("windows", "/r", "/d")
+	_, _ = s.Iniciar(emCurso)
+	if _, err := s.Obter(emCurso); err != nil {
+		t.Fatalf("o build em curso foi descartado pela poda: %v", err)
+	}
+	if n := len(s.Listar()); n > maxBuildsGuardados {
+		t.Fatalf("o store devia ficar dentro do tecto %d, tem %d", maxBuildsGuardados, n)
+	}
+}
+
+// TestStoreBuildCancelarDuasVezesNaoDisparaDoisCancelamentos prova idempotencia do pedido.
+func TestStoreBuildCancelarDuasVezesNaoDisparaDoisCancelamentos(t *testing.T) {
+	s := NovoBuildStore()
+	id, _ := s.Registar("windows", "/r", "/d")
+	ctx, _ := s.Iniciar(id)
+	if err := s.Cancelar(id); err != nil {
+		t.Fatalf("primeiro cancelar: %v", err)
+	}
+	if err := s.Cancelar(id); !errors.Is(err, ErrBuildJaTerminou) {
+		t.Fatalf("segundo cancelar devia dar ErrBuildJaTerminou, deu %v", err)
+	}
+	select {
+	case <-ctx.Done():
+	case <-time.After(2 * time.Second):
+		t.Fatal("contexto nao cancelado")
+	}
+	_ = context.Background()
+}

@@ -79,6 +79,12 @@ type pedidoDeInicioDeBuild struct {
 	DryRun bool `json:"dry_run,omitempty"`
 	// TimeoutSegundos limita a build. Zero usa o limite por omissao do provider.
 	TimeoutSegundos int `json:"timeout_segundos,omitempty"`
+	// Assincrono devolve o `build_id` imediatamente e corre a build em segundo plano.
+	//
+	// SEM ISTO `build.cancel` NAO TEM ALVO: se a rota so' responde depois de o build acabar, o
+	// cliente so' pode cancelar um build que ja' terminou -- e cancelar o que ja' acabou e' um
+	// botao que mente. O modo sincrono continua a ser o padrao para nao partir clientes.
+	Assincrono bool `json:"assincrono,omitempty"`
 }
 
 // respostaDeInicioDeBuild e' a resposta de `build.start`.
@@ -97,6 +103,11 @@ type respostaDeInicioDeBuild struct {
 	Resultado agent.ResultadoDeBuild `json:"resultado"`
 	// AvisoDeFronteira explica a fronteira em linguagem simples.
 	AvisoDeFronteira string `json:"aviso_de_fronteira"`
+	// BuildID e' o identificador que `build.status`, `build.logs`, `build.artifacts` e
+	// `build.cancel` aceitam. Sem ele, o cliente nao tem como perguntar pelo build que pediu.
+	BuildID string `json:"build_id,omitempty"`
+	// Estado e' o estado no store no momento da resposta (so' no modo assincrono).
+	Estado string `json:"estado,omitempty"`
 }
 
 // avisoDaFronteiraDoInicioDeBuild e' o texto que acompanha TODA resposta com sucesso.
@@ -193,16 +204,58 @@ func (a *agentAPI) iniciarBuild(c *gin.Context) {
 		provider = agent.ProviderDeBuildGo{}
 	}
 
-	resultado, err := provider.Construir(
-		c.Request.Context(),
-		plano,
-		agent.OpcoesDeBuild{
-			Raiz:    raiz,
-			Destino: strings.TrimSpace(pedido.Destino),
-			DryRun:  pedido.DryRun,
-			Timeout: timeout,
-		},
-	)
+	// O BUILD PASSA A TER REGISTO.
+	//
+	// Antes desta fatia, `build.start` era uma funcao pura: pedia, corria, respondia, esquecia. Nao
+	// havia como perguntar "como vai?", "o que disse?" ou "o que produziu?" -- e a resposta honesta
+	// era "nao existe registo de builds". Agora existe.
+	store := a.storeDeBuilds()
+	buildID, errRegisto := store.Registar(alvo, raiz, strings.TrimSpace(pedido.Destino))
+	if errRegisto != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "nao foi possivel registar o build: " + errRegisto.Error()})
+		return
+	}
+	ctxDoBuild, errInicio := store.Iniciar(buildID)
+	if errInicio != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"erro": "nao foi possivel iniciar o build: " + errInicio.Error()})
+		return
+	}
+
+	opcoes := agent.OpcoesDeBuild{
+		Raiz:    raiz,
+		Destino: strings.TrimSpace(pedido.Destino),
+		DryRun:  pedido.DryRun,
+		Timeout: timeout,
+	}
+
+	// MODO ASSINCRONO: o cliente recebe o ID e pergunta depois. E' o unico modo em que
+	// `build.cancel` tem um build por cancelar.
+	if pedido.Assincrono {
+		go func() {
+			resultado, err := provider.Construir(ctxDoBuild, plano, opcoes)
+			saida := ""
+			if resultado.Explicacao != "" {
+				saida = resultado.Explicacao
+			}
+			_ = store.Terminar(buildID, &resultado, err, saida)
+		}()
+		c.JSON(http.StatusAccepted, respostaDeInicioDeBuild{
+			Construiu:        false, // ainda nao; dizer `true` aqui seria prometer o que nao aconteceu
+			NadaAssinado:     true,
+			NadaPublicado:    true,
+			Alvo:             alvo,
+			Plano:            plano,
+			AvisoDeFronteira: avisoDaFronteiraDoInicioDeBuild() + "; build aceite, a correr em segundo plano",
+			BuildID:          buildID,
+			Estado:           string(agent.BuildAExecutar),
+		})
+		return
+	}
+
+	resultado, err := provider.Construir(ctxDoBuild, plano, opcoes)
+	// O REGISTO E' FECHADO ANTES DE RESPONDER, nos dois caminhos. Um build que responde 500 e fica
+	// para sempre `A_EXECUTAR` no store e' um estado que mente sobre o que esta' a acontecer.
+	_ = store.Terminar(buildID, &resultado, err, resultado.Explicacao)
 	if err != nil {
 		// O PLANO INCOMPLETO E' 412, NAO 500: o servidor funcionou, o pre-requisito e' que falta.
 		//
@@ -240,5 +293,7 @@ func (a *agentAPI) iniciarBuild(c *gin.Context) {
 		Plano:            plano,
 		Resultado:        resultado,
 		AvisoDeFronteira: avisoDaFronteiraDoInicioDeBuild(),
+		BuildID:          buildID,
+		Estado:           string(agent.BuildConcluido),
 	})
 }

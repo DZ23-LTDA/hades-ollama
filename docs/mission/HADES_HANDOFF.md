@@ -1,3 +1,49 @@
+## JANELA E-1313
+
+A cabeça do índice é **E-1313**.
+
+- **E-1313** — **as quatro rotas que faltavam, e o store que nenhuma delas pode dispensar.** O
+  doc-comment do `build.verify` dizia *«não existe registo de builds»*. Entregues
+  `internal/agent/build_store.go` (`BuildStore`, `RegistoDeBuild`, 5 estados, cancelamento por
+  contexto, tectos de saída e de registos) e **5 rotas**: `GET /build/status/:id`,
+  `GET /build/logs/:id`, `GET /build/artifacts/:id`, `GET /build/registos`,
+  `POST /build/cancel/:id`. O `build.start` passou a **registar** e a devolver `build_id`, com modo
+  `assincrono` (**202**, corre em segundo plano). As duas promessas travadas: `cancel` sobre build
+  terminado → **409**; e um build cancelado **não** é des-cancelado quando o processo morre depois.
+  *Um cancelamento que o resultado desfaz não é um cancelamento: é uma sugestão.*
+  **O modo assíncrono não é extra:** se o `start` só responde no fim, o `cancel` só encontra builds
+  terminados e o 409 recusa todos.
+  **Medido:** `go build ./...` 0 · `./server` **ok 49 s** · `./internal/agent` **ok 378 s** · lint 0 ·
+  17+10+2 testes PASS. Ciclo real: `start`→200 com `build_id`; `status`→200 `CONCLUIDO`;
+  assíncrono→202 `A_EXECUTAR` e termina; `cancel` de terminado→409.
+  **Duas ocorrências aqui:** `itoa` colidiu com o `itoa` de `omnichannel_dedupe_test.go`; e o
+  **`misspell` recusou «discriminante»** — **quinta** vez nesta sessão.
+- **E-1312** — CI verde (`d75b2ff16`: 21 success, só `gitleaks` vermelho). Instalação limpa
+  `BLOCKED_EXTERNAL` com prova: `.iss` usa `{autopf}` → exige UAC; ficou pendurado 600 s sem log;
+  **nada foi instalado** (sem directório, sem registo, zero processos).
+- **E-1311** — `ResumoDeBlockers` mentia: `alvos_bloqueados=3` com `blockers=[]`. Segunda ocorrência
+  do mesmo defeito. **Uma correção de ~20 linhas fechou as 7 falhas de CI.**
+- **E-1310** — `ProviderDeInstaladorWindows`; `HadesSetup-teste.exe` 3 363 167 B, **`NotSigned`**.
+
+## Cobertura do Release Hub
+
+| superfície | estado |
+|---|---|
+| `toolchain.*` | **existe** |
+| `project.detect`, `build.plan`, `build.start` | **existe** |
+| **`build.status`/`logs`/`artifacts`/`cancel`** | **existe (E-1313)** |
+| `build.verify`, `build.smoke`, `artifact.*`, `sbom.generate` | **existe** |
+| `sign.plan`, `credentials.status`, `signing.*` | **existe** |
+| `sign.start`/`sign.status`/`sign.verify` | **AUSENTE** |
+| `publish.preflight` | **existe** |
+| `publish.request_approval`/`submit`/`status`/`rollback` | **AUSENTE** (por desenho: o provider só tem `Preflight`) |
+| `provenance.attest`, `policy.evaluate` | **AUSENTE** |
+
+O que continua aberto: o store **não sobrevive a reinício**; nenhum artefacto assinado nem instalado;
+`sign.start`/`publish.submit` inexistentes; **nenhum painel do UI consome as rotas novas**;
+`gitleaks`; instalação limpa `BLOCKED_EXTERNAL`; **FASE 30 não iniciada**.
+
+---
 ## JANELA E-1312
 
 A cabeça do índice é **E-1312**.
