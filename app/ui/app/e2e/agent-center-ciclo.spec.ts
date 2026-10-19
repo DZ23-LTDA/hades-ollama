@@ -47,11 +47,23 @@ test.describe(`Agent Center: ciclo completo (${MODO})`, () => {
 
     // ---- 1. INSTALAR ----------------------------------------------------------------
     await page.getByTestId("agent-center-instalar").click();
-    await expect(
-      page.getByTestId("agent-center-instalado").or(page.getByTestId("agent-center-recusado")),
-    ).toBeVisible({ timeout: 20_000 });
-    // Se o servidor recusou, o teste falha AQUI com a mensagem dele, nao 40s depois.
-    await expect(page.getByTestId("agent-center-recusado")).toHaveCount(0);
+    const recusado = page.getByTestId("agent-center-recusado");
+    await expect(page.getByTestId("agent-center-instalado").or(recusado)).toBeVisible({ timeout: 20_000 });
+
+    // E-1401: o teste CONTINUA a exigir sucesso. O que muda e' que a falha passa a transportar o motivo.
+    //
+    // O comentario anterior dizia "o teste falha AQUI com a mensagem dele" -- e era FALSO: um
+    // `toHaveCount(0)` nao transporta texto nenhum. O CI dizia apenas `Received: 1`.
+    //
+    //   *Um comentario que promete uma mensagem que o codigo nao pede e' documentacao a mentir ao
+    //   proximo que depurar.*
+    //
+    // Nota de metodo: o mesmo padrao existe em `agent-center-real.spec.ts`, e eu corrigi esse primeiro
+    // por engano (E-1399). O que falhava era ESTE, na linha 54. Dois ficheiros com a mesma forma e o log
+    // so' com um numero de linha e' uma armadilha: confirmar SEMPRE pelo nome do ficheiro no log.
+    const motivo = (await recusado.count()) > 0 ? (await recusado.innerText()).replace(/\s+/g, " ").trim() : "";
+    expect(motivo, "o servidor recusou a instalacao e o motivo tem de vir no erro").toBe("");
+
     const instalado = (await page.getByTestId("agent-center-instalado").innerText()).replace(/\s+/g, " ");
     expect(instalado).toMatch(/\d+ bytes/);
 
