@@ -538,7 +538,42 @@ const server = createServer(async (request, response) => {
           raiz_autorizada: true,
         });
       }
+    } else if (route === "POST /api/agent/v1/project/detect") {
+      // FASE 28.7: `project.detect` -- le' manifests e classifica. NAO escreve, NAO instala.
+      //
+      // Os valores sao os REAIS do backend (`go`, `node`, `go-modules`, `npm`). Um E2E que inventa o
+      // valor que o backend devolve nunca falha por causa do backend.
+      const corpoDeteccao = await readBody(request);
+      let pedidoDeteccao = {};
+      try {
+        pedidoDeteccao = JSON.parse(corpoDeteccao || "{}");
+      } catch {
+        sendJSON(response, 400, { erro: "corpo invalido: esperado JSON" });
+        return;
+      }
+      if (pedidoDeteccao !== null && typeof pedidoDeteccao !== "object") {
+        sendJSON(response, 400, { erro: "corpo invalido: esperado um objecto JSON" });
+        return;
+      }
+      sendJSON(response, 200, {
+        somente_leitura: true,
+        detectado: {
+          raiz: "/projecto-hades",
+          stacks: ["go", "node"],
+          gestores: ["go-modules", "npm"],
+          alvos: ["windows", "linux"],
+          manifests: ["go.mod", "package.json"],
+          avisos: ["monorepo: varios go.mod encontrados"],
+        },
+        aviso_de_fronteira:
+          "esta rota apenas LE' nomes de ficheiros e o conteudo dos manifests para classificar a " +
+          "stack e listar alvos; nao escreve, nao instala, nao constroi e nao assina. A raiz vem da " +
+          "variavel de ambiente `HADES_RAIZ_PROJECTO`, nunca do pedido. Os alvos listados sao uma " +
+          "SUGESTAO derivada dos ficheiros presentes -- nao significam que a toolchain esteja " +
+          "instalada: consulte `toolchain.doctor` antes de planear um build.",
+      });
     } else if (route === "POST /api/agent/v1/build/verify") {
+
       // FASE 28.7: `build.verify` -- compara checksums. NAO assina, NAO constroi.
       //
       // Devolve `sem_assinatura` e `nao_verificadas` SEPARADOS, com valores diferentes e nao nulos,

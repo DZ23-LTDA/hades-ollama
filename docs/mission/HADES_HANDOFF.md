@@ -1,3 +1,30 @@
+## JANELA E-1288
+
+**Ronda 106. O E2E do `ProjectDetectPanel`: o nono elo fechado no browser real.**
+
+- **E-1288** — `e2e/project-detect-panel.spec.ts` + rota `project/detect` no fixture:
+  **10 passed / 1 skipped**.
+- **O teste que só o browser faz aqui:** o fixture devolve as stacks `go`/`node` e os gestores
+  `go-modules`/`npm` — os valores REAIS do backend — e o spec exige os rótulos traduzidos **"Go",
+  "Node", "Go modules", "npm"**. Se o `switch` tivesse inventado `golang`/`nodejs`, o teste unitário
+  passaria (usaria o mesmo valor inventado) e **o E2E falharia**.
+- **Não tem campo de raiz, provado no browser:** `input` `toHaveCount(0)` e
+  `Object.keys(postDataJSON()) === []`, com ausência de `raiz`/`caminho`/`path`/`directorio`/`root`.
+- **Não existe botão de instalar, construir, assinar, publicar nem build:** um único botão, cinco
+  rótulos proibidos. **A prova não promete toolchain:** exige "NÃO prova que a toolchain esteja
+  instalada" e `toolchain.doctor`.
+- **No modo de backend real a asserção é acionável:** sem `HADES_RAIZ_PROJECTO` o servidor recusa com
+  412 e o spec exige o erro **nomeando a variável**, sem relatório. Não fabrica resultado.
+
+Medido: **10 passed / 1 skipped** · `npx playwright test` **127 passed / 11 skipped** (era 117/10) ·
+`npx vitest run` 128 ficheiros / 921 testes · `tsc -b` 0 · `eslint .` 0 erros · `vite build` 0 ·
+`BUNDLE_BUDGET=PASS`.
+
+**Lacuna:** falta E2E com raiz REAL. O detector **não alimenta** o `BuildProvider`.
+**2 providers sem rota nem painel** (`CapabilityResolver`, `PublishingProvider`).
+
+Veredito global: `NOT_RELEASE_READY`.
+
 ## JANELA E-1287
 
 **Ronda 105. O oitavo provider fechado nos três elos: `ProjectDetectPanel` consome `project.detect`.**
