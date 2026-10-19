@@ -21,6 +21,7 @@ import { BuildPlanPanel } from "@/components/BuildPlanPanel";
 import { BuildStatusPanel } from "@/components/BuildStatusPanel";
 import { CredentialsPanel } from "@/components/CredentialsPanel";
 import { SmokePanel } from "@/components/SmokePanel";
+import { RetentionPanel } from "@/components/RetentionPanel";
 import { RollbackPanel } from "@/components/RollbackPanel";
 import { SigningPanel } from "@/components/SigningPanel";
 import { SbomPanel } from "@/components/SbomPanel";
@@ -318,6 +319,7 @@ export function CapabilitiesPage() {
           este mostra o que ja' correu, com saida e artefactos medidos. Sao duas perguntas
           diferentes e por isso sao dois paineis. */}
       <BuildStatusPanel />
+      <RetentionPanel />
 
         <CredentialsPanel />
 

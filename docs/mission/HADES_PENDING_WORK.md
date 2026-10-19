@@ -1,3 +1,45 @@
+## JANELA E-1320
+
+A cabeça do índice é **E-1320**.
+
+- **E-1320** — **a primeira das 93 lacunas passou a ser produto.** `/retention` (GET/PUT) e
+  `/retention/apply` (POST) eram três das 93 medidas no E-1319 — e as mais irónicas, porque o E-1316,
+  E-1317 e E-1318 foram todos sobre retenção que existia e não acontecia.
+  *Uma rota que existe e não é consumida é uma promessa do backend, não uma funcionalidade do produto.*
+  Entregues `retentionClient.ts` + `RetentionPanel.tsx`, montado no `CapabilitiesPage`. O painel lê a
+  política, grava-a e pede a aplicação, mostrando os **números reais** do que foi removido.
+  **As decisões que o painel não pode errar:**
+  **(1) `max_memories_per_project = 0` significa SEM TECTO** — o servidor aceita 0 como legítimo
+  (0..10000). Dizer «0 memórias por projecto» diria o oposto do que a política faz.
+  *Zero não é sempre um limite: às vezes é a ausência dele, e uma interface que confunde os dois mente
+  sobre o que vai apagar.*
+  **(2) «Não configurada» é um ESTADO, não um erro.** **(3) Gravar não é aplicar** — o aviso diz
+  «Nada foi removido ainda». **(4) Zero removido diz-se em palavras.**
+  **Dois defeitos meus, apanhados pelos gates:** `TS2367` numa condição que não filtrava nada; e o
+  teste do `act` — no mesmo `act` o `onChange` e o clique não deixam re-renderizar, o clique apanhava
+  o estado antigo e o PUT saía. *Um teste que mede o estado anterior aprova o defeito que devia travar.*
+  **O TETO DESCEU: 93 → 90**, e o `TETO_ORFAS` acompanhou.
+  *Baixar o teto é progresso; deixar o teto em 93 depois de fechar 3 rotas seria guardar crédito por
+  trabalho já feito.*
+- **E-1319** — auditoria de rotas órfãs: 93 lacunas, com gate e teto.
+- **E-1318** — `PodarDisco` ligado ao arranque.
+- **E-1317** — retenção nos dois sítios; `misspell` resolvido por `ignore-rules`.
+
+## A distância, agora
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **106** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **90** (era 93) |
+
+O que continua aberto: **90 rotas** ainda sem superfície no UI; as 93 não foram reclassificadas uma a
+uma; o build **não é assinado nem instalado**; `sign.start`/`publish.*` inexistentes; o painel de
+estado do build **não se actualiza sozinho**; `gitleaks`; instalação limpa `BLOCKED_EXTERNAL`;
+**FASE 30 não iniciada**.
+
+---
 ## JANELA E-1319
 
 A cabeça do índice é **E-1319**.
