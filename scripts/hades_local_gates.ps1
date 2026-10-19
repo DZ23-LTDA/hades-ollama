@@ -44,6 +44,41 @@ $env:GOCACHE = Join-Path $repo '_tmp\gocache1269'
 $env:GOTMPDIR = Join-Path $repo '_tmp\gotmp'
 $env:TMP = $env:GOTMPDIR
 $env:TEMP = $env:GOTMPDIR
+
+# E-1296: OS BROWSERS DO PLAYWRIGHT FICAM ONDE O PLAYWRIGHT OS POS.
+#
+# Este script redirecciona `APPDATA`/`LOCALAPPDATA` para dentro de `_tmp/`, para nao escrever no
+# perfil do utilizador. O `go test` precisa disso. Mas o Playwright guarda os browsers em
+# `%LOCALAPPDATA%\ms-playwright`, e depois do redirect esse caminho aponta para uma pasta VAZIA.
+#
+# Resultado medido na ronda 99: as seccoes 73 (DOM real) e 75 (takeover) FALHAVAM no gate e
+# PASSAVAM fora dele -- `e2e-extension-dom.mjs` exit 0 com 10 verificacoes e
+# `e2e-extension-takeover.mjs` exit 0 com 25, ambos com o `LOCALAPPDATA` real.
+#
+#     *Um falso vermelho nao e' ruido: e' o que ensina a ignorar o proximo vermelho verdadeiro.*
+#
+# A correccao NAO e' desligar o redirect: e' dizer ao Playwright onde os browsers estao, com
+# `PLAYWRIGHT_BROWSERS_PATH`. Guardamos o valor REAL antes do redirect, e procuramos o `ms-playwright`
+# por candidatos. Se nao existir, avisamos uma vez -- e as seccoes de Playwright vao falhar com a
+# causa escrita, em vez de falharem em silencio com uma moldura de erro do Chromium.
+$localAppDataReal = $env:LOCALAPPDATA
+$userProfileReal = $env:USERPROFILE
+$browsersDoPlaywright = $null
+foreach ($candidato in @(
+    (Join-Path $localAppDataReal 'ms-playwright'),
+    (Join-Path $userProfileReal 'AppData\Local\ms-playwright'),
+    'C:\Users\DZ23\AppData\Local\ms-playwright'
+)) {
+  if ($candidato -and (Test-Path $candidato)) { $browsersDoPlaywright = $candidato; break }
+}
+if ($browsersDoPlaywright) {
+  $env:PLAYWRIGHT_BROWSERS_PATH = $browsersDoPlaywright
+} else {
+  'AVISO: `ms-playwright` nao encontrado -- os E2E de Playwright (seccoes 73 e 75) vao falhar'
+  '       por ausencia de browser, e NAO por defeito do produto. Passo de desbloqueio:'
+  '       npx playwright install chromium (no perfil com o `LOCALAPPDATA` real)'
+}
+
 $env:APPDATA = Join-Path $repo '_tmp\appdata\Roaming'
 $env:LOCALAPPDATA = Join-Path $repo '_tmp\appdata\Local'
 
