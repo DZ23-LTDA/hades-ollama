@@ -1,3 +1,57 @@
+## JANELA E-1363
+
+**A LACUNA DE PRODUTO FECHOU: 93 -> 0.** A cabeça do índice é **E-1363**.
+
+- **E-1363** — `PluginBundlePanel` consome `POST /plugins/bundle` (**201**). O servidor resolve o caminho
+  com `filepath.Abs` + **`EvalSymlinks` ANTES de comparar** + `Rel`; **403 desligado** (falta
+  `OLLAMA_AGENT_PLUGIN_BUNDLE_DIR`) **≠ 403 caminho recusado** — estados distintos na UI. **34.ª medição:
+  previ 1, mediu 1.**
+- **E-1362** — **ACHADO P1: MFA sem reautenticação**; painel declara em vez de fingir; 4 → 1.
+- **E-1361** — inbox: 201 nova ≠ 200 reentrega; dedup só por `external_id`; 5 → 4.
+- **E-1360** — empresa: 422 traz o relatório; 7 → 5.
+
+## O GATE
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **16** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **0** |
+
+**`TETO_ORFAS = 0`.** *Qualquer rota nova que o backend ganhe e que o frontend não consuma falha
+imediatamente, porque o número de hoje é zero.*
+
+**ZERO NÃO QUER DIZER PRODUTO PRONTO.** Quer dizer que **todas as 348 rotas têm superfície no frontend ou
+são consumidor externo deliberado**. *Um gate a zero mede uma propriedade; não absolve o resto.*
+
+## O BUG QUE ISTO EXPÔS
+
+O gate tinha **duas atribuições `TETO_ORFAS`** — L231 `= 0` e L316 `= 1`. **O Python usa a última.** Cada
+`str.replace` corrigia a primeira e **deixava a segunda a valer**, então os valores medidos e os valores
+declarados divergiam **sem que nenhum `assert` falhasse**.
+
+*Um ficheiro com duas atribuições da mesma constante não tem dois valores: tem um valor e um comentário
+que se lhe parece. O `assert` procurava a substring e encontrava as duas.*
+
+Reparado: **uma só atribuição, `py_compile` antes de correr o gate**. *Um gate que não arranca não é um
+gate: é um ficheiro com nome de gate.*
+
+## O QUE CONTINUA ABERTO
+
+- **Build NÃO assinado e NÃO instalado.**
+- `sign.start` / `publish.request_approval` / `submit` / `rollback` **inexistentes**.
+- **`gitleaks` histórico — a única falha de CI.**
+- Instalação limpa `BLOCKED_EXTERNAL`; Android sem toolchain.
+- **Sem catraca contra testes flaky.**
+- **FASE 30 (Agent Center) não iniciada**; **FASE 17.1 Obsidian 4/12**.
+- **Achado P1: MFA sem reautenticação.**
+- O transporte descarta corpo **e** status de erro.
+- O A1 da DZ23 nunca foi avaliado.
+
+**Veredito: `NOT_RELEASE_READY`.**
+
+---
 ## JANELA E-1362
 
 A cabeça do índice é **E-1362**.

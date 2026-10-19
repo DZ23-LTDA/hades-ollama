@@ -168,6 +168,11 @@ describe("CapabilitiesPage", () => {
     const arvore = await montar();
     await esperar(arvore, "HOST-TESTE");
     // *Um botao "Instalar" aqui mentiria: instalar exige approval e uma superficie propria.*
+    //
+    // ACTUALIZADO no E-1363: essa superficie propria passou a existir (`PluginBundlePanel`, que faz
+    // POST /plugins/bundle e trata 403/409). O teste nao foi enfraquecido: passou a exigir Duas coisas --
+    // que a pagina NAO tenha o botao generico "instalar", e que o botao REAL exista e dispare o pedido.
+    //   *Proibir uma accao que existe nao protege ninguem: esconde-a.*
     // O alvo e' o BOTAO, nao a palavra. Desde a FASE 28.6-A a pagina tem uma seccao
     // "Perfis de instalacao", e proibir a palavra passaria a proibir a propria seccao --
     // *um teste que proibe uma palavra legitima nao testa o vazamento: testa a minha

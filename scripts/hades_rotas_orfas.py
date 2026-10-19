@@ -216,7 +216,19 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   nao na minha cabeca.*
 #
 #   ***ler o instrumento antes de prever custa menos do que prever tres vezes.***
-# TETO_ORFAS = 18 -- e a licao do E-1354 vem AQUI, nao no numero.
+# # 1 -> 0 no E-1363: `PluginBundlePanel` cobre `POST /plugins/bundle`. A ULTIMA LACUNA DE PRODUTO FECHOU.
+#
+#   *Previ 1, mediu 1 -- a decima oitava previsao certa, e a decima primeira seguida.*
+#
+#   ***TETO ZERO NAO E' O FIM DO GATE: E' O GATE A FUNCIONAR A PLENO. Qualquer rota nova que o backend
+#   ganhe e que o frontend nao consuma falha imediatamente, porque o numero de hoje e' zero. O tecto nao
+#   e' uma aprovacao: e' o numero de hoje, congelado para que a proxima ronda nao o aumente sem escrever
+#   porque.***
+#
+#   ***ZERO NAO QUER DIZER PRODUTO PRONTO. Quer dizer que TODAS as rotas do backend tem' superficie no
+#   frontend ou sao consumidor externo deliberado. O build continua NAO assinado e NAO instalado, a FASE 30
+#   nao esta' iniciada, e o MFA nao reautentica. Um gate a zero mede uma propriedade; nao absolve o resto.***
+TETO_ORFAS = 0
 #
 #   *Previ 1 e mediu 0. O `reschedule/slots` do E-1350 ja' tinha fechado o prefixo `scheduling/reschedule`,
 #   e o POST `reschedule` caiu dentro dele. Baixei o tecto de 18 para 17 ANTES de medir, e o gate acusou.*
@@ -301,7 +313,6 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   ***O painel NAO finge uma reautenticacao que o servidor nao faz -- isso seria teatro de seguranca. Pede
 #   uma confirmacao (trava de clique) e DECLARA que e' so' isso. Uma confirmacao local protege contra o
 #   engano, nao contra o ataque; dizer qual dos dois e' e' a diferenca entre um painel e um selo.***
-TETO_ORFAS = 1
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (
