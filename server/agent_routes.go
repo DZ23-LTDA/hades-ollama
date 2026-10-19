@@ -1060,6 +1060,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/agents/catalog", a.listAgentCatalog)
 	group.GET("/agents/evaluation", a.listAgentEvaluation)
 	group.GET("/agents/teams", a.listAgentTeams)
+	group.POST("/agents/backup", a.backupAgentPersonas)
+	group.GET("/agents/backups", a.listAgentBackups)
+	group.POST("/agents/restore", a.restoreAgentPersonas)
 	group.GET("/agents/drift", a.agentPersonaDrift)
 	group.POST("/agents/install", a.installAgentPersona)
 }

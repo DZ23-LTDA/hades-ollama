@@ -11,8 +11,11 @@ import {
   CentroAusenteError,
   coberturaDeAvaliacao,
   contarCasos,
+  guardarBackup,
   lerAvaliacao,
   lerEquipas,
+  listarBackups,
+  restaurarBackup,
   resumoDeEquipas,
   descreverCatalogo,
   listarCatalogo,
@@ -26,6 +29,7 @@ import {
   validarDestino,
   type Avaliacao,
   type Catalogo,
+  type ListaDeBackups,
   type Equipas,
   type ItemDeDrift,
   type ListaDeAgentes,
@@ -40,6 +44,7 @@ type Estado =
   | "catalogo"
   | "avaliacao"
   | "equipas"
+  | "backups"
   | "drift"
   | "instalado"
   | "ausente"
@@ -65,12 +70,14 @@ export function AgentCenterPanel() {
   const [catalogo, setCatalogo] = useState<Catalogo | null>(null);
   const [avaliacao, setAvaliacao] = useState<Avaliacao | null>(null);
   const [equipas, setEquipas] = useState<Equipas | null>(null);
+  const [backups, setBackups] = useState<ListaDeBackups | null>(null);
+  const [backupId, setBackupId] = useState("");
   const [instalacao, setInstalacao] = useState<ResultadoDeInstalacao | null>(null);
   const [alvo, setAlvo] = useState("hades");
   const [destino, setDestino] = useState(".hades/agents/revisor-exemplo.md");
 
   const correr = useCallback(
-    async (op: "list" | "catalog" | "evaluation" | "teams" | "drift" | "install") => {
+    async (op: "list" | "catalog" | "evaluation" | "teams" | "backups" | "restore" | "drift" | "install") => {
       setErro(null);
       setEstado("a-carregar");
       try {
@@ -86,6 +93,14 @@ export function AgentCenterPanel() {
         } else if (op === "teams") {
           setEquipas(await lerEquipas());
           setEstado("equipas");
+        } else if (op === "backups") {
+          await guardarBackup();
+          setBackups(await listarBackups());
+          setEstado("backups");
+        } else if (op === "restore") {
+          await restaurarBackup(backupId);
+          setBackups(await listarBackups());
+          setEstado("backups");
         } else if (op === "drift") {
           setRelatorio(await lerDrift());
           setEstado("drift");
@@ -175,6 +190,14 @@ export function AgentCenterPanel() {
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
           Ver equipas
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-backup-btn"
+          onClick={() => void correr("backups")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          Backup e restauro
         </button>
         <button
           type="button"
@@ -315,6 +338,41 @@ export function AgentCenterPanel() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {estado === "backups" && (
+        <div className="space-y-1">
+          <p data-testid="agent-center-bk-contagem" className="text-[11px] text-neutral-300">
+            {backups?.count ?? 0} backup(s) guardado(s)
+          </p>
+          <ul data-testid="agent-center-bk-lista" className="space-y-1 font-mono text-[11px] text-neutral-300">
+            {(backups?.backups ?? []).map((id) => (
+              <li key={id} className="flex items-center gap-2">
+                <span>{id}</span>
+                <button
+                  type="button"
+                  data-testid={`agent-center-bk-restaurar-${id}`}
+                  onClick={() => {
+                    setBackupId(id);
+                    void correr("restore");
+                  }}
+                  className="rounded border border-neutral-700 px-1 text-[10px] hover:bg-neutral-800"
+                >
+                  restaurar
+                </button>
+              </li>
+            ))}
+          </ul>
+          {(backups?.count ?? 0) === 0 && (
+            <p data-testid="agent-center-bk-vazio" className="text-[11px] text-neutral-500">
+              Nenhum backup ainda. Guardar um cria o primeiro.
+            </p>
+          )}
+          {/* *O ultimo a escrever nao ganha por ser o ultimo, e o mais recente tambem nao.* */}
+          <p className="text-[11px] text-neutral-500">
+            Restaurar exige escolher um id: não há «restaurar o mais recente».
+          </p>
         </div>
       )}
 

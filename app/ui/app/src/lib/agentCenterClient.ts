@@ -152,6 +152,19 @@ export interface Equipas {
   note?: string;
 }
 
+export interface BackupDePersonas {
+  id: string;
+  scope: string;
+  created_at: string;
+  entries: EntradaDeAgente[];
+  files: Record<string, string>;
+}
+
+export interface ListaDeBackups {
+  count?: number;
+  backups?: string[];
+}
+
 export interface ResultadoDeInstalacao {
   organization_id?: string;
   entry?: EntradaDeAgente;
@@ -290,6 +303,41 @@ export function resumoDeEquipas(e: Equipas | null): { total: number; funcionais:
     comFalta: itens.filter((i) => (i.validation.missing_tools ?? []).length > 0).length,
     invalidas: itens.filter((i) => !i.validation.ok).length,
   };
+}
+
+/** Guarda ledger E ficheiros. Idempotente: o mesmo estado devolve o mesmo id. */
+export async function guardarBackup(): Promise<{ backup?: BackupDePersonas; files?: number; entries?: number }> {
+  try {
+    return await agentFetch("/api/agent/v1/agents/backup", { method: "POST", body: "{}" });
+  } catch (causa) {
+    traduzir(causa);
+  }
+}
+
+export async function listarBackups(): Promise<ListaDeBackups> {
+  try {
+    return await agentFetch<ListaDeBackups>("/api/agent/v1/agents/backups");
+  } catch (causa) {
+    traduzir(causa);
+  }
+}
+
+/**
+ * Repoe um backup. O id e' OBRIGATORIO: nao ha' "restaurar o mais recente" por omissao.
+ *
+ * *O ultimo a escrever nao ganha por ser o ultimo, e o mais recente tambem nao.*
+ */
+export async function restaurarBackup(backupId: string): Promise<{ restored?: string }> {
+  const id = (backupId ?? "").trim();
+  if (id === "") throw new InstalacaoRecusadaError("escolha um backup: não há «restaurar o mais recente»");
+  try {
+    return await agentFetch("/api/agent/v1/agents/restore", {
+      method: "POST",
+      body: JSON.stringify({ backup_id: id }),
+    });
+  } catch (causa) {
+    traduzir(causa);
+  }
 }
 
 export async function lerDrift(): Promise<RelatorioDeDrift> {

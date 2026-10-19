@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -170,6 +171,102 @@ func (a *agentAPI) listAgentTeams(c *gin.Context) {
 		"functional_count": funcionais,
 		"note":             "nenhum preset completou uma missão representativa com ferramentas reais; `functional:false` significa NÃO PROVADO",
 	})
+}
+
+// backupAgentPersonas: POST /agents/backup
+//
+// Guarda ledger E conteudo dos destinos. Idempotente: o mesmo estado devolve o mesmo id.
+//
+//	*Um rollback que restaura metade nao e' um rollback: e' um segundo defeito.*
+func (a *agentAPI) backupAgentPersonas(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	ledger, ok := a.agentCenterLedger()
+	if !ok {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("agent persona ledger is not configured"))
+		return
+	}
+	bk, err := ledger.Backup(organizationID, time.Now())
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{
+		"organization_id": organizationID,
+		"backup":          bk,
+		"files":           len(bk.Files),
+		"entries":         len(bk.Entries),
+	})
+}
+
+// listAgentBackups: GET /agents/backups
+func (a *agentAPI) listAgentBackups(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	ledger, ok := a.agentCenterLedger()
+	if !ok {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("agent persona ledger is not configured"))
+		return
+	}
+	ids, err := ledger.Backups(organizationID)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"organization_id": organizationID,
+		"count":           len(ids),
+		"backups":         ids,
+	})
+}
+
+// restoreAgentPersonas: POST /agents/restore
+//
+// Repoe ficheiros E ledger, ou nada. O corpo leva o `backup_id`; nao ha' "restaurar o mais recente" por
+// omissao -- *o ultimo a escrever nao ganha por ser o ultimo, e o mais recente tambem nao.*
+func (a *agentAPI) restoreAgentPersonas(c *gin.Context) {
+	organizationID := a.organizationID(c)
+	if organizationID == "" {
+		writeAgentError(c, http.StatusForbidden, errAgentForbidden)
+		return
+	}
+	ledger, ok := a.agentCenterLedger()
+	if !ok {
+		writeAgentError(c, http.StatusServiceUnavailable, errors.New("agent persona ledger is not configured"))
+		return
+	}
+	var pedido struct {
+		BackupID string `json:"backup_id"`
+	}
+	if err := decodeJSON(c, &pedido); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	id := strings.TrimSpace(pedido.BackupID)
+	if id == "" {
+		writeAgentError(c, http.StatusBadRequest, errors.New("backup_id is required"))
+		return
+	}
+	if err := ledger.Restore(organizationID, id); err != nil {
+		if errors.Is(err, agent.ErrBackupNaoEncontrado) {
+			writeAgentError(c, http.StatusNotFound, err)
+			return
+		}
+		if errors.Is(err, agent.ErrBackupCorrompido) {
+			// 409: o backup existe mas nao serve. Nao e' "nao encontrado" nem "pedido invalido".
+			writeAgentError(c, http.StatusConflict, err)
+			return
+		}
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"organization_id": organizationID, "restored": id})
 }
 
 // agentPersonaDrift: GET /agents/drift
