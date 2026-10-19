@@ -265,7 +265,19 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   ***Uma lista vazia e um portao aberto sao o mesmo numero e duas afirmacoes diferentes -- e o
 #   servidor tem a honestidade de o dizer (`role_checked: len(approvers) > 0`) em vez de deixar o painel
 #   inferir.***
-TETO_ORFAS = 7
+# 7 -> 5 no E-1360: `CompanyCockpitPanel` consome `POST /business/certify` e
+# `POST /company/factory/launch`.
+#
+#   *Duas rotas, dois prefixos, DOIS pontos. Previ 2, mediu 2 -- a decima quinta previsao certa.*
+#
+#   ***A fabrica NAO cria cliente nem emite registro legal: materializa plano, marca, precificacao e
+#   site, e devolve o checklist do que depende de terceiros. Um botao que promete «abrir a empresa» e
+#   entrega um ZIP de marca nao abriu a empresa: entregou o prospecto.***
+#
+#   ***A certificacao devolve o RELATORIO mesmo quando falha (422 com `C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollamart` E `error`). Um relatorio
+#   que so' aparece quando tudo corre bem e' um premio, nao um diagnostico -- e o diagnostico e' o que se
+#   le' quando algo falhou.***
+TETO_ORFAS = 5
 
 # Quem chama nao e' o frontend do HADES -- a ausencia no UI e' correcta.
 CONSUMIDOR_EXTERNO = (

@@ -1,3 +1,51 @@
+## JANELA E-1360
+
+A cabeça do índice é **E-1360**.
+
+- **E-1360** — **A fábrica não abre a empresa; e o 422 traz o relatório junto.** `CompanyCockpitPanel`
+  consome `POST /company/factory/launch` (**201**) e `POST /business/certify` (**200**/**422**). O handler
+  diz: *«a fábrica NÃO cria cliente nem emite registro legal»*. *Um botão que promete «abrir a empresa» e
+  entrega um ZIP de marca não abriu a empresa: entregou o prospecto.* O 422 devolve `report` **E**
+  `error`: *um relatório que só aparece quando tudo corre bem é um prémio, não um diagnóstico.* A prova de
+  isolamento **sempre** usa uma **segunda organização**. **31.ª medição: previ 2, mediu 2** (7 → 5).
+- **E-1359** — aprovadores: ato mais sensível; lista vazia = portão ABERTO; duas identidades; 8 → 7.
+- **E-1358** — push token com `json:"-"`; 501 ≠ 503; fase terminal de CRM não reabre; 10 → 8.
+- **E-1357** — media/ocr+tone: caminho contido no workspace; 502 ≠ erro do pedido; 12 → 10.
+
+## A distância
+
+| categoria | rotas |
+|---|---|
+| no backend | **348** |
+| órfãs no frontend | **21** |
+| consumidor externo (correcto) | **16** |
+| **lacuna de produto** | **5** (era 93) |
+
+## AS 5 RESTANTES
+
+| domínio | n | rotas |
+|---|---|---|
+| `auth` | 3 | `/auth/mfa/disable` · `/auth/mfa/enable` · `/auth/mfa/recovery/generate` |
+| `inbox` | 1 | `/inbox/messages` |
+| `plugins` | 1 | `/plugins/bundle` |
+
+Nenhuma partilha prefixo: **cada uma renderá exactamente 1**.
+
+## Lições já lidas nos handlers restantes
+
+- `/inbox/messages`: **201 nova / 200 reentrega** via `external_id` — *webhook duplicado não vira
+  mensagem duplicada*.
+- `/plugins/bundle`: **fecha fechado** (403) sem `OLLAMA_AGENT_PLUGIN_BUNDLE_DIR`; `ResolvePluginBundlePath`
+  resolve o caminho dentro do directório permitido — *para que a API nunca vire leitura arbitrária de
+  arquivo do host*.
+- `/auth/mfa/*`: **fatia própria** — credenciais, reautenticação, teste de negação.
+
+O que continua aberto: **5 rotas** sem UI; **build não assinado nem instalado**; `sign.start`/`publish.*`
+inexistentes; **`gitleaks` histórico — a única falha de CI**; instalação limpa `BLOCKED_EXTERNAL`; **sem
+catraca contra testes flaky**; **FASE 30 não iniciada**. Achados abertos: **o transporte descarta corpo e
+status de erro**; **o A1 nunca foi avaliado**.
+
+---
 ## JANELA E-1359
 
 A cabeça do índice é **E-1359**.
