@@ -26,6 +26,24 @@ const MODO = BACKEND_REAL ? "BACKEND_REAL_AGENT_RUNTIME" : "UI_FIXTURE";
 
 const ROTA = "/capabilities";
 
+// E-1302: AS CONDICOES QUE O BACKEND DEVOLVE NAO SAO AS DO FIXTURE.
+//
+// O spec original afirmava `preflight-condicao-aprovacao_humana` PENDENTE e contagem "2" -- valores
+// que o FIXTURE inventava. Contra o backend Go REAL, o `publish.preflight/GOOGLE_PLAY` devolve TRES
+// condicoes:
+//
+//   1. `artefacto existe e e' integro`  -> satisfeita
+//   2. `credencial presente`            -> satisfeita
+//   3. `canal disponivel`               -> PENDENTE (exige service account do Play Console)
+//
+// Nao existe condicao chamada `aprovacao_humana`: o campo `requer_aprovacao` e' do veredicto, nao uma
+// condicao. O teste passava no fixture e falhava no real -- que e' exactamente o que um teste que
+// inventa o valor do backend faz.
+//
+//     *Um teste que inventa o valor que o backend devolve nunca falha por causa do backend.*
+const CONDICAO_PENDENTE = BACKEND_REAL ? "canal disponivel" : "aprovacao_humana";
+const CONDICOES_ESPERADAS = BACKEND_REAL ? "3" : "2";
+
 test.describe(`painel de preflight de publicacao (${MODO})`, () => {
   test("diz que nao publica e que o provider nao tem Publicar()", async ({ page }) => {
     await page.goto(ROTA);
@@ -133,8 +151,11 @@ test.describe(`painel de preflight de publicacao (${MODO})`, () => {
     await expect(page.getByTestId("preflight-publicado")).toContainText(/nao/);
 
     // A condicao pendente aparece como PENDENTE, nao escondida.
-    await expect(page.getByTestId("preflight-condicao-aprovacao_humana")).toContainText(/PENDENTE/);
-    await expect(page.getByTestId("preflight-condicoes-contagem")).toContainText("2");
+    //
+    // E-1302: no backend REAL a condicao pendente e' `canal disponivel` (falta a service account do
+    // Play Console); no fixture era `aprovacao_humana`. A assercao deixou de inventar o nome.
+    await expect(page.getByTestId(`preflight-condicao-${CONDICAO_PENDENTE}`)).toContainText(/PENDENTE/);
+    await expect(page.getByTestId("preflight-condicoes-contagem")).toContainText(CONDICOES_ESPERADAS);
   });
 
   test("um canal invalido vira erro legivel, nunca sucesso", async ({ page }) => {
@@ -164,9 +185,14 @@ test.describe(`painel de preflight de publicacao (${MODO})`, () => {
     await expect(painel).toBeVisible();
 
     await painel.getByRole("button", { name: /Verificar canal/ }).click();
+    // E-1302: o texto REAL do handler diz "vem do ambiente do servidor" em minusculas. A assercao
+    // original exigia MAIUSCULAS e falhava contra o backend verdadeiro -- um teste que so' passava
+    // porque o fixture escrevia a frase noutra caixa.
     await expect(page.getByTestId("preflight-aviso-fronteira")).toContainText(
-      /AMBIENTE DO SERVIDOR/,
+      /ambiente do servidor/i,
     );
-    await expect(page.getByTestId("preflight-aviso-fronteira")).toContainText(/nao publica/);
+    // E-1302: o texto real escreve "NAO publica" em maiusculas. `/nao publica/` sem `i` so' batia
+    // porque o fixture escrevia a frase noutra caixa.
+    await expect(page.getByTestId("preflight-aviso-fronteira")).toContainText(/n[aã]o publica/i);
   });
 });

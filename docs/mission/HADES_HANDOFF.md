@@ -1,3 +1,23 @@
+## JANELA E-1302
+
+Ponto de retomada. A cabeça do índice é **E-1302**; `HEAD` deste commit.
+
+- **E-1302** — E2E do painel de `publish.preflight` contra o **binário Go real**. Backend arrancado com
+  `_tmp/hades-e2e.exe serve` em `127.0.0.1:43999` e `HADES_ARTEFACTO_A_PUBLICAR` /
+  `HADES_CREDENCIAL_DE_PUBLICACAO` em caminhos absolutos. Resultado: seis canais a 200, canal inválido a
+  400, artefacto ausente a 412. Playwright com `HADES_E2E_BACKEND_URL` -> **9 passed**; sem ela
+  (`UI_FIXTURE`) -> **9 passed**; suíte completa -> **136 passed / 11 skipped**.
+- **E-1301** — `Preserve Class A+ surfaces` **verde** em `f7b5e5eea` (era falha em cinco commits).
+- **E-1300** — a causa era o checker de `.ps1` a exigir `powershell.exe` no Ubuntu. Corrigido com
+  `exit 3` declarado, `skipUnless` com motivo e três ramos explícitos no workflow.
+- **E-1299/E-1298/E-1289** — cadeia `publish.preflight` completa (painel, cliente, rota).
+- **E-1290** — release Android deixou de usar a keystore de debug.
+
+O que continua aberto: `gitleaks (historico do PR)` (decisão do proprietário), `BuildProvider` sem
+cliente/E2E, build Android e arranque do app (`BLOCKED_EXTERNAL`), `INSTALLED=NAO` (E-1252) e a
+**FASE 30 não iniciada**.
+
+---
 ## JANELA E-1289
 
 **Ronda 107. O `PublishingProvider` ganhou porta — e o inventário foi corrigido.**

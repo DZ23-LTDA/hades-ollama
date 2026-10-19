@@ -1,3 +1,27 @@
+## JANELA E-1302
+
+Estado em `026ca7bbd` + este commit. A cabeça do índice é **E-1302**.
+
+- **E-1302** — o E2E do painel de `publish.preflight` passou a correr contra o **binário Go real**
+  (`MODO=BACKEND_REAL_AGENT_RUNTIME`): os seis canais devolvem 200, `LOCAL_ONLY` fica `pronto=true`
+  e `publico=false`, os cinco canais públicos ficam `pronto=false`/`requer_aprovacao=true`, e em todos
+  `somente_leitura=true`/`nada_publicado=true`/`publicado=false`. O E2E revelou **três defeitos nos
+  meus próprios testes** (condição `aprovacao_humana` inexistente, contagem 2 em vez de 3, caixa fixa
+  nas frases) — corrigidos por modo, sem baixar a exigência.
+- **E-1301** — o check-run `Preserve Class A+ surfaces` ficou **VERDE** em `f7b5e5eea`; era `failure`
+  em cinco commits. As falhas do SHA passaram de 3 para 1 (só `gitleaks (historico do PR)`).
+- **E-1300** — a causa: `hades_ps1_syntax_check_test.py` exigia `powershell.exe`, que **não existe no
+  runner Ubuntu** (8 erros `FileNotFoundError`). Corrigido com `exit 3`
+  (`BLOCKED_BY_EXTERNAL_DEPENDENCY`) + `skipUnless` com motivo escrito + workflow com três ramos
+  explícitos — **sem** `|| true` e **sem** `continue-on-error`.
+- **E-1299/E-1298/E-1289** — a cadeia do `publish.preflight`: painel, cliente e rota. FASE 28.8 fechada
+  ponta a ponta.
+- **E-1290** — o build de RELEASE Android deixou de usar `signingConfigs.debug`.
+
+Próxima ação: `BuildProvider` tem painel (`BuildPlanPanel`) mas **não tem cliente nem E2E** — é a
+mesma lacuna que o E-1302 acabou de fechar para `publish.preflight`.
+
+---
 ## JANELA E-1289
 
 **Ronda 107. O `PublishingProvider` ganhou porta — e o inventário foi corrigido.**
