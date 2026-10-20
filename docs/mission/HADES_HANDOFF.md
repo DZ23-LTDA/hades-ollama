@@ -6535,3 +6535,9 @@ testes de politica (`offlinePolicy`, `missionContextPolicy`, `missionContextClie
 **Actualizacao de retomada (E-1461):** A12 fechado no que nao depende de Android -- `tsc --noEmit`
 no app movel da' **exit=0, zero erros**, somando aos 3 testes de politica verdes. O no 5 continua
 BLOCKED_EXTERNAL apenas no que exige telefone: login, aprovacao, outbox e UI.
+
+**Actualizacao de retomada (E-1462):** **correccao de registo** -- a linha A6 ja' dizia `AUSENTE` com
+busca negativa escrita, portanto a `E-1459` duplicou-a em parte; o que ela acrescenta de real e' o
+matiz de que o unico `--sandbox` do repo e' **delegado a CLI externa** (codex). E o script dessa
+ronda imprimiu "matriz A6 actualizada" **sem que o replace tivesse casado** -- terceira vez nesta
+missao que se imprime sucesso de escrita sem verificar.
