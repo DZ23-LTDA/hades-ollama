@@ -120,10 +120,19 @@ func (g *Gateway) Middleware() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "model provider is configured but unavailable"})
 			return
 		}
-		model, ok := g.registry.Resolve(requested, g.politicaDoPedido(c.Request.URL.Path))
+		politica := g.politicaDoPedido(c.Request.URL.Path)
+		model, ok := g.registry.Resolve(requested, politica)
 		if !ok {
 			if strings.HasPrefix(requested, "auto/") || requested == "auto" {
 				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "no available provider satisfies the routing policy"})
+				return
+			}
+			// DEFEITO CORRIGIDO: quando a politica RECUSA um modelo pedido pelo nome (por exemplo
+			// `LOCAL_ONLY` com modelo remoto), o middleware fazia `c.Next()` -- deixava o pedido
+			// SEGUIR para o handler seguinte como se nada fosse. Uma restricao que se resolve em
+			// "continua" nao e' uma restricao: e' uma sugestao.
+			if politica.LocalOnly {
+				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "model is not available under the current locality policy"})
 				return
 			}
 			c.Next()
