@@ -228,8 +228,24 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   ***ZERO NAO QUER DIZER PRODUTO PRONTO. Quer dizer que TODAS as rotas do backend tem' superficie no
 #   frontend ou sao consumidor externo deliberado. O build continua NAO assinado e NAO instalado, a FASE 30
 #   nao esta' iniciada, e o MFA nao reautentica. Um gate a zero mede uma propriedade; nao absolve o resto.***
-TETO_ORFAS = 4
-# RAZAO DA SUBIDA (0 -> 4), escrita porque o tecto nao sobe em silencio:
+TETO_ORFAS = 7
+# RAZAO DA SUBIDA (4 -> 7), escrita porque o tecto nao sobe em silencio:
+#
+# TRES rotas novas, todas API SEM UI pela mesma decisao do bloco abaixo -- e o adendo que as criou
+# diz explicitamente "sem UI, botao decorativo ou endpoint amplo". Sao elas:
+#   /build/pare            estado do travao de emergencia (leitura; E-1502)
+#   /systems/recomendacao  calculo sobre VRAM medida (leitura; E-1503)
+#   /goals/proposta        proposta conversa->goal, que nao cria nada (POST de leitura; E-1504)
+#
+# *Subir o tecto aqui NAO e' progresso: e' a soma das duas dividas.* O numero certo e' 0, e so' desce
+# quando houver painel que consuma as rotas -- ou quando alguem decidir, por escrito, que estas tres
+# nao devem ter painel e as declarar como consumidor externo deliberado. Enquanto nenhuma das duas
+# coisas acontecer, este 7 diz exactamente o que e': *sete rotas de negocio que o frontend nao usa.*
+#
+# ***Um tecto que sobe para caber no codigo de hoje e' um gate a adaptar-se ao produto -- e e' assim
+# que os gates deixam de medir.***
+#
+# RAZAO DA SUBIDA ANTERIOR (0 -> 4), escrita porque o tecto nao sobe em silencio:
 # as quatro rotas de memoria governada -- /memory/vault/append, /compact, /note, /read -- sao
 # API SEM UI POR DECISAO: a fatia do adendo que as criou e' `server/agent_routes.go` + adaptador,
 # e a superficie de painel ficou explicitamente fora do escopo ("sem UI, botao decorativo ou
