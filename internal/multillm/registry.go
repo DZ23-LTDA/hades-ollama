@@ -319,10 +319,21 @@ func (r *Registry) Model(name string) (Model, bool) {
 }
 
 func (r *Registry) Resolve(name string, policy Policy) (Model, bool) {
-	if policy.LocalOnly || name == "local/private" {
+	// `local/private` continua recusado por nome (guard legado, sem semantica clara).
+	if name == "local/private" {
 		return Model{}, false
 	}
+	// ATENCAO -- o defeito que aqui estava: `policy.LocalOnly` recusava TUDO, incluindo um modelo
+	// LOCAL pedido pelo nome. Duas superficies de roteamento com semantica oposta: `RouteCandidates`
+	// filtrava por localidade, `Resolve` (o caminho do proxy) negava sem olhar ao modelo. Resultado:
+	// um pedido `LOCAL_ONLY` era impossivel de servir pelo proxy, mesmo com Ollama local saudavel.
+	//
+	// Agora a regra e' a MESMA nos dois sitios: `LOCAL_ONLY` exige que o provedor do modelo
+	// resolvido seja local (`providerEhLocal`). Nao autoriza remoto e nao proibe local.
 	if m, ok := r.Model(name); ok && m.Available && supports(m, policy.Required) && r.supportsPath(m, policy.Path) {
+		if policy.LocalOnly && !providerEhLocal(r.providers[m.Provider]) {
+			return Model{}, false
+		}
 		return m, true
 	}
 	if !strings.HasPrefix(name, "auto/") && name != "auto" {
