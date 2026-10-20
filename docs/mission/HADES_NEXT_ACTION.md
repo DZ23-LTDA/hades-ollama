@@ -5494,3 +5494,11 @@ qualquer rota. **3 testes PASS**, incluindo um que **falha de proposito** se alg
 `script-src`/`style-src`/`connect-src`/`default-src` sem medir o que a UI carrega. `go test ./server`
 exit 0 (50s); `golangci-lint ./server/...` 0 achados. Limite declarado: e' CSP **parcial** -- as
 directivas que restringem a SPA ficam de fora, e a verificacao num browser e' o `Web E2E` do CI.
+
+**Actualizacao de retomada (E-1493, E-1494):** (1) **fatia de produto B8** --
+`ProporGoalDaConversa` propoe goal a partir da conversa com `Motivo`, `Confianca` e **`Faltando`**, e
+**nao inventa nada**: metrica fora da lista fechada fica de fora, e sem metrica o `AddGoal` recusa
+(segunda linha de defesa). **4 testes PASS**, lint 0 achados. (2) **o CSP foi validado no CI pelo job
+que corre o servidor Go real**: `Web E2E (paineis contra Agent Center real)` = **success** em
+`661432ae5` -- o servidor arrancou e os paineis funcionaram **com a CSP ligada**. O `shell smoke` nao
+prova nada sobre a CSP: corre sobre vite preview.
