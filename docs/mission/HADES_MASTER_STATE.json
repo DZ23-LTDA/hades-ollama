@@ -2,7 +2,7 @@
   "schema": "hades.mission.state/v1",
   "mission_id": "hades-universal-v21",
   "repository": "https://github.com/DZ23-LTDA/hades-ollama",
-  "updated_at": "2026-10-20T07:35:34-03:00",
+  "updated_at": "2026-10-20T07:48:49-03:00",
   "updated_by": "dsh-agent (deepseek-v4.1-flash)",
   "release_state": "NOT_RELEASE_READY",
   "git": {
@@ -3232,8 +3232,8 @@
     },
     "evidence": "E-173"
   },
-  "measured_at": "2026-10-20T07:35:34-03:00",
-  "measured_commit": "3c5d554c3d2894c81cc11ffd626fdf685254f925",
+  "measured_at": "2026-10-20T07:48:49-03:00",
+  "measured_commit": "1a898b3e106d7a30314e7afd52715a582830bb3a",
   "branch_head_measured": "f1a6c261b",
   "branch_head_measured_at": "2026-10-15T10:30:00-03:00",
   "branch_head_measured_how": "git rev-parse HEAD no checkout local (branch fix/checker-relogio), medido no round 54. DIVERGENCIA DECLARADA: measured_commit continua a ser a ultima MEDICAO COMPLETA (e423ec72e); o head avancou com as fatias do complemento 48 (sala: dominio, rotas HTTP, cliente, componente, painel e tela) e com checkpoints. Nao se reescreveu a historia e nao se reivindica nova medicao completa. NOTA DE CONCORRENCIA: este arquivo tambem e escrito por outro agente (o measured_how seguinte cita HEAD 1065e5c56 / E-518-E-519) - editar sempre por ancora unica e re-ler antes de gravar.",
