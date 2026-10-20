@@ -199,6 +199,12 @@ jobs:
       # E' puro Python (le os .go e procura a guarda): nao precisa de rede nem de ferramentas.
       - name: Verify tenant guards on every handler (no unguarded handler)
         run: python3 scripts/audit_tenant_guards.py
+      # E-1509: `hades_security_check.py` verifica os eixos de seguranca (incluindo os instrumentos que
+      # fazem fault injection na bateria) e corria **so' localmente**. Medido antes de entrar:
+      # exit 0 em 0.7 s, sem rede (importa apenas io/re/sys/pathlib). *O instrumento que mede a
+      # seguranca nao pode ser o unico que ninguem corre no PR.*
+      - name: Verify the security axes (9 axes, no plaintext secret)
+        run: python3 scripts/hades_security_check.py
       # E-661: o gate anterior era `test -z "$(gofmt -l ...)"` - e um arquivo que NAO PARSEIA faz o gofmt
       # escrever o erro em STDERR e sair com STDOUT VAZIO => `test -z ""` PASSAVA. Verde por construcao:
       # foi assim que um `internal/agent/adaptive_router.go` com um `}` faltando atravessou o CI verde.
