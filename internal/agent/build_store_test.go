@@ -25,14 +25,14 @@ import (
 // TestStoreBuildRegistarEObter prova o caminho felizesimo: nasce, e' encontrado, e nasce NA_FILA.
 func TestStoreBuildRegistarEObter(t *testing.T) {
 	s := NovoBuildStore()
-	id, err := s.Registar("windows", "/tmp/proj", "/tmp/dest")
+	id, err := s.registarSemDono("windows", "/tmp/proj", "/tmp/dest")
 	if err != nil {
 		t.Fatalf("registar: %v", err)
 	}
 	if len(id) != 24 {
 		t.Fatalf("ID devia ter 24 caracteres hex, tem %d: %q", len(id), id)
 	}
-	r, err := s.Obter(id)
+	r, err := s.obter(id)
 	if err != nil {
 		t.Fatalf("obter: %v", err)
 	}
@@ -59,7 +59,7 @@ func TestStoreBuildDoisIDsSaoDiferentes(t *testing.T) {
 	s := NovoBuildStore()
 	vistos := map[string]bool{}
 	for i := range 50 {
-		id, err := s.Registar("linux", "/r", "/d")
+		id, err := s.registarSemDono("linux", "/r", "/d")
 		if err != nil {
 			t.Fatalf("registar %d: %v", i, err)
 		}
@@ -73,7 +73,7 @@ func TestStoreBuildDoisIDsSaoDiferentes(t *testing.T) {
 // TestStoreBuildIniciarMudaParaAExecutar e' a transicao NA_FILA -> A_EXECUTAR.
 func TestStoreBuildIniciarMudaParaAExecutar(t *testing.T) {
 	s := NovoBuildStore()
-	id, _ := s.Registar("windows", "/r", "/d")
+	id, _ := s.registarSemDono("windows", "/r", "/d")
 	ctx, err := s.Iniciar(id)
 	if err != nil {
 		t.Fatalf("iniciar: %v", err)
@@ -84,7 +84,7 @@ func TestStoreBuildIniciarMudaParaAExecutar(t *testing.T) {
 	if ctx.Err() != nil {
 		t.Fatal("o contexto nao devia estar cancelado a nascenca")
 	}
-	r, _ := s.Obter(id)
+	r, _ := s.obter(id)
 	if r.Estado != BuildAExecutar {
 		t.Fatalf("estado devia ser A_EXECUTAR: %q", r.Estado)
 	}
@@ -93,7 +93,7 @@ func TestStoreBuildIniciarMudaParaAExecutar(t *testing.T) {
 // TestStoreBuildIniciarDuasVezesRecusa impede dois executores no mesmo build.
 func TestStoreBuildIniciarDuasVezesRecusa(t *testing.T) {
 	s := NovoBuildStore()
-	id, _ := s.Registar("windows", "/r", "/d")
+	id, _ := s.registarSemDono("windows", "/r", "/d")
 	if _, err := s.Iniciar(id); err != nil {
 		t.Fatalf("primeiro iniciar: %v", err)
 	}
@@ -108,12 +108,12 @@ func TestStoreBuildIniciarDuasVezesRecusa(t *testing.T) {
 // combinacao possivel: o utilizador le' "cancelado" e o trabalho continua.
 func TestStoreBuildCancelarDevolveContextoCancelado(t *testing.T) {
 	s := NovoBuildStore()
-	id, _ := s.Registar("windows", "/r", "/d")
+	id, _ := s.registarSemDono("windows", "/r", "/d")
 	ctx, err := s.Iniciar(id)
 	if err != nil {
 		t.Fatalf("iniciar: %v", err)
 	}
-	if err := s.Cancelar(id); err != nil {
+	if err := s.cancelar(id); err != nil {
 		t.Fatalf("cancelar: %v", err)
 	}
 	select {
@@ -122,7 +122,7 @@ func TestStoreBuildCancelarDevolveContextoCancelado(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("o contexto do build nao foi cancelado -- o executor continuaria a correr")
 	}
-	r, _ := s.Obter(id)
+	r, _ := s.obter(id)
 	if r.Estado != BuildCancelado {
 		t.Fatalf("estado devia ser CANCELADO: %q", r.Estado)
 	}
@@ -147,16 +147,16 @@ func TestStoreBuildCancelarTerminadoRecusa(t *testing.T) {
 			_ = s.Terminar(id, nil, errors.New("go build falhou"), "")
 		}},
 		{"cancelado", func(s *BuildStore, id string) {
-			_ = s.Cancelar(id)
+			_ = s.cancelar(id)
 		}},
 	}
 	for _, c := range casos {
 		t.Run(c.nome, func(t *testing.T) {
 			s := NovoBuildStore()
-			id, _ := s.Registar("windows", "/r", "/d")
+			id, _ := s.registarSemDono("windows", "/r", "/d")
 			_, _ = s.Iniciar(id)
 			c.terminar(s, id)
-			err := s.Cancelar(id)
+			err := s.cancelar(id)
 			if !errors.Is(err, ErrBuildJaTerminou) {
 				t.Fatalf("cancelar build %s devia dar ErrBuildJaTerminou, deu %v", c.nome, err)
 			}
@@ -173,16 +173,16 @@ func TestStoreBuildCancelarTerminadoRecusa(t *testing.T) {
 //	mentiu, e o historico passa a contar a versao de quem acabou por ultimo.*
 func TestStoreBuildTerminarDepoisDeCanceladoNaoDesCancela(t *testing.T) {
 	s := NovoBuildStore()
-	id, _ := s.Registar("windows", "/r", "/d")
+	id, _ := s.registarSemDono("windows", "/r", "/d")
 	_, _ = s.Iniciar(id)
-	if err := s.Cancelar(id); err != nil {
+	if err := s.cancelar(id); err != nil {
 		t.Fatalf("cancelar: %v", err)
 	}
 	// O provider acaba DEPOIS do cancelamento, com sucesso.
 	if err := s.Terminar(id, &ResultadoDeBuild{Explicacao: "acabou apesar do cancelamento"}, nil, "saida"); err != nil {
 		t.Fatalf("terminar: %v", err)
 	}
-	r, _ := s.Obter(id)
+	r, _ := s.obter(id)
 	if r.Estado != BuildCancelado {
 		t.Fatalf("o estado TEM de continuar CANCELADO; ficou %q -- o Terminar des-cancelou", r.Estado)
 	}
@@ -198,12 +198,12 @@ func TestStoreBuildTerminarDepoisDeCanceladoNaoDesCancela(t *testing.T) {
 // TestStoreBuildTerminarComErroFicaFALHOU e' a transicao de falha.
 func TestStoreBuildTerminarComErroFicaFALHOU(t *testing.T) {
 	s := NovoBuildStore()
-	id, _ := s.Registar("windows", "/r", "/d")
+	id, _ := s.registarSemDono("windows", "/r", "/d")
 	_, _ = s.Iniciar(id)
 	if err := s.Terminar(id, nil, errors.New("iscc nao encontrado"), "erro no iscc"); err != nil {
 		t.Fatalf("terminar: %v", err)
 	}
-	r, _ := s.Obter(id)
+	r, _ := s.obter(id)
 	if r.Estado != BuildFalhou {
 		t.Fatalf("estado devia ser FALHOU: %q", r.Estado)
 	}
@@ -223,11 +223,11 @@ func TestStoreBuildTerminarComErroFicaFALHOU(t *testing.T) {
 //	*Uma saida sem limite e' uma fuga de memoria com autorizacao do compilador.*
 func TestStoreBuildSaidaTruncada(t *testing.T) {
 	s := NovoBuildStore()
-	id, _ := s.Registar("windows", "/r", "/d")
+	id, _ := s.registarSemDono("windows", "/r", "/d")
 	_, _ = s.Iniciar(id)
 	enorme := strings.Repeat("A", maxSaidaGuardada+5000)
 	_ = s.Terminar(id, nil, nil, enorme)
-	r, _ := s.Obter(id)
+	r, _ := s.obter(id)
 	if len(r.SaidaDoComando) >= len(enorme) {
 		t.Fatalf("a saida devia ser truncada; guardou %d de %d", len(r.SaidaDoComando), len(enorme))
 	}
@@ -241,10 +241,10 @@ func TestStoreBuildSaidaTruncada(t *testing.T) {
 //	*Um store que devolve um registo vazio para um ID inexistente e' um store que inventa builds.*
 func TestStoreBuildDesconhecido(t *testing.T) {
 	s := NovoBuildStore()
-	if _, err := s.Obter("nao-existe"); !errors.Is(err, ErrBuildDesconhecido) {
+	if _, err := s.obter("nao-existe"); !errors.Is(err, ErrBuildDesconhecido) {
 		t.Fatalf("Obter devia dar ErrBuildDesconhecido, deu %v", err)
 	}
-	if err := s.Cancelar("nao-existe"); !errors.Is(err, ErrBuildDesconhecido) {
+	if err := s.cancelar("nao-existe"); !errors.Is(err, ErrBuildDesconhecido) {
 		t.Fatalf("Cancelar devia dar ErrBuildDesconhecido, deu %v", err)
 	}
 	if _, err := s.Iniciar("nao-existe"); !errors.Is(err, ErrBuildDesconhecido) {
@@ -260,12 +260,12 @@ func TestStoreBuildListarMaisRecentesPrimeiro(t *testing.T) {
 	s := NovoBuildStore()
 	agora := time.Unix(1000, 0)
 	s.agora = func() time.Time { return agora }
-	id1, _ := s.Registar("a", "/r", "/d")
+	id1, _ := s.registarSemDono("a", "/r", "/d")
 	agora = time.Unix(2000, 0)
-	id2, _ := s.Registar("b", "/r", "/d")
+	id2, _ := s.registarSemDono("b", "/r", "/d")
 	agora = time.Unix(1500, 0)
 	// Forca a ordem por IniciadoEm: o id2 e' o mais recente.
-	l := s.Listar()
+	l := s.listar()
 	if len(l) != 2 {
 		t.Fatalf("esperados 2: %d", len(l))
 	}
@@ -279,11 +279,11 @@ func TestStoreBuildListarMaisRecentesPrimeiro(t *testing.T) {
 //	*Um store que devolve o seu proprio ponteiro nao tem estado: tem um boato.*
 func TestStoreBuildObterDevolveCopia(t *testing.T) {
 	s := NovoBuildStore()
-	id, _ := s.Registar("windows", "/r", "/d")
-	r, _ := s.Obter(id)
+	id, _ := s.registarSemDono("windows", "/r", "/d")
+	r, _ := s.obter(id)
 	r.Estado = BuildConcluido
 	r.Alvo = "MUTADO"
-	r2, _ := s.Obter(id)
+	r2, _ := s.obter(id)
 	if r2.Estado != BuildNaFila {
 		t.Fatalf("mutar a copia mudou o store: estado=%q", r2.Estado)
 	}
@@ -296,7 +296,7 @@ func TestStoreBuildObterDevolveCopia(t *testing.T) {
 func TestStoreBuildPersisteEmDisco(t *testing.T) {
 	dir := t.TempDir()
 	s := NovoBuildStoreComDirectorio(dir)
-	id, _ := s.Registar("windows", "/r", "/d")
+	id, _ := s.registarSemDono("windows", "/r", "/d")
 	_, _ = s.Iniciar(id)
 	if err := s.Terminar(id, &ResultadoDeBuild{Explicacao: "ok"}, nil, "saida-limpa"); err != nil {
 		t.Fatalf("terminar: %v", err)
@@ -318,17 +318,17 @@ func TestStoreBuildPodarNaoDescartaEmCurso(t *testing.T) {
 	s := NovoBuildStore()
 	// Enche o store com builds terminados.
 	for range maxBuildsGuardados + 20 {
-		id, _ := s.Registar("linux", "/r", "/d")
+		id, _ := s.registarSemDono("linux", "/r", "/d")
 		_, _ = s.Iniciar(id)
 		_ = s.Terminar(id, nil, nil, "")
 	}
 	// Um build a correr, registado por ultimo.
-	emCurso, _ := s.Registar("windows", "/r", "/d")
+	emCurso, _ := s.registarSemDono("windows", "/r", "/d")
 	_, _ = s.Iniciar(emCurso)
-	if _, err := s.Obter(emCurso); err != nil {
+	if _, err := s.obter(emCurso); err != nil {
 		t.Fatalf("o build em curso foi descartado pela poda: %v", err)
 	}
-	if n := len(s.Listar()); n > maxBuildsGuardados {
+	if n := len(s.listar()); n > maxBuildsGuardados {
 		t.Fatalf("o store devia ficar dentro do tecto %d, tem %d", maxBuildsGuardados, n)
 	}
 }
@@ -341,7 +341,7 @@ func TestStoreBuildCarregarRecuperaTerminados(t *testing.T) {
 
 	// Primeiro processo: cria, corre, conclui.
 	s1 := NovoBuildStoreComDirectorio(dir)
-	id, _ := s1.Registar("windows", "/r", "/d")
+	id, _ := s1.registarSemDono("windows", "/r", "/d")
 	_, _ = s1.Iniciar(id)
 	if err := s1.Terminar(id, &ResultadoDeBuild{Explicacao: "ok"}, nil, "saida-limpa"); err != nil {
 		t.Fatalf("terminar: %v", err)
@@ -356,7 +356,7 @@ func TestStoreBuildCarregarRecuperaTerminados(t *testing.T) {
 	if interrompidos != 0 {
 		t.Fatalf("nenhum devia estar interrompido: %d", interrompidos)
 	}
-	r, err := s2.Obter(id)
+	r, err := s2.obter(id)
 	if err != nil {
 		t.Fatalf("o build nao foi recuperado: %v", err)
 	}
@@ -380,13 +380,13 @@ func TestStoreBuildCarregarMarcaInterrompidoComoFALHOU(t *testing.T) {
 	dir := t.TempDir()
 
 	s1 := NovoBuildStoreComDirectorio(dir)
-	id, _ := s1.Registar("windows", "/r", "/d")
+	id, _ := s1.registarSemDono("windows", "/r", "/d")
 	if _, err := s1.Iniciar(id); err != nil {
 		t.Fatalf("iniciar: %v", err)
 	}
 	// Simula a morte do processo: o registo em disco fica em A_EXECUTAR (o `persistir` do Iniciar
 	// nao e' chamado, por isso escrevemos o estado a mao, como ficaria).
-	r0, _ := s1.Obter(id)
+	r0, _ := s1.obter(id)
 	r0.Estado = BuildAExecutar
 	s1.mu.Lock()
 	s1.persistir(&r0)
@@ -398,7 +398,7 @@ func TestStoreBuildCarregarMarcaInterrompidoComoFALHOU(t *testing.T) {
 	if carregados != 1 || interrompidos != 1 {
 		t.Fatalf("esperado 1 carregado e 1 interrompido, veio %d/%d", carregados, interrompidos)
 	}
-	r, _ := s2.Obter(id)
+	r, _ := s2.obter(id)
 	if r.Estado == BuildAExecutar || r.Estado == BuildNaFila {
 		t.Fatalf("um build abandonado NAO pode ficar a correr: estado=%q", r.Estado)
 	}
@@ -423,7 +423,7 @@ func TestStoreBuildCarregarIgnoraCorrompido(t *testing.T) {
 	dir := t.TempDir()
 
 	s1 := NovoBuildStoreComDirectorio(dir)
-	id, _ := s1.Registar("windows", "/r", "/d")
+	id, _ := s1.registarSemDono("windows", "/r", "/d")
 	_, _ = s1.Iniciar(id)
 	_ = s1.Terminar(id, nil, nil, "")
 
@@ -441,7 +441,7 @@ func TestStoreBuildCarregarIgnoraCorrompido(t *testing.T) {
 	if carregados != 1 {
 		t.Fatalf("devia carregar so' o valido (1), carregou %d", carregados)
 	}
-	if _, err := s2.Obter(id); err != nil {
+	if _, err := s2.obter(id); err != nil {
 		t.Fatalf("o build valido devia estar la': %v", err)
 	}
 }
@@ -470,7 +470,7 @@ func TestStoreBuildPodarApagaDoDisco(t *testing.T) {
 
 	// Enche o store acima do tecto. Cada `Registar` chama `podar`, que agora tambem apaga do disco.
 	for range maxBuildsGuardados + 15 {
-		id, err := s.Registar("linux", "/r", "/d")
+		id, err := s.registarSemDono("linux", "/r", "/d")
 		if err != nil {
 			t.Fatalf("registar: %v", err)
 		}
@@ -492,7 +492,7 @@ func TestStoreBuildPodarApagaDoDisco(t *testing.T) {
 	if len(entradas) == 0 {
 		t.Fatal("o disco ficou vazio -- a poda levou tudo")
 	}
-	if n := len(s.Listar()); n > maxBuildsGuardados {
+	if n := len(s.listar()); n > maxBuildsGuardados {
 		t.Fatalf("a memoria devia ficar dentro do tecto %d, tem %d", maxBuildsGuardados, n)
 	}
 }
@@ -529,12 +529,12 @@ func TestStoreBuildPodarDiscoNaoRemoveEmCurso(t *testing.T) {
 
 	// Cria um build EM CURSO e persiste-o.
 	s1 := NovoBuildStoreComDirectorio(dir)
-	emCurso, _ := s1.Registar("windows", "/r", "/d")
+	emCurso, _ := s1.registarSemDono("windows", "/r", "/d")
 	if _, err := s1.Iniciar(emCurso); err != nil {
 		t.Fatalf("iniciar: %v", err)
 	}
 	// Forca a persistencia do estado A_EXECUTAR.
-	r, _ := s1.Obter(emCurso)
+	r, _ := s1.obter(emCurso)
 	s1.mu.Lock()
 	s1.persistir(&r)
 	s1.mu.Unlock()
@@ -559,7 +559,7 @@ func TestStoreBuildPodarDiscoNaoRemoveEmCurso(t *testing.T) {
 		t.Fatal("a poda devia ter removido ficheiros antigos")
 	}
 	// O build em curso continua em memoria.
-	if _, err := s1.Obter(emCurso); err != nil {
+	if _, err := s1.obter(emCurso); err != nil {
 		t.Fatalf("o build em curso foi removido da memoria: %v", err)
 	}
 	// E o ficheiro dele continua em disco.
@@ -571,12 +571,12 @@ func TestStoreBuildPodarDiscoNaoRemoveEmCurso(t *testing.T) {
 // TestStoreBuildCancelarDuasVezesNaoDisparaDoisCancelamentos prova idempotencia do pedido.
 func TestStoreBuildCancelarDuasVezesNaoDisparaDoisCancelamentos(t *testing.T) {
 	s := NovoBuildStore()
-	id, _ := s.Registar("windows", "/r", "/d")
+	id, _ := s.registarSemDono("windows", "/r", "/d")
 	ctx, _ := s.Iniciar(id)
-	if err := s.Cancelar(id); err != nil {
+	if err := s.cancelar(id); err != nil {
 		t.Fatalf("primeiro cancelar: %v", err)
 	}
-	if err := s.Cancelar(id); !errors.Is(err, ErrBuildJaTerminou) {
+	if err := s.cancelar(id); !errors.Is(err, ErrBuildJaTerminou) {
 		t.Fatalf("segundo cancelar devia dar ErrBuildJaTerminou, deu %v", err)
 	}
 	select {

@@ -6392,3 +6392,9 @@ lia estado, saida e artefactos de builds de OUTRA organizacao. Fechado com front
 `requireOrganizacaoDaSessao` nos 6 handlers; negacao **identica** ao id inexistente (sem oraculo).
 `audit_tenant_guards` -> exit 0; `hades_security_check_test` -> exit 0; **`hades_local_gates.ps1` ->
 exit 0** (81 passos). Nota de processo: o `golangci-lint` tem de estar no PATH no gate local.
+
+**Actualizacao de retomada (E-1471):** **o caminho facil passou a ser o escopado** -- `Registar`,
+`Obter`, `Listar` e `Cancelar` do `BuildStore` deixaram de ser publicos (eram exactamente os que os 6
+handlers usaram para ler builds alheios); so' `*DoTenant` sai da package. `git grep`: nenhum chamador
+de produto usava as versoes sem fronteira. 47 chamadas de teste actualizadas. `go build` 0, testes de
+build (agent e server) ok, e **`hades_local_gates.ps1` exit 0** (81 passos).

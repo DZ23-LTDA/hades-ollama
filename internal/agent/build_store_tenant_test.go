@@ -66,7 +66,7 @@ func TestListagemDeBuildsIsoladaPorTenant(t *testing.T) {
 		t.Fatalf("org-3 nao devia ver builds, viu %d", n)
 	}
 	// Um registo sem dono (caminho antigo) nao aparece para ninguem com tenant.
-	if _, err := s.Registar("a3", "r3", "d3"); err != nil {
+	if _, err := s.registarSemDono("a3", "r3", "d3"); err != nil {
 		t.Fatalf("registar sem dono: %v", err)
 	}
 	if n := len(s.ListarDoTenant("")); n != 1 {

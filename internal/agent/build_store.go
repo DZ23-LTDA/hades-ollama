@@ -149,9 +149,10 @@ func novoID() string {
 	return hex.EncodeToString(b[:])
 }
 
-// Registar cria um registo SEM dono. Mantido para os testes pre-existentes; o caminho de produto
-// usa RegistarDoTenant.
-func (s *BuildStore) Registar(alvo, raiz, destino string) (string, error) {
+// registarSemDono cria um registo sem dono. NAO e' exportado de proposito: e' o caminho que
+// permitiu o defeito (builds legiveis por qualquer sessao), e um metodo publico "conveniente"
+// volta a ser usado por um handler novo. O caminho de produto e' `RegistarDoTenant`.
+func (s *BuildStore) registarSemDono(alvo, raiz, destino string) (string, error) {
 	return s.RegistarDoTenant(alvo, raiz, destino, "")
 }
 
@@ -397,7 +398,7 @@ func (s *BuildStore) Terminar(id string, resultado *ResultadoDeBuild, erroDoBuil
 
 // Cancelar pede o cancelamento. Devolve ErrBuildJaTerminou se o build ja' acabou -- um pedido de
 // cancelamento que "funciona" sobre um build terminado e' um botao que mente.
-func (s *BuildStore) Cancelar(id string) error {
+func (s *BuildStore) cancelar(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	r, ok := s.registos[id]
@@ -419,8 +420,9 @@ func (s *BuildStore) Cancelar(id string) error {
 	return nil
 }
 
-// Obter devolve uma copia do registo.
-func (s *BuildStore) Obter(id string) (RegistoDeBuild, error) {
+// obter devolve uma copia do registo SEM fronteira de tenant. Nao exportado: quem le de
+// fora da package usa `ObterDoTenant`.
+func (s *BuildStore) obter(id string) (RegistoDeBuild, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	r, ok := s.registos[id]
@@ -430,8 +432,9 @@ func (s *BuildStore) Obter(id string) (RegistoDeBuild, error) {
 	return *r, nil
 }
 
-// Listar devolve todos os registos, mais recentes primeiro.
-func (s *BuildStore) Listar() []RegistoDeBuild {
+// listar devolve todos os registos SEM fronteira de tenant. Nao exportado: quem lista de
+// fora da package usa `ListarDoTenant`.
+func (s *BuildStore) listar() []RegistoDeBuild {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	saida := make([]RegistoDeBuild, 0, len(s.registos))
@@ -489,7 +492,7 @@ func (s *BuildStore) CancelarDoTenant(id, tenant string) error {
 		return ErrBuildDesconhecido
 	}
 	s.mu.Unlock()
-	return s.Cancelar(id)
+	return s.cancelar(id)
 }
 
 // persistir escreve o registo em disco, se houver directorio. Deve ser chamado com o lock tomado.
