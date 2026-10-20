@@ -91,11 +91,37 @@ for alvo in ALVOS:
     print("    ... %s" % alvo, flush=True)
     resultado = subprocess.run([go, "test", alvo, "-count=1", "-timeout", "30m"],
                                cwd=str(RAIZ), env=ambiente, capture_output=True, text=True)
+    # PROGRESSO: as linhas uteis de cada pacote, enquanto corre.
     for linha in (resultado.stdout or "").strip().split("\n"):
-        if linha.startswith("ok ") or linha.startswith("FAIL") or linha.startswith("---"):
+        if linha.startswith("ok ") or linha.startswith("FAIL"):
             print("        " + linha)
+
+    # FALHA: nomear o TESTE, nao apenas o pacote.
+    #
+    # *O `falhados.append` esteve DENTRO do laco das linhas desde a versao original.* Com uma unica
+    # linha de saida o sintoma era invisivel ("1 de 4"); ao imprimir mais diagnostico apareceu
+    # **"45 de 1 FALHARAM"** -- o mesmo pacote contado 45 vezes. *Um contador dentro do laco que
+    # imprime o contador mede a si proprio, nao ao mundo.*
     if resultado.returncode != 0:
         falhados.append(alvo)
+        # E sem o nome do teste nao ha' hipotese a testar, so' re-execucao. O filtro antigo so'
+        # mostrava linhas que comecam por `---`, deixando de fora `panic:` e `*** Test killed` --
+        # exactamente os casos em que o Go NAO imprime `--- FAIL`.
+        saida = (resultado.stdout or "") + "\n" + (resultado.stderr or "")
+        vistas = 0
+        for linha in saida.split("\n"):
+            limpa = linha.strip()
+            if not limpa or vistas >= 12:
+                continue
+            if (limpa.startswith("--- FAIL") or limpa.startswith("panic:")
+                    or "test timed out" in limpa
+                    or limpa.startswith("*** Test killed")):
+                print("        FALHA> " + limpa)
+                vistas += 1
+        if vistas == 0:
+            print("        FALHA> (nenhuma linha reconhecida; cauda do stdout:)")
+            for linha in (resultado.stdout or "").strip().split("\n")[-10:]:
+                print("        | " + linha)
         for linha in (resultado.stderr or "").strip().split("\n")[-6:]:
             print("        ERR " + linha)
     print("    -> %s: %s" % (alvo, "OK" if resultado.returncode == 0 else "FALHOU"), flush=True)

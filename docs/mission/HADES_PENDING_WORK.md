@@ -6412,3 +6412,10 @@ bateria completa -> `TESTES GO: TODOS PASSAM`, **GATES LOCAIS exit=0, 81 passos*
 refutadas com hipotese escrita antes: ordem (`-shuffle`) e timeout (`-timeout 30m` vs 424s).
 **Fica declarado o que NAO tem causa** (a ocorrencia unica) e o que NAO foi corrigido: a tentativa de
 fazer o checker nomear o teste ABORTOU (substituicao nao casou), logo ele continua a nomear o pacote.
+
+**Actualizacao de retomada (E-1474):** **o checker dos testes Go passou a NOMEAR o teste que falha**
+(`FALHA> --- FAIL: TestX`, e tambem `panic:`, `test timed out`, `*** Test killed`, ou a cauda do
+stdout). Ao prova-lo com um teste que falha de proposito apareceu **um bug latente do proprio
+checker**: o `falhados.append` estava DENTRO do laco das linhas desde a versao original -- com uma
+unica linha de saida parecia "1 de 4", mas com mais diagnostico deu **"45 de 1 FALHARAM"**. Corrigido.
+Prova: `TESTES GO: 1 de 1 FALHARAM` + nome do teste; no conjunto real **exit 0, 4 pacotes OK**.
