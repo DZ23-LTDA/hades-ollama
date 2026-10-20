@@ -6558,3 +6558,10 @@ query**). **3 testes PASS**: sem sessao -> **401 e a resposta nao traz o estado*
 corpo. Lint 0, build 0, `audit_tenant_guards` exit 0. **Nao ha' rota para ACIONAR nem REARMAR**, por
 decisao (quem pode parar tudo, com que credencial, com que registo). O estado e' global, nao por tenant
 -- deliberado.
+
+**Actualizacao de retomada (E-1503):** **segundo item do NUCLEO exposto** -- `GET
+/systems/recomendacao?vram_bytes=N&parametros_b=7`, identidade por `requireOrganizacaoDaSessao`.
+**Calculo, nao medicao**: o servidor nao descobre a VRAM, recebe-a. Sem `vram_bytes` valido -> **400 com
+o motivo e sem recomendacao** (uma recomendacao por omissao gastaria a VRAM de alguem). **3 testes
+PASS**, lint 0, build 0. Dois defeitos apanhados antes do commit: `uint64` exigia `ParseUint` (a versao
+com `ParseInt` nao compilava) e o quarto `misspell` da serie foi corrigido reescrevendo as palavras.
