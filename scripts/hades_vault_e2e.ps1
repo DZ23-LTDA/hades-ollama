@@ -260,6 +260,35 @@ if ($rel) {
     $rec = Pedido 'Post' "$base/memory/vault/compact" $tokB '{"pasta":"notas","resumo_relativo":"notas/RESUMO2.md"}'
     Exigir ($rec.Codigo -eq 403) ('compactar com B (so leitura) -> 403 (veio ' + $rec.Codigo + ')')
 }
+# --- fase 9: duas sessoes independentes, mesmo estado canonico ----------------
+# Clientes HttpClient SEPARADOS (ligacoes proprias, nenhum estado partilhado no processo)
+# leem a mesma nota; o corpo tem de ser BYTE-IDENTICO. Se o adaptador introduzisse
+# qualquer campo variavel (timestamp de leitura, hash recalculado, ordem instavel), a
+# comparacao apanha.
+$c1 = New-Object Net.Http.HttpClient
+$c2 = New-Object Net.Http.HttpClient
+# A compactacao (fase 8) MOVEU as notas de `notas/` para o arquivo: ler `notas/versao.md`
+# daria 403 -- negacao correcta para um caminho que ja' nao existe. Escolho uma arquivada
+# INTACTA (200) em vez de fixar um caminho que o proprio teste alterou.
+$alvoDuasSessoes = $null
+if ($rel) {
+    foreach ($f in $rel.fontes) {
+        $probe = Pedido 'Get' ("$base/memory/vault/read?relativo=" + $f.arquivadaEm) $tokA $null
+        if ($probe.Codigo -eq 200) { $alvoDuasSessoes = $f.arquivadaEm; break }
+    }
+}
+Exigir ($null -ne $alvoDuasSessoes) 'encontrei uma nota arquivada INTACTA para comparar'
+$url = "$base/memory/vault/read?relativo=" + $alvoDuasSessoes
+$p1 = New-Object Net.Http.HttpRequestMessage ([Net.Http.HttpMethod]::Get), $url
+$p1.Headers.Add('Authorization', 'Bearer ' + $tokA)
+$p2 = New-Object Net.Http.HttpRequestMessage ([Net.Http.HttpMethod]::Get), $url
+$p2.Headers.Add('Authorization', 'Bearer ' + $tokA)
+$r1 = $c1.SendAsync($p1).GetAwaiter().GetResult()
+$r2 = $c2.SendAsync($p2).GetAwaiter().GetResult()
+$t1 = $r1.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+$t2 = $r2.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+Exigir ([int]$r1.StatusCode -eq 200 -and [int]$r2.StatusCode -eq 200) ('duas sessoes leem a nota (200/200: ' + [int]$r1.StatusCode + '/' + [int]$r2.StatusCode + ')')
+Exigir ($t1 -eq $t2) 'as duas sessoes recebem estado BYTE-IDENTICO'
 Parar
 Write-Host ('== fim: ' + $falhas + ' falha(s) ==')
 if ($falhas -gt 0) { exit 1 }
