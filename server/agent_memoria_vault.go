@@ -134,6 +134,10 @@ func (a *agentAPI) appendMemoriaNoVault(c *gin.Context) {
 		},
 	})
 	switch {
+	case errors.Is(err, agent.ErrSegredoNaNota):
+		// Recusa por DLP: 422 (o corpo e' compreendido e recusado por politica), nunca 500.
+		// A resposta NAO ecoa o valor detetado -- ecoa-lo seria o segundo vazamento.
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "secret_detected", "detail": "content carries credential-shaped material and was not stored"})
 	case errors.Is(err, agent.ErrVersaoDivergente):
 		// Conflito de versao nao e' falha do servidor: e' o resultado normal de duas escritas
 		// concorrentes. 500 esconderia a causa e faria o cliente repetir a escrita a' cegas.
@@ -190,6 +194,10 @@ func (a *agentAPI) lerMemoriaDoVault(c *gin.Context) {
 	leitura := agent.LeituraGovernada{Raiz: raiz, Politica: politica}
 	memoria, err := leitura.Ler(agent.PedidoDeLeitura{Identidade: identidade, Tenant: tenant, Relativo: relativo})
 	switch {
+	case errors.Is(err, agent.ErrSegredoNaNota):
+		// Recusa por DLP: 422 (o corpo e' compreendido e recusado por politica), nunca 500.
+		// A resposta NAO ecoa o valor detetado -- ecoa-lo seria o segundo vazamento.
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "secret_detected", "detail": "content carries credential-shaped material and was not stored"})
 	case errors.Is(err, agent.ErrVersaoDivergente):
 		// Conflito de versao nao e' falha do servidor: e' o resultado normal de duas escritas
 		// concorrentes. 500 esconderia a causa e faria o cliente repetir a escrita a' cegas.
