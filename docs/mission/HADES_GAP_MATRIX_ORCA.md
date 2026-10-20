@@ -92,7 +92,7 @@ Colunas: **capacidade** · **fonte no Orca/OpenJarvis** · **situação HADES** 
 | B2 | Detecção de hardware e recomendação | `[C]` `VRAM` 27 no HADES | **PARCIAL** | recomendação de quantização/contexto/offload a partir de VRAM medida | **ADAPTAR** | FASE 16 |
 | B3 | Memória com fontes e escopos | `[D]` | **PARCIAL** — **MEDIDO (E-1464): 20 ficheiros, 9 escopos (SESSION..SHARED_AUTHORIZED), Fonte/Aprovador/ContentHash como campos, 53 PASS; a imposicao do escopo esta' na ACL, nao no tipo** (`internal/agent/memory*`, 20 ficheiros) | `ObsidianMemoryAdapter` + 12 E2E da FASE 17.1 | **ADAPTAR** | FASE 17.1 |
 | B4 | Traces auditáveis e aprendizado medido | `[D]` | **PARCIAL** (2 ficheiros) | gate de 10 passos para política aprendida | **ADAPTAR** | FASE 18 |
-| B5 | Skills com quarentena e benchmark | `[D]` | **PARCIAL** (`skill*` 7 ficheiros) | comparar sem/original/optimizada com várias seeds | **ADAPTAR** | FASE 20 |
+| B5 | Skills com quarentena e benchmark | `[D]` | **PARCIAL** — **MEDIDO (E-1465): 7 ficheiros, 25 PASS (com recusas de travessia/duplicado); quarentena existe para PERSONAS, nao para skills; benchmark de skills AUSENTE** (`skill*` 7 ficheiros) | comparar sem/original/optimizada com várias seeds | **ADAPTAR** | FASE 20 |
 | B6 | Eficiência e custo medidos | `[D]` | **PARCIAL** (`metricas.go`) | energia/VRAM marcados `NAO_MEDIDOS` com método declarado | **ADAPTAR** | FASE 21 |
 | B7 | Agentes pessoais agendados/contínuos | `[D]` | **PARCIAL** (`schedule*` 21 ficheiros) | anti-duplicação após perda de conexão | **ADAPTAR** | FASE 22 |
 | B8 | Assistente local-first | `[D]` descrição do repositório | **PARCIAL** | conversão conversa→/goal com motivo explicado | **ADAPTAR** | FASE 15 |

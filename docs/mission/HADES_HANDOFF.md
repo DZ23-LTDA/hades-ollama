@@ -6550,3 +6550,7 @@ ficheiros. Interface canonica existe; nao garante uniformidade de comportamento 
 (SESSION..SHARED_AUTHORIZED), proveniencia como campo (`Fonte`, `Aprovador`, `ContentHash`) e
 **53 PASS / 0 FAIL**. Limite declarado: o escopo e' imposto pela ACL, nao pelo tipo `Memoria`; e os
 53 sobrepoem-se aos testes do vault ja' contados em A11.
+
+**Actualizacao de retomada (E-1465):** B5 medido -- skills: 7 ficheiros, **25 PASS** com recusas de
+travessia/duplicado; **quarentena existe para PERSONAS, nao para skills**; **benchmark de skills
+AUSENTE** (zero ocorrencias no codigo e em `scripts/`). A etiqueta `PARCIAL` juntava tres coisas.
