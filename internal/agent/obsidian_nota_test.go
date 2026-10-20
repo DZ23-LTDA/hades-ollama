@@ -510,3 +510,64 @@ func TestACLValidarRecusaConcessaoVazia(t *testing.T) {
 		t.Fatalf("concessao completa devia passar: %v", err)
 	}
 }
+
+// A escrita consulta a ACL: sem concessao nao ha ficheiro, e o pedido de leitura nao autoriza escrita.
+func TestAnexarAutorizadoNegaSemConcessao(t *testing.T) {
+	raiz := t.TempDir()
+	meta := metaDeTeste(EscopoProject)
+
+	// Politica vazia: negacao total.
+	if _, err := AnexarAutorizado(raiz, "memoria.md", PoliticaDeAcesso{}, "agente-1", meta, fatoDeTeste(), 0); !errors.Is(err, ErrAcessoNegado) {
+		t.Fatalf("politica vazia devia negar, veio %v", err)
+	}
+	// Concessao de LEITURA nao serve para escrever.
+	soLeitura := PoliticaDeAcesso{Concessoes: []Concessao{{Identidade: "agente-1", Escopo: EscopoProject, Permissoes: PermissaoLer}}}
+	if _, err := AnexarAutorizado(raiz, "memoria.md", soLeitura, "agente-1", meta, fatoDeTeste(), 0); !errors.Is(err, ErrAcessoNegado) {
+		t.Fatalf("leitura nao devia autorizar escrita, veio %v", err)
+	}
+	// Concessao no escopo errado tambem nao serve.
+	outroEscopo := PoliticaDeAcesso{Concessoes: []Concessao{{Identidade: "agente-1", Escopo: EscopoTenant, Permissoes: PermissaoEscrever}}}
+	if _, err := AnexarAutorizado(raiz, "memoria.md", outroEscopo, "agente-1", meta, fatoDeTeste(), 0); !errors.Is(err, ErrAcessoNegado) {
+		t.Fatalf("escopo errado devia negar, veio %v", err)
+	}
+
+	// O ponto do teste: em NENHUM dos casos acima ficou ficheiro nem sentinela no disco.
+	entradas, err := os.ReadDir(raiz)
+	if err != nil {
+		t.Fatalf("ReadDir: %v", err)
+	}
+	if len(entradas) != 0 {
+		var nomes []string
+		for _, e := range entradas {
+			nomes = append(nomes, e.Name())
+		}
+		t.Fatalf("a recusa escreveu no disco: %v", nomes)
+	}
+}
+
+// Com `PermissaoEscrever` no escopo certo, a escrita acontece e a nota passa a propria integridade.
+func TestAnexarAutorizadoComConcessaoEscreve(t *testing.T) {
+	raiz := t.TempDir()
+	meta := metaDeTeste(EscopoProject)
+	pol := PoliticaDeAcesso{Concessoes: []Concessao{{Identidade: "agente-1", Escopo: EscopoProject, Permissoes: PermissaoEscrever}}}
+
+	anexou, err := AnexarAutorizado(raiz, "memoria.md", pol, "agente-1", meta, fatoDeTeste(), 0)
+	if err != nil || !anexou {
+		t.Fatalf("escrita autorizada devia passar: anexou=%v err=%v", anexou, err)
+	}
+	dados, err := os.ReadFile(filepath.Join(raiz, "memoria.md"))
+	if err != nil {
+		t.Fatalf("ler: %v", err)
+	}
+	meta2, m2, err := LerNota(dados)
+	if err != nil {
+		t.Fatalf("LerNota: %v", err)
+	}
+	if err := IntegridadeDaNota(meta2, m2); err != nil {
+		t.Fatalf("nota autorizada nao passa a integridade: %v", err)
+	}
+	// Outra identidade continua negada no MESMO ficheiro ja' existente.
+	if _, err := AnexarAutorizado(raiz, "memoria.md", pol, "intruso", meta, fatoDeTeste(), 0); !errors.Is(err, ErrAcessoNegado) {
+		t.Fatalf("outra identidade devia ser negada, veio %v", err)
+	}
+}

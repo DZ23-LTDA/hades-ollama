@@ -95,3 +95,14 @@ func (p PoliticaDeAcesso) Validar() error {
 	}
 	return nil
 }
+
+// AnexarAutorizado e' o caminho de escrita COM a ACL aplicada -- a aresta so' protege quando alguem a consulta.
+//
+// A permissao vem do ESCOPO DA NOTA (`meta.Escopo`), nao de um argumento separado: dois parametros de escopo
+// deixariam a porta aberta para autorizar em `PROJECT` e gravar em `TENANT`.
+func AnexarAutorizado(raiz, relativo string, pol PoliticaDeAcesso, identidade string, meta MetaDaNota, m Memoria, versaoEsperada int) (bool, error) {
+	if err := pol.Autorizar(identidade, meta.Escopo, PermissaoEscrever); err != nil {
+		return false, err
+	}
+	return AnexarEmArquivoComBloqueio(raiz, relativo, meta, m, versaoEsperada)
+}
