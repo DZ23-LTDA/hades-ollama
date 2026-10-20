@@ -5338,3 +5338,7 @@ receita financeira, nao receita de execucao. As 473 ocorrencias de "container" s
 testes de politica (`offlinePolicy`, `missionContextPolicy`, `missionContextClient`) passam em
 **node puro, sem Android**. Login, aprovacao, outbox e o build Android continuam
 **BLOCKED_EXTERNAL**.
+
+**Actualizacao de retomada (E-1461):** A12 fechado no que nao depende de Android -- `tsc --noEmit`
+no app movel da' **exit=0, zero erros**, somando aos 3 testes de politica verdes. O no 5 continua
+BLOCKED_EXTERNAL apenas no que exige telefone: login, aprovacao, outbox e UI.
