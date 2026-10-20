@@ -205,6 +205,13 @@ jobs:
       # seguranca nao pode ser o unico que ninguem corre no PR.*
       - name: Verify the security axes (9 axes, no plaintext secret)
         run: python3 scripts/hades_security_check.py
+      # E-1510: dois instrumentos que so' corriam localmente, ambos medidos antes de entrar
+      # (exit 0; 0.6 s e 0.1 s; sem rede). O primeiro guarda a HERMETICIDADE dos testes -- um teste que
+      # depende da maquina passa aqui e falha no runner, e essa diferenca tem de ser apanhada no PR.
+      - name: Verify test hermeticity (no test depends on the machine)
+        run: python3 scripts/hades_testes_hermeticos_check.py
+      - name: Verify traceability of requirements to evidence
+        run: python3 scripts/hades_traceability_check.py
       # E-661: o gate anterior era `test -z "$(gofmt -l ...)"` - e um arquivo que NAO PARSEIA faz o gofmt
       # escrever o erro em STDERR e sair com STDOUT VAZIO => `test -z ""` PASSAVA. Verde por construcao:
       # foi assim que um `internal/agent/adaptive_router.go` com um `}` faltando atravessou o CI verde.
