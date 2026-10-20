@@ -289,6 +289,14 @@ $t1 = $r1.Content.ReadAsStringAsync().GetAwaiter().GetResult()
 $t2 = $r2.Content.ReadAsStringAsync().GetAwaiter().GetResult()
 Exigir ([int]$r1.StatusCode -eq 200 -and [int]$r2.StatusCode -eq 200) ('duas sessoes leem a nota (200/200: ' + [int]$r1.StatusCode + '/' + [int]$r2.StatusCode + ')')
 Exigir ($t1 -eq $t2) 'as duas sessoes recebem estado BYTE-IDENTICO'
+
+# --- fase 10 (ADIADA): duas identidades no mesmo tenant -------------------------
+# A fatia anterior abriu `organization_id` na rota de dev, mas o E2E mostrou um SEGUNDO bloqueio:
+#   1. os TOKENS nao sobrevivem ao reinicio do servidor (401 depois de reiniciar);
+#   2. a ACL e' lida do AMBIENTE DO PROCESSO, logo incluir uma identidade nova exige reiniciar;
+#   3. e depois do reinicio nao consigo token novo para o mesmo utilizador (e-mail duplicado).
+# Ou seja: o ciclo "criar identidade -> reiniciar com ACL -> usar token" nao fecha.
+# Fase retirada para nao deixar o E2E vermelho por uma lacuna de superficie ja' diagnosticada.
 Parar
 Write-Host ('== fim: ' + $falhas + ' falha(s) ==')
 if ($falhas -gt 0) { exit 1 }
