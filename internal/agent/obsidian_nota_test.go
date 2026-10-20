@@ -451,3 +451,62 @@ func TestDestravarIdempotente(t *testing.T) {
 		t.Fatalf("destravar sem bloqueio devia ser no-op: %v", err)
 	}
 }
+
+// --- ACL por identidade: negada por defeito ---
+
+// Sem concessao nao ha acesso. Uma politica vazia e' negacao total, nao permissao total.
+func TestACLSemConcessaoNega(t *testing.T) {
+	var p PoliticaDeAcesso
+	if err := p.Autorizar("agente-1", EscopoProject, PermissaoLer); !errors.Is(err, ErrAcessoNegado) {
+		t.Fatalf("politica vazia devia negar, veio %v", err)
+	}
+	// Identidade desconhecida numa politica que JA' tem concessoes continua negada.
+	p = PoliticaDeAcesso{Concessoes: []Concessao{{Identidade: "agente-1", Escopo: EscopoProject, Permissoes: PermissaoLer}}}
+	if err := p.Autorizar("estranho", EscopoProject, PermissaoLer); !errors.Is(err, ErrAcessoNegado) {
+		t.Fatalf("identidade sem concessao devia ser negada, veio %v", err)
+	}
+	if err := p.Autorizar("", EscopoProject, PermissaoLer); !errors.Is(err, ErrAcessoNegado) {
+		t.Fatalf("identidade vazia devia ser negada, veio %v", err)
+	}
+}
+
+// Ler nao implica escrever, e o escopo e' parte da concessao: o mesmo agente fora do escopo e' negado.
+func TestACLLeituraNaoImplicaEscrita(t *testing.T) {
+	p := PoliticaDeAcesso{Concessoes: []Concessao{{Identidade: "revisor", Escopo: EscopoProject, Permissoes: PermissaoLer}}}
+
+	if err := p.Autorizar("revisor", EscopoProject, PermissaoLer); err != nil {
+		t.Fatalf("leitura concedida devia passar: %v", err)
+	}
+	err := p.Autorizar("revisor", EscopoProject, PermissaoEscrever)
+	if !errors.Is(err, ErrAcessoNegado) {
+		t.Fatalf("escrita sem concessao devia ser negada, veio %v", err)
+	}
+	if !strings.Contains(err.Error(), "ler") {
+		t.Fatalf("a recusa devia dizer o que E' concedido, veio %q", err.Error())
+	}
+	if err := p.Autorizar("revisor", EscopoTenant, PermissaoLer); !errors.Is(err, ErrAcessoNegado) {
+		t.Fatalf("mesmo agente noutro escopo devia ser negado, veio %v", err)
+	}
+}
+
+// Uma linha de ACL que nao concede nada e' recusada: quem a le acreditaria que concede.
+func TestACLValidarRecusaConcessaoVazia(t *testing.T) {
+	casos := []Concessao{
+		{Identidade: "", Escopo: EscopoProject, Permissoes: PermissaoLer},
+		{Identidade: "a", Escopo: "", Permissoes: PermissaoLer},
+		{Identidade: "a", Escopo: EscopoProject, Permissoes: 0},
+		{Identidade: "a", Escopo: EscopoProject, Permissoes: 1 << 5},
+	}
+	for i, c := range casos {
+		if err := (PoliticaDeAcesso{Concessoes: []Concessao{c}}).Validar(); err == nil {
+			t.Fatalf("caso %d devia ser recusado na validacao", i)
+		}
+	}
+	boa := PoliticaDeAcesso{Concessoes: []Concessao{{Identidade: "a", Escopo: EscopoGoal, Permissoes: PermissaoLer | PermissaoEscrever}}}
+	if err := boa.Validar(); err != nil {
+		t.Fatalf("concessao legitima recusada: %v", err)
+	}
+	if err := boa.Autorizar("a", EscopoGoal, PermissaoLer|PermissaoEscrever); err != nil {
+		t.Fatalf("concessao completa devia passar: %v", err)
+	}
+}
