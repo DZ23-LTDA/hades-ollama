@@ -6761,3 +6761,10 @@ decisao (quem pode parar tudo, com que credencial, com que registo). O estado e'
 o motivo e sem recomendacao** (uma recomendacao por omissao gastaria a VRAM de alguem). **3 testes
 PASS**, lint 0, build 0. Dois defeitos apanhados antes do commit: `uint64` exigia `ParseUint` (a versao
 com `ParseInt` nao compilava) e o quarto `misspell` da serie foi corrigido reescrevendo as palavras.
+
+**Actualizacao de retomada (E-1504):** **terceiro e ultimo item do NUCLEO exposto** -- `POST
+/goals/proposta` (propoe o goal a partir da conversa, com motivo e `faltando`, **sem criar nada**). O
+corpo traz a CONVERSA, nunca a identidade (organizacao vem da sessao). **4 testes PASS**: sem sessao ->
+401; `[]`/espacos/`{}` -> 400 sem proposta; conversa com metrica -> 200; conversa vaga -> `faltando` nao
+vazio e metrica nao inventada. Lint 0, build 0. **Os tres itens antes inacessiveis tem rota agora**
+(`E-1502`, `E-1503`, `E-1504`). O **gatilho do pare** continua inexistente, por decisao de autorizacao.
