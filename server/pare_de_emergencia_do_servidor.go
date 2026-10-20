@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ollama/ollama/internal/agent"
@@ -16,10 +17,40 @@ import (
 //
 // # O QUE AINDA FALTA, DITO AQUI
 //
-// Nao ha' rota para O ACIONAR. Ou seja: o executor HTTP ja' **consulta** o pare e `estadoDoPare`
-// mostra o ESTADO, mas ninguem o consegue accionar em producao. Expor o accionamento e' uma decisao
-// de superficie (quem pode parar tudo? com que autorizacao?) que esta fatia NAO toma.
+// Nao ha' rota para O ACIONAR. O executor HTTP **consulta** o pare, `estadoDoPare` mostra o ESTADO e
+// `adoptarParePersistido` recupera-o no arranque; mas ninguem o consegue accionar por HTTP. Expor o
+// accionamento e' uma decisao de superficie (quem pode parar tudo? com que autorizacao?) por tomar.
 var pareDoServidor = agent.NovoPareDeEmergencia()
+
+// variavelDoCaminhoDoPare nomeia a variavel de ambiente que diz ONDE o estado do pare vive.
+//
+// # PORQUE UMA VARIAVEL, E NAO UM CAMINHO FIXO
+//
+// Um caminho fixo faria o servidor ler (e, mais tarde, escrever) num sitio que o operador nao escolheu --
+// e um teste que corresse na mesma maquina adoptaria o estado real de quem a usa. Sem a variavel, a
+// persistencia fica **desligada**, e desligada e' um estado explicito.
+const variavelDoCaminhoDoPare = "HADES_PARE_ESTADO"
+
+// adoptarParePersistido carrega o estado guardado, se a variavel de ambiente o indicar.
+//
+// # O QUE ISTO FECHA
+//
+// Sem esta chamada, `GuardarEm`/`CarregarDe` existiam e ninguem as usava: um reinicio desarmava o travao
+// em silencio. Com ela, o estado guardado e' adoptado **no arranque**.
+//
+// # O QUE ISTO NAO FAZ
+//
+// Nao GRAVA. Gravar so' faz sentido quando o estado muda, e o estado so' muda por codigo (nao ha' rota
+// para acionar). Quem acionar por codigo tem de chamar `GuardarEm` -- e essa ligacao continua em falta.
+func adoptarParePersistido() {
+	caminho := os.Getenv(variavelDoCaminhoDoPare)
+	if caminho == "" {
+		return
+	}
+	// Um estado ilegivel devolve erro e o pare fica como estava: nao ha' nada a fazer aqui senao
+	// continuar -- mas nao se apaga o ficheiro nem se assume "desarmado".
+	_ = pareDoServidor.CarregarDe(caminho)
+}
 
 // estadoDoPare atende `GET /build/pare` e devolve o ESTADO do travao.
 //

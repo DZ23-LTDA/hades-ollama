@@ -1997,6 +1997,8 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 	r.HandleMethodNotAllowed = true
 	// Cabecalhos de seguranca PRIMEIRO: aplicam-se a todas as rotas registadas a seguir.
 	garantirCabecalhosDeSeguranca(r)
+	// Travao de mao: adoptar o estado guardado ANTES de servir o primeiro pedido.
+	adoptarParePersistido()
 	r.Use(
 		cors.New(corsConfig),
 		allowedHostsMiddleware(s.addr),
