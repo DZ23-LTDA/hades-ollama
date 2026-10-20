@@ -15,7 +15,7 @@
 
 | String | Ocorrencias |
 | --- | --- |
-| **Hades/HADES** (canonica) | **1546** |
+| **Hades/HADES** (canonica) | **1549** |
 | DZ23 Agentic | 257 |
 | Ollama Full | 177 |
 | Ollama Classe A+ | 99 |
