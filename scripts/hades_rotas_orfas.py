@@ -228,7 +228,14 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   ***ZERO NAO QUER DIZER PRODUTO PRONTO. Quer dizer que TODAS as rotas do backend tem' superficie no
 #   frontend ou sao consumidor externo deliberado. O build continua NAO assinado e NAO instalado, a FASE 30
 #   nao esta' iniciada, e o MFA nao reautentica. Um gate a zero mede uma propriedade; nao absolve o resto.***
-TETO_ORFAS = 0
+TETO_ORFAS = 4
+# RAZAO DA SUBIDA (0 -> 4), escrita porque o tecto nao sobe em silencio:
+# as quatro rotas de memoria governada -- /memory/vault/append, /compact, /note, /read -- sao
+# API SEM UI POR DECISAO: a fatia do adendo que as criou e' `server/agent_routes.go` + adaptador,
+# e a superficie de painel ficou explicitamente fora do escopo ("sem UI, botao decorativo ou
+# endpoint amplo"). *Subir o tecto aqui e' declarar a divida, nao aprova-la*: quando existir
+# painel para o vault, o numero tem de DESCER outra vez, e subir de novo exige outra razao.
+
 #
 #   *Previ 1 e mediu 0. O `reschedule/slots` do E-1350 ja' tinha fechado o prefixo `scheduling/reschedule`,
 #   e o POST `reschedule` caiu dentro dele. Baixei o tecto de 18 para 17 ANTES de medir, e o gate acusou.*

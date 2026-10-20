@@ -87,7 +87,14 @@ func (s ServicoDeAppendGovernado) verificarEstadoExistente(relativo, tenant, ide
 	}
 	dados, err := os.ReadFile(caminho)
 	if err != nil {
-		return nil // nao existe: criacao
+		// SO' "nao existe" e' criacao. Qualquer outro erro (permissao, I/O, caminho invalido)
+		// tem de falhar FECHADO: tratar um erro de leitura como "nao existe" faria o append
+		// escrever por cima de uma nota que nao conseguiu ler -- exactamente o que a verificacao
+		// de integridade existe para impedir.
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return fmt.Errorf("%w: nao consegui ler a nota existente: %v", ErrConteudoAlterado, err)
 	}
 	if len(dados) == 0 {
 		return nil

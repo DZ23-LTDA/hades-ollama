@@ -5366,3 +5366,10 @@ AUSENTE** (zero ocorrencias no codigo e em `scripts/`). A etiqueta `PARCIAL` jun
 aprovacao, lease, dead-letter e compensacao; **`continuo` nao existe**: nao ha' laco perpetuo nem
 daemon no agendador. E o CI corre `race (macos-latest)` (estava `queued`); o `BLOCKED_EXTERNAL` de
 macOS e' so' local, nao do CI.
+
+**Actualizacao de retomada (E-1467):** **CI VERMELHO por minha causa** -- 13 entradas minhas tinham `|`
+literais dentro de celulas (773 colunas irregulares vs baseline 760); normalizado -> 760, exit=0. E o
+script `hades_local_gates.ps1`, que ESPELHA o CI, revelou 4 falhas que a minha bateria ad-hoc nao
+via: `nilerr` REAL em `memoria_vault_governada.go` (ReadFile devolvia nil em qualquer erro), 5
+`misspell` pt-BR, tecto de rotas orfas (0->4 com razao escrita) e pacote de auditoria divergente.
+`audit_tenant_guards` continua vermelho por 6 handlers de build PRE-EXISTENTES.
