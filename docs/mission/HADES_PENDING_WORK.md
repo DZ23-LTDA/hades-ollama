@@ -6468,3 +6468,11 @@ VRAM, positivo, monotonicidade 4->48 GB, «nao cabe» explicito, determinismo); 
 `golangci-lint` **0 achados**. **Nao exposta** (sem rota, sem UI) por decisao de escopo; `CamadasNaGPU`
 so' devolve 0 ou 100 (offload parcial nao implementado); coeficientes bytes/parametro sao
 aproximacoes declaradas.
+
+**Actualizacao de retomada (E-1490):** **offload parcial implementado** -- `CamadasNaGPU` deixou de ser
+0-ou-100. Quando nada cabe inteiro, a funcao calcula quantas de 100 camadas cabem, marca
+`Parcial: true` e diz que o resto corre em CPU; quando nem o peso cabe, continua a dizer **«nao cabe»**
+com 0 camadas. **5 testes PASS** (2 novos + monotonicidade das camadas + 1 que **mudou de contrato**:
+`TestQuandoNaoCabeDizQueNaoCabe` -> `TestQuandoNaoCabeInteiroDaOParcial`, porque a funcao passou a
+calcular o parcial). `golangci-lint` 0 achados; `go build` 0. Limites: parcela por proporcao do peso
+(nao numero real de camadas), folga de contexto fixa, e **nada exposto** (sem rota/doctor).

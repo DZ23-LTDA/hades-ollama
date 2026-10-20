@@ -17,9 +17,14 @@ var ErrVRAMDesconhecida = errors.New("VRAM desconhecida: nao ha' base para recom
 // aplicar sozinho. Por isso a estrutura devolve sempre `Motivo` (com os numeros que usou) e nunca
 // executa nada.
 type RecomendacaoDeExecucao struct {
-	Quantizacao    string `json:"quantizacao"`
-	Contexto       int    `json:"contexto"`
-	CamadasNaGPU   int    `json:"camadas_na_gpu"`
+	Quantizacao  string `json:"quantizacao"`
+	Contexto     int    `json:"contexto"`
+	CamadasNaGPU int    `json:"camadas_na_gpu"`
+	// Parcial diz que o modelo NAO cabe todo na GPU e as restantes camadas correm em CPU.
+	//
+	// Antes desta fatia `CamadasNaGPU` so' devolvia 0 ou 100: ou cabia, ou nao se dizia nada.
+	// Metade dos casos reais e' exactamente o meio -- cabe em parte, e e' preciso saber quanto.
+	Parcial        bool   `json:"parcial"`
 	VRAMUsadaBytes uint64 `json:"vram_usada_bytes"`
 	VRAMLivreBytes uint64 `json:"vram_livre_bytes"`
 	Aviso          string `json:"aviso"`
@@ -102,21 +107,57 @@ func RecomendarParaVRAM(vramBytes uint64, parametrosB float64) (RecomendacaoDeEx
 		}
 	}
 
-	// Nem a menor quantizacao com o contexto minimo cabe: dizer isso, com numeros, em vez de
-	// recomendar algo que nao corre.
+	// NADA CABE INTEIRO: ainda assim ha' um numero util a dar -- quantas camadas cabem na GPU.
+	//
+	// *"Nao cabe" e "nao cabe, mas cabem 12 de 100 camadas" sao respostas diferentes, e a segunda
+	// permite decidir.* Por isso o parcial e' calculado em vez de recusado.
 	menor := bytesPorParametro[len(bytesPorParametro)-1]
 	peso := uint64(menor.bytes * parametrosB * kBilhao)
+	folgaMinima := uint64(folgaDeContexto)
+
+	if vramBytes <= folgaMinima || peso == 0 {
+		return RecomendacaoDeExecucao{
+			Quantizacao:    menor.nome,
+			Contexto:       contextoPadrao,
+			CamadasNaGPU:   0,
+			VRAMUsadaBytes: 0,
+			VRAMLivreBytes: vramBytes,
+			Aviso:          "nao cabe: nem o peso do modelo cabe -- rode em CPU ou use um modelo menor",
+			Motivo: fmt.Sprintf(
+				"nao cabe: com %s e contexto %d precisa ~%s so' para o peso, e ha' %s medidos (a folga minima de contexto e' ~%s)",
+				menor.nome, contextoPadrao, formatarBytes(peso), formatarBytes(vramBytes), formatarBytes(folgaMinima)),
+			EContabilizado: false,
+			Parcial:        false,
+		}, nil
+	}
+
+	disponivelParaPeso := vramBytes - folgaMinima
+	camadas := int(float64(disponivelParaPeso) * 100 / float64(peso))
+	if camadas > 99 {
+		camadas = 99
+	}
+	if camadas < 1 {
+		camadas = 1
+	}
+	usada := uint64(float64(peso) * float64(camadas) / 100)
+	if usada > disponivelParaPeso {
+		usada = disponivelParaPeso
+	}
 	return RecomendacaoDeExecucao{
 		Quantizacao:    menor.nome,
 		Contexto:       contextoPadrao,
-		CamadasNaGPU:   0,
-		VRAMUsadaBytes: 0,
-		VRAMLivreBytes: vramBytes,
-		Aviso:          "nao cabe: rode em CPU ou reduza o modelo",
+		CamadasNaGPU:   camadas,
+		VRAMUsadaBytes: usada,
+		VRAMLivreBytes: vramBytes - usada,
+		Aviso: fmt.Sprintf(
+			"offload PARCIAL: %d de 100 camadas na GPU; as restantes correm em CPU (mais lento, e a qualidade nao muda)",
+			camadas),
 		Motivo: fmt.Sprintf(
-			"nao cabe: nem %s com contexto %d cabe -- precisa ~%s e ha' %s medidos",
-			menor.nome, contextoPadrao, formatarBytes(peso+folgaDeContexto), formatarBytes(vramBytes)),
+			"nao cabe inteiro: %s com contexto %d precisa ~%s e ha' %s medidos; sobram %s para o peso, o que da' %d de 100 camadas na GPU",
+			menor.nome, contextoPadrao, formatarBytes(peso+folgaMinima), formatarBytes(vramBytes),
+			formatarBytes(disponivelParaPeso), camadas),
 		EContabilizado: false,
+		Parcial:        true,
 	}, nil
 }
 

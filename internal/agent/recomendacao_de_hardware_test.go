@@ -66,20 +66,66 @@ func TestMaisVRAMNuncaPioraARecomendacao(t *testing.T) {
 	}
 }
 
-// Quando nada cabe, a resposta diz isso com numeros e NAO se diz contabilizada.
-func TestQuandoNaoCabeDizQueNaoCabe(t *testing.T) {
+// Quando nao cabe INTEIRO, a resposta da' o parcial: quantas camadas cabem na GPU.
+//
+// ESTE TESTE MUDOU DE CONTRATO, e a mudanca e' o ponto: antes exigia `CamadasNaGPU == 0` porque a
+// funcao so' sabia dizer "cabe" ou "nao cabe". Agora calcula o parcial -- *"nao cabe" e "nao cabe,
+// mas cabem N de 100 camadas" sao respostas diferentes, e a segunda permite decidir.*
+func TestQuandoNaoCabeInteiroDaOParcial(t *testing.T) {
 	r, err := RecomendarParaVRAM(1*gb, 70)
 	if err != nil {
-		t.Fatalf("1 GB para 70 B devia responder (nao cabe), nao falhar: %v", err)
+		t.Fatalf("1 GB para 70 B devia responder, nao falhar: %v", err)
 	}
 	if r.EContabilizado {
 		t.Fatalf("1 GB para 70 B nao pode estar contabilizado: %+v", r)
 	}
-	if r.Aviso == "" || !strings.Contains(r.Motivo, "nao cabe") {
-		t.Fatalf("tem de dizer que nao cabe: aviso=%q motivo=%q", r.Aviso, r.Motivo)
+	if !r.Parcial {
+		t.Fatalf("devia ser um resultado PARCIAL: %+v", r)
+	}
+	if r.CamadasNaGPU < 1 || r.CamadasNaGPU > 99 {
+		t.Fatalf("o parcial tem de ficar entre 1 e 99 camadas, veio %d", r.CamadasNaGPU)
+	}
+	if !strings.Contains(r.Aviso, "PARCIAL") || !strings.Contains(r.Aviso, "CPU") {
+		t.Fatalf("o aviso tem de dizer parcial e que o resto corre em CPU: %q", r.Aviso)
+	}
+	if !strings.Contains(r.Motivo, "nao cabe inteiro") {
+		t.Fatalf("o motivo tem de dizer que nao cabe inteiro: %q", r.Motivo)
+	}
+	if r.VRAMUsadaBytes+r.VRAMLivreBytes != 1*gb {
+		t.Fatalf("a contabilidade tem de fechar: %d + %d != 1 GB", r.VRAMUsadaBytes, r.VRAMLivreBytes)
+	}
+}
+
+// Quando nem o peso cabe (VRAM menor do que a folga minima de contexto), a resposta e' explicita e
+// NAO ha' camadas na GPU -- porque uma camada na GPU sem VRAM para ela seria uma promessa.
+func TestQuandoNemOPesoCabeNaoHaCamadas(t *testing.T) {
+	r, err := RecomendarParaVRAM(256*1024*1024, 70) // 256 MB
+	if err != nil {
+		t.Fatalf("256 MB devia responder, nao falhar: %v", err)
+	}
+	if r.Parcial || r.EContabilizado {
+		t.Fatalf("nao pode ser parcial nem contabilizado: %+v", r)
 	}
 	if r.CamadasNaGPU != 0 {
-		t.Fatalf("sem VRAM suficiente nao ha' camadas na GPU, veio %d", r.CamadasNaGPU)
+		t.Fatalf("sem VRAM para o peso nao ha' camadas na GPU, veio %d", r.CamadasNaGPU)
+	}
+	if !strings.Contains(r.Aviso, "nao cabe") {
+		t.Fatalf("tem de dizer que nao cabe: %q", r.Aviso)
+	}
+}
+
+// MONOTONICIDADE no parcial: mais VRAM nunca pode dar MENOS camadas na GPU.
+func TestMaisVRAMNuncaDaMenosCamadasNoParcial(t *testing.T) {
+	anterior := -1
+	for _, vram := range []uint64{1 * gb, 2 * gb, 4 * gb, 6 * gb, 8 * gb, 10 * gb, 14 * gb, 20 * gb} {
+		r, err := RecomendarParaVRAM(vram, 70) // 70 B: cabe parcial em toda esta gama
+		if err != nil {
+			t.Fatalf("%d GB: %v", vram/gb, err)
+		}
+		if anterior >= 0 && r.CamadasNaGPU < anterior {
+			t.Fatalf("%d GB deu %d camadas, MENOS que %d com menos VRAM", vram/gb, r.CamadasNaGPU, anterior)
+		}
+		anterior = r.CamadasNaGPU
 	}
 }
 
