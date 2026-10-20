@@ -636,6 +636,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/memory/vault/append", a.appendMemoriaNoVault)
 	group.GET("/memory/vault/read", a.lerMemoriaDoVault)
 	group.DELETE("/memory/vault/note", a.apagarDoVaultGovernado)
+	group.POST("/memory/vault/compact", a.compactarOVaultGovernado)
 	group.GET("/grok/status", a.grokStatus)
 	group.GET("/config/safe", a.safeConfig)
 	group.GET("/diagnostics", a.diagnostics)

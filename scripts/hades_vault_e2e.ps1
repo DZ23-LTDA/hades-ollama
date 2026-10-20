@@ -227,6 +227,39 @@ Exigir ($restaurado -eq 4) ('4 ficheiros: 3 notas + o livro de auditoria (ha ' +
 $ficheiros = @(Get-ChildItem $vault -Recurse -File -ErrorAction SilentlyContinue)
 Exigir ($ficheiros.Count -eq 4) ('o vault tem 4 ficheiros: decisao.md, versao.md, humana.md e o livro (tem ' + $ficheiros.Count + ')')
 
+# --- fase 8: compactacao nao destrutiva com fontes e hash ----------------------
+$comp = Pedido 'Post' "$base/memory/vault/compact" $tokA '{"pasta":"notas","resumo_relativo":"notas/RESUMO.md","texto_do_resumo":"compactacao do e2e"}'
+Exigir ($comp.Codigo -eq 200) ('compactar -> 200 (veio ' + $comp.Codigo + ')')
+$rel = $null
+if ($comp.Codigo -eq 200) { $rel = $comp.Corpo | ConvertFrom-Json }
+if ($rel) {
+    Exigir ($rel.totalCompactado -ge 1) ('compactou pelo menos 1 nota (veio ' + $rel.totalCompactado + ')')
+    $resumoPath = Join-Path $vault 'notas\RESUMO.md'
+    Exigir (Test-Path $resumoPath) 'o resumo foi escrito'
+    $resumoTexto = Get-Content $resumoPath -Raw
+    $citou = $true
+    foreach ($f in $rel.fontes) {
+        if (-not ($resumoTexto -match [regex]::Escape($f.relativo))) { $citou = $false }
+        if (-not ($resumoTexto -match [regex]::Escape($f.contentHash))) { $citou = $false }
+    }
+    Exigir $citou 'o resumo cita cada fonte com caminho E hash'
+    $arquivadas = @(Get-ChildItem (Join-Path $vault $rel.pastaDeArquivo) -Recurse -File -ErrorAction SilentlyContinue)
+    Exigir ($arquivadas.Count -eq $rel.totalCompactado) ('todas as compactadas estao no arquivo (' + $arquivadas.Count + ' de ' + $rel.totalCompactado + ')')
+    # Cada arquivada tem de ser 200 (intacta) ou 409 (preservada mas marcada como adulterada).
+    # Nunca 404/500: o bruto tem de estar recuperavel depois de compactar.
+    $intactas = 0; $marcadas = 0; $inesperadas = 0
+    foreach ($f in $rel.fontes) {
+        $r = Pedido 'Get' ("$base/memory/vault/read?relativo=" + $f.arquivadaEm) $tokA $null
+        if ($r.Codigo -eq 200) { $intactas++ }
+        elseif ($r.Codigo -eq 409) { $marcadas++ }
+        else { $inesperadas++; Write-Host ('  nota arquivada com codigo inesperado ' + $r.Codigo + ' (' + $f.relativo + ')') }
+    }
+    Exigir ($inesperadas -eq 0) 'todas as arquivadas respondem 200 ou 409 (nunca 404/500)'
+    Exigir ($intactas -ge 1) ('pelo menos uma arquivada continua legivel e intacta (' + $intactas + ')')
+    Exigir (($intactas + $marcadas) -eq $rel.totalCompactado) ('todas as compactadas sao recuperaveis (' + ($intactas + $marcadas) + ')')
+    $rec = Pedido 'Post' "$base/memory/vault/compact" $tokB '{"pasta":"notas","resumo_relativo":"notas/RESUMO2.md"}'
+    Exigir ($rec.Codigo -eq 403) ('compactar com B (so leitura) -> 403 (veio ' + $rec.Codigo + ')')
+}
 Parar
 Write-Host ('== fim: ' + $falhas + ' falha(s) ==')
 if ($falhas -gt 0) { exit 1 }

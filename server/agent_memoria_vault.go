@@ -278,3 +278,65 @@ func (a *agentAPI) apagarDoVaultGovernado(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": true, "apagou": apagou})
 	}
 }
+
+// CompactarOVaultGovernado trata POST /memory/vault/compact.
+//
+// Compactacao NAO DESTRUTIVA: os originais sao movidos para `arquivo/<instante>/` com os mesmos
+// bytes, e o resumo cita memory_id, caminho e hash de cada um. Se algo falhar a meio, o bruto ja'
+// esta' no arquivo -- nenhuma nota se perde.
+func (a *agentAPI) compactarOVaultGovernado(c *gin.Context) {
+	raiz := strings.TrimSpace(os.Getenv("HADES_VAULT_ROOT"))
+	if raiz == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "vault_memory_disabled"})
+		return
+	}
+	identidade, ok := IdentidadeDaSessao(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "session identity required"})
+		return
+	}
+	tenant, ok := OrganizacaoDaSessao(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "session organization required"})
+		return
+	}
+	politica, erroDePolitica := agent.ParsearPoliticaDeAcesso(os.Getenv("HADES_VAULT_ACL"))
+	if erroDePolitica != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "vault_acl_invalid"})
+		return
+	}
+	var corpo struct {
+		Pasta          string `json:"pasta"`
+		ResumoRelativo string `json:"resumo_relativo"`
+		TextoDoResumo  string `json:"texto_do_resumo"`
+	}
+	if err := DecodificarCorpoEstrito(c.Request.Body, &corpo); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		return
+	}
+
+	compactacao := agent.CompactacaoGovernada{Raiz: raiz, Politica: politica}
+	relatorio, err := compactacao.Compactar(agent.PedidoDeCompactacao{
+		Identidade:     identidade,
+		Tenant:         tenant,
+		Pasta:          corpo.Pasta,
+		ResumoRelativo: corpo.ResumoRelativo,
+		TextoDoResumo:  corpo.TextoDoResumo,
+	})
+	switch {
+	case errors.Is(err, agent.ErrAcessoNegado):
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+	case errors.Is(err, agent.ErrForaDaRaiz):
+		c.JSON(http.StatusBadRequest, gin.H{"error": "path outside the vault root"})
+	case errors.Is(err, agent.ErrNadaACompactar):
+		c.JSON(http.StatusConflict, gin.H{"error": "nothing to compact"})
+	case errors.Is(err, agent.ErrCompactacaoInsegura):
+		c.JSON(http.StatusConflict, gin.H{"error": "compaction refused: destination collision"})
+	case errors.Is(err, agent.ErrIdentidadeDeSessaoAusente), errors.Is(err, agent.ErrTenantDaSessaoAusente):
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "session scope required"})
+	case err != nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "vault compaction failed"})
+	default:
+		c.JSON(http.StatusOK, relatorio)
+	}
+}
