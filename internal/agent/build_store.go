@@ -75,6 +75,11 @@ var (
 	ErrBuildDesconhecido = errors.New("build desconhecido")
 	// ErrBuildJaTerminou e' devolvido ao cancelar um build que ja' acabou.
 	ErrBuildJaTerminou = errors.New("build ja terminou")
+	// ErrBuildSemTenant e' devolvido quando se tenta registar um build de PRODUTO sem organizacao.
+	//
+	// Fail-closed: um registo sem dono e' um registo que qualquer sessao le (ver `E-1470`). O caminho
+	// de compatibilidade (testes) usa `registarSemDono`, que e' interno e diz o que faz no nome.
+	ErrBuildSemTenant = errors.New("build sem organizacao")
 )
 
 // RegistoDeBuild e' o que o store guarda por build. E' uma copia segura: o store devolve copias e
@@ -153,7 +158,7 @@ func novoID() string {
 // permitiu o defeito (builds legiveis por qualquer sessao), e um metodo publico "conveniente"
 // volta a ser usado por um handler novo. O caminho de produto e' `RegistarDoTenant`.
 func (s *BuildStore) registarSemDono(alvo, raiz, destino string) (string, error) {
-	return s.RegistarDoTenant(alvo, raiz, destino, "")
+	return s.registar(alvo, raiz, destino, "")
 }
 
 // RegistarDoTenant cria um registo NA_FILA com dono e devolve o ID.
@@ -161,6 +166,15 @@ func (s *BuildStore) registarSemDono(alvo, raiz, destino string) (string, error)
 // A FRONTEIRA VIVE NO REGISTO, NAO NO HANDLER. Se o dono so' existisse na verificacao do handler, um
 // caminho novo esqueceria a verificacao -- e' o que ja' aconteceu com os cinco handlers de build.
 func (s *BuildStore) RegistarDoTenant(alvo, raiz, destino, tenant string) (string, error) {
+	if strings.TrimSpace(tenant) == "" {
+		return "", ErrBuildSemTenant
+	}
+	return s.registar(alvo, raiz, destino, tenant)
+}
+
+// registar e' o construtor cru, sem validacao de dono. So' `registarSemDono` (compatibilidade) e
+// `RegistarDoTenant` (depois de validar) o chamam.
+func (s *BuildStore) registar(alvo, raiz, destino, tenant string) (string, error) {
 	id := novoID()
 	if id == "" {
 		return "", errors.New("nao foi possivel gerar identificador de build")

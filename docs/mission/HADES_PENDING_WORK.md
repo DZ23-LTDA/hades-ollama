@@ -6398,3 +6398,10 @@ exit 0** (81 passos). Nota de processo: o `golangci-lint` tem de estar no PATH n
 handlers usaram para ler builds alheios); so' `*DoTenant` sai da package. `git grep`: nenhum chamador
 de produto usava as versoes sem fronteira. 47 chamadas de teste actualizadas. `go build` 0, testes de
 build (agent e server) ok, e **`hades_local_gates.ps1` exit 0** (81 passos).
+
+**Actualizacao de retomada (E-1472):** **criacao de build sem dono passou a falhar fechado** --
+`RegistarDoTenant` recusa organizacao vazia (`ErrBuildSemTenant`), com teste novo
+(`TestRegistarDoTenantRecusaOrganizacaoVazia`); `go build` 0 e testes de build (agent + server) ok.
+**E uma falha de bateria que ainda nao tem causa:** `hades_local_gates.ps1` falhou 1 de 81 passos
+(`hades_go_test_check`: `1 de 4 FALHARAM: ./internal/agent`), e o MESMO pacote passou **duas vezes
+isolado** (419 s e 424 s). Log nao nomeia o teste; a bateria fica **PARTIAL**, nao verde.
