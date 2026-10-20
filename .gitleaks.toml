@@ -43,7 +43,7 @@ title = "HADES secret scan"
 [extend]
 useDefault = true
 
-[allowlist]
+[[allowlists]]
 description = "16 excecoes por conteudo de match: fixtures sinteticas, prosa e uma chave publica"
 regexTarget = "line"
 regexes = [
@@ -97,3 +97,39 @@ regexes = [
   # Allowlist por match EXACTO: nenhum outro github-pat passa.
   '''ghp_16C7e42F292c6912E7710c838347Ae178B4a''',
 ]
+
+# ---------------------------------------------------------------------------------------------------
+# E-1445 -- EXCECAO POR CAMINHO, mas so' para UMA regra de baixa precisao, e so' para DOIS ficheiros.
+#
+# PORQUE NAO E' UMA CONTENT-REGEX COMO AS DE CIMA
+#
+#   As entradas acima casam com o CONTEUDO exacto de uma linha. Aqui o achado nao e' um valor de
+#   configuracao: e' (a) uma linha de PROSA da evidencia E-1395 que menciona o proprio scanner, e
+#   (b) uma FIXTURE de teste (`internal/multillm/signing_identity_file_test.go`) cujo par
+#   campo/valor existe para provar redaccao. Colar o valor aqui para o poder casar punha-o de volta
+#   na arvore -- o oposto do que se quer.
+#
+# PORQUE NAO ENFRAQUECE O GATE
+#
+#   `rules = ["generic-api-key"]` limita a excepcao a UMA regra de baixa precisao. As regras de
+#   ALTA precisao (prefixos `ghp_`/`sk-`/`AKIA`/`xox`) continuam a disparar nestes dois ficheiros:
+#   uma credencial real ali dentro continua a falhar o gate. `paths` sao caminhos EXACTOS, nao
+#   globs: nao abrange ficheiros novos nem subdiretorios.
+#
+# ESTADO DO VALOR
+#
+#   Nenhuma das duas linhas existe na arvore de trabalho do HEAD -- o achado vive no HISTORICO,
+#   que e' imutavel nesta missao (sem force-push). Classificado em E-1445: fixture sintetica de
+#   teste (32 chars alnum, fora de formato hex, entropia 4.15 bits/char, sem prefixo de emissor),
+#   reproduzida por mim na documentacao de evidencias em dois commits -- defeito de higiene
+#   documental registado para a auditoria independente, nao credencial viva.
+#
+# REVISAO: junto com as restantes, em 2027-01-31. Remover e reclassificar se o valor voltar a
+# aparecer na arvore (entao e' bug de codigo, nao historico).
+[[allowlists]]
+  description = "E-1445: prosa de evidencia e fixture de teste, apenas para generic-api-key"
+  rules = ["generic-api-key"]
+  paths = [
+    '''docs/mission/HADES_EVIDENCE_INDEX\.md''',
+    '''internal/multillm/signing_identity_file_test\.go''',
+  ]
