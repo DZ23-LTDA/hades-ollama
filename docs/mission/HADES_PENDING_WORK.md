@@ -6534,3 +6534,9 @@ com que autorizacao?); o executor consulta, o gatilho nao existe.
 um com o bloqueio concreto e com o que **nao** e'). Fecha com «o que isto NAO autoriza»: nao chamar
 «pronto» ao nucleo (3 items implementados mas nao expostos), nao transformar ADIADA em BLOCKED, nao
 fechar o veredito.
+
+**Actualizacao de retomada (E-1500):** **o pare esta' fechado nos QUATRO caminhos** -- `ConstruirAlvos`
+(multi-alvo) e `StageFullstack` (staging) passaram a consulta-lo; o staging recusa **antes** de
+`ctx.Err()`, da senha e da versao publicada (*um sistema parado nao precisa de saber se a senha e'
+valida*). **3 testes PASS**, lint 0, build 0. Os dois commits (`33a42bba1`, `f95ec6d1b`) estao
+**locais**: o push sai junto com esta evidencia, quando o run de `a525c6481` fechar.
