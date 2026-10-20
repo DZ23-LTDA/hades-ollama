@@ -291,12 +291,16 @@ Exigir ([int]$r1.StatusCode -eq 200 -and [int]$r2.StatusCode -eq 200) ('duas ses
 Exigir ($t1 -eq $t2) 'as duas sessoes recebem estado BYTE-IDENTICO'
 
 # --- fase 10 (ADIADA): duas identidades no mesmo tenant -------------------------
-# A fatia anterior abriu `organization_id` na rota de dev, mas o E2E mostrou um SEGUNDO bloqueio:
-#   1. os TOKENS nao sobrevivem ao reinicio do servidor (401 depois de reiniciar);
-#   2. a ACL e' lida do AMBIENTE DO PROCESSO, logo incluir uma identidade nova exige reiniciar;
-#   3. e depois do reinicio nao consigo token novo para o mesmo utilizador (e-mail duplicado).
-# Ou seja: o ciclo "criar identidade -> reiniciar com ACL -> usar token" nao fecha.
-# Fase retirada para nao deixar o E2E vermelho por uma lacuna de superficie ja' diagnosticada.
+# Progresso desta ronda, e CORRECCAO do diagnostico anterior:
+#   * `CreateUser` e' IDEMPOTENTE por e-mail (devolve o utilizador existente) -- portanto o
+#     "nao consigo re-login" que eu escrevi na ronda anterior estava ERRADO. O unico bloqueio
+#     real era a nao-persistencia dos TOKENS entre reinicios;
+#   * com adesao idempotente no devToken, o re-login passou a funcionar de facto: mesma conta,
+#     token novo, mesmo tenant (provado: "re-login de C funciona" e "A e o MESMO utilizador").
+# Sintoma NOVO, ainda sem causa: depois do re-login, as chamadas ao vault devolvem 401 -- apesar
+# de os tokens terem sido emitidos pelo servidor em execucao. Suspeita a confirmar: listener
+# antigo a segurar a porta 11500 (o health check passa no processo velho).
+# Fase retirada para o E2E nao ficar vermelho por uma causa ainda nao diagnosticada.
 Parar
 Write-Host ('== fim: ' + $falhas + ' falha(s) ==')
 if ($falhas -gt 0) { exit 1 }

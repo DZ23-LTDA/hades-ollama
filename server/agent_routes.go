@@ -1798,6 +1798,15 @@ func (a *agentAPI) devToken(c *gin.Context) {
 		// fechado se nao existir (`os.ErrNotExist`), e o erro vira 400 -- nunca um tenant novo
 		// criado por engano com o id que o chamador pediu.
 		if _, errMembro := a.auth.AddMembership(user.ID, entrada, agent.RoleViewer); errMembro != nil {
+			// Adesao IDEMPOTENTE: se a organizacao existe mas o utilizador JA' e' membro, a rota
+			// continua -- e' o que permite RE-LOGIN (token novo para o mesmo utilizador no mesmo
+			// tenant) sem duplicar conta. Se a organizacao nao existe, falha fechado.
+			if !errors.Is(errMembro, os.ErrNotExist) {
+				if _, errAutor := a.auth.Authorize(user.ID, entrada, "read"); errAutor == nil {
+					organization = agent.Organization{ID: entrada}
+					goto emitir
+				}
+			}
 			writeAgentError(c, http.StatusBadRequest, errMembro)
 			return
 		}
@@ -1810,6 +1819,7 @@ func (a *agentAPI) devToken(c *gin.Context) {
 		}
 		organization = criada
 	}
+emitir:
 	raw, token, err := a.auth.IssueToken(user.ID, organization.ID, 24*time.Hour)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
