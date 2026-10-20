@@ -6723,3 +6723,10 @@ nao cria um `Pare`, logo em producao continua inerte ate' alguem o ligar.
 `os.Stat(destino)` = `IsNotExist`. **PASS**; lint 0; build 0. Limite declarado: **ninguem consegue
 ACIONAR o pare em producao** -- nao ha' rota nem UI para o gatilho, por decisao (quem pode parar tudo?
 com que autorizacao?); o executor consulta, o gatilho nao existe.
+
+**Actualizacao de retomada (E-1499):** **segmentacao de escopo registada** (REGRA 2) em
+`docs/mission/HADES_ESCOPO_NUCLEO_ADIADAS.md`: **NUCLEO** (7 items, cada um com o `E-` que o prova),
+**ADIADAS** (5, cada uma com a **decisao** que falta, nao com bloqueio) e **BLOCKED_EXTERNAL** (5, cada
+um com o bloqueio concreto e com o que **nao** e'). Fecha com «o que isto NAO autoriza»: nao chamar
+«pronto» ao nucleo (3 items implementados mas nao expostos), nao transformar ADIADA em BLOCKED, nao
+fechar o veredito.
