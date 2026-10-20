@@ -282,3 +282,43 @@ func idJaPresente(existente []byte, id string) bool {
 	}
 	return false
 }
+
+// ErrVersaoDivergente: o ficheiro mudou desde que o escritor o leu. Nao se resolve escolhendo um dos dois:
+// devolve-se o conflito a quem escreveu.
+var ErrVersaoDivergente = errors.New("memory note version diverged since it was read")
+
+// VersaoDaMemoria conta quantas vezes uma `memory_id` aparece no ficheiro de notas. Ausente = 0.
+//
+// E' deliberadamente contado por ocorrencia e nao por "numero de notas": se dois escritores acrescentarem a MESMA
+// memory_id (o caso da corrida), a segunda ocorrencia tem de ser visivel como duas, senao o conflito nao aparece.
+func VersaoDaMemoria(existente []byte, memoryID string) int {
+	if len(existente) == 0 || strings.TrimSpace(memoryID) == "" {
+		return 0
+	}
+	alvo := "memory_id: " + memoryID
+	n := 0
+	for _, linha := range strings.Split(strings.ReplaceAll(string(existente), "\r\n", "\n"), "\n") {
+		if strings.TrimSpace(linha) == alvo {
+			n++
+		}
+	}
+	return n
+}
+
+// AnexarComVersao e' o append com concorrencia optimista: so' escreve se o ficheiro ainda estiver na versao que
+// quem escreve leu. Sem isto, dois agentes que leram "ausente" anexam ambos e o ultimo a escrever ganha em silencio.
+//
+// Nao se confunde com `AnexarNotaIdempotente`, que responde a "o retry da MESMA operacao duplicou?" -- esta responde
+// a "outra operacao escreveu entretanto?". Sao perguntas diferentes e por isso sao funcoes diferentes.
+func AnexarComVersao(existente []byte, meta MetaDaNota, m Memoria, versaoEsperada int) ([]byte, error) {
+	atual := VersaoDaMemoria(existente, meta.MemoryID)
+	if atual != versaoEsperada {
+		return existente, fmt.Errorf("%w: memory_id %q esperada na versao %d, esta' na %d",
+			ErrVersaoDivergente, meta.MemoryID, versaoEsperada, atual)
+	}
+	novo, _, err := AnexarNotaIdempotente(existente, meta, m)
+	if err != nil {
+		return existente, err
+	}
+	return novo, nil
+}

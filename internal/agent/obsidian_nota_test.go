@@ -221,3 +221,61 @@ func TestIntegridadeDaNotaRecusaSemHash(t *testing.T) {
 		t.Fatalf("esperava ErrConteudoAlterado, veio %v", err)
 	}
 }
+
+// A versao conta OCORRENCIAS, nao notas: e' isso que torna a corrida visivel.
+func TestVersaoDaMemoriaContaOcorrencias(t *testing.T) {
+	if v := VersaoDaMemoria(nil, "mem-0001"); v != 0 {
+		t.Fatalf("ficheiro vazio devia dar versao 0, deu %d", v)
+	}
+	a, _, err := AnexarNotaIdempotente(nil, metaDeTeste(EscopoProject), fatoDeTeste())
+	if err != nil {
+		t.Fatalf("preparacao: %v", err)
+	}
+	if v := VersaoDaMemoria(a, "mem-0001"); v != 1 {
+		t.Fatalf("esperava versao 1, deu %d", v)
+	}
+}
+
+// O caso que a idempotencia NAO cobre: dois escritores leram "ausente" e ambos tentam escrever.
+// O segundo tem de receber conflito -- nao pode ganhar em silencio.
+func TestAnexoComVersaoRecusaConflito(t *testing.T) {
+	meta := metaDeTeste(EscopoProject)
+	m := fatoDeTeste()
+
+	primeiro, err := AnexarComVersao(nil, meta, m, 0)
+	if err != nil {
+		t.Fatalf("primeira escrita devia passar na versao 0: %v", err)
+	}
+
+	// Segundo escritor com a MESMA leitura (versao 0): conflito explicito, bytes intactos.
+	segundo, err := AnexarComVersao(primeiro, meta, m, 0)
+	if !errors.Is(err, ErrVersaoDivergente) {
+		t.Fatalf("esperava ErrVersaoDivergente, veio %v", err)
+	}
+	if !bytes.Equal(primeiro, segundo) {
+		t.Fatalf("a recusa de conflito alterou os bytes")
+	}
+}
+
+// Quem releu a versao corrente escreve -- a guarda nao pode bloquear tudo.
+func TestAnexoComVersaoAceitaVersaoCorrente(t *testing.T) {
+	meta := metaDeTeste(EscopoProject)
+	m := fatoDeTeste()
+
+	primeiro, err := AnexarComVersao(nil, meta, m, 0)
+	if err != nil {
+		t.Fatalf("primeira escrita: %v", err)
+	}
+	outra := fatoDeTeste()
+	outra.ID = "mem-0002"
+	meta2 := metaDeTeste(EscopoProject)
+	meta2.MemoryID = "mem-0002"
+
+	segundo, err := AnexarComVersao(primeiro, meta2, outra, 0)
+	if err != nil {
+		t.Fatalf("id novo na versao 0 devia passar: %v", err)
+	}
+	if len(segundo) <= len(primeiro) {
+		t.Fatalf("os bytes nao cresceram")
+	}
+}
