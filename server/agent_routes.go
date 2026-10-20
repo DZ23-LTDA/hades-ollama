@@ -1770,9 +1770,18 @@ func (a *agentAPI) devToken(c *gin.Context) {
 		return
 	}
 	var input struct {
-		Email        string `json:"email"`
-		Name         string `json:"name"`
+		Email string `json:"email"`
+		Name  string `json:"name"`
+		// Organization cria uma organizacao NOVA (comportamento antigo).
 		Organization string `json:"organization"`
+		// OrganizationID entra num tenant JA' EXISTENTE, com o papel minimo (viewer).
+		//
+		// PORQUE ISTO EXISTE: sem isto, cada chamada criava uma organizacao propria e nao havia
+		// forma de pôr dois utilizadores no MESMO tenant -- o que bloqueava as jornadas de
+		// "duas identidades leem a mesma memoria permitida" e "sem scope, nega e nao infere".
+		// O papel e' `viewer` de proposito: a rota de desenvolvimento serve para TESTAR
+		// isolamento, nao para conceder poder.
+		OrganizationID string `json:"organization_id"`
 	}
 	if err := decodeJSON(c, &input); err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
@@ -1783,10 +1792,23 @@ func (a *agentAPI) devToken(c *gin.Context) {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	organization, _, err := a.auth.CreateOrganization(input.Organization, user)
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
+	var organization agent.Organization
+	if entrada := strings.TrimSpace(input.OrganizationID); entrada != "" {
+		// Entrar num tenant existente exige que a organizacao exista: `AddMembership` falha
+		// fechado se nao existir (`os.ErrNotExist`), e o erro vira 400 -- nunca um tenant novo
+		// criado por engano com o id que o chamador pediu.
+		if _, errMembro := a.auth.AddMembership(user.ID, entrada, agent.RoleViewer); errMembro != nil {
+			writeAgentError(c, http.StatusBadRequest, errMembro)
+			return
+		}
+		organization = agent.Organization{ID: entrada}
+	} else {
+		criada, _, errCriacao := a.auth.CreateOrganization(input.Organization, user)
+		if errCriacao != nil {
+			writeAgentError(c, http.StatusBadRequest, errCriacao)
+			return
+		}
+		organization = criada
 	}
 	raw, token, err := a.auth.IssueToken(user.ID, organization.ID, 24*time.Hour)
 	if err != nil {
