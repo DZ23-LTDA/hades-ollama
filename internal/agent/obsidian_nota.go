@@ -97,6 +97,11 @@ func MontarNota(meta MetaDaNota, m Memoria) ([]byte, error) {
 	if err := m.Validar(); err != nil {
 		return nil, err
 	}
+	// Antes de escrever: uma nota duravel nao pode levar segredo para o disco. Recusa-se em vez de redigir em
+	// silencio -- redigir mudaria o que o humano escreveu e faria o content_hash mentir sobre o conteudo.
+	if err := VerificarSemSegredos(m); err != nil {
+		return nil, err
+	}
 	if strings.TrimSpace(string(meta.Escopo)) == "" {
 		return nil, ErrEscopoAusente
 	}
@@ -321,4 +326,20 @@ func AnexarComVersao(existente []byte, meta MetaDaNota, m Memoria, versaoEsperad
 		return existente, err
 	}
 	return novo, nil
+}
+
+// ErrSegredoNaNota: a nota foi recusada porque o corpo transporta material com forma de credencial.
+var ErrSegredoNaNota = errors.New("memory note refused: content carries credential-shaped material")
+
+// VerificarSemSegredos usa o DLP canonico (`ScanDLP`, secrets.go) -- nao ha um segundo detetor.
+//
+// A recusa e' deliberada e e' o oposto de redigir: numa nota duravel, redigir em silencio altera o que o humano
+// escreveu e faz o `content_hash` descrever um conteudo que nunca existiu. O erro diz QUANTAS ocorrencias, nunca
+// quais nem os valores.
+func VerificarSemSegredos(m Memoria) error {
+	achados := ScanDLP(m.Conteudo)
+	if len(achados) == 0 {
+		return nil
+	}
+	return fmt.Errorf("%w: %d ocorrencia(s) em memory_id %q", ErrSegredoNaNota, len(achados), m.ID)
 }

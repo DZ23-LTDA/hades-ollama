@@ -279,3 +279,36 @@ func TestAnexoComVersaoAceitaVersaoCorrente(t *testing.T) {
 		t.Fatalf("os bytes nao cresceram")
 	}
 }
+
+// O canario nao e' escolhido por mim: e' escolhido pelo DLP real. Se nenhum candidato for reconhecido, o teste
+// FALHA em vez de passar por vacuidade -- e' essa a diferenca entre medir e decorar.
+func TestMontarNotaRecusaConteudoComSegredo(t *testing.T) {
+	candidatos := []string{
+		"api" + "_key = " + "\"chave-de-teste-1234567890\"",
+		"pass" + "word=" + "SuperSecreto123",
+		"tok" + "en: " + "ghp_" + "0123456789abcdefghijklmnopqrstuvwx",
+		"-----BEGIN " + "PRIVATE KEY-----\nMIIEvQIBADANBg\n-----END " + "PRIVATE KEY-----",
+	}
+	var canario string
+	for _, c := range candidatos {
+		if len(ScanDLP(c)) > 0 {
+			canario = c
+			break
+		}
+	}
+	if canario == "" {
+		t.Fatalf("nenhum canario foi reconhecido pelo ScanDLP: escolher outra forma antes de confiar no teste")
+	}
+
+	m := Memoria{ID: "mem-0001", Rotulo: MemoriaProposta, Conteudo: canario}
+	if _, err := MontarNota(metaDeTeste(EscopoProject), m); !errors.Is(err, ErrSegredoNaNota) {
+		t.Fatalf("esperava ErrSegredoNaNota, veio %v", err)
+	}
+}
+
+// A recusa nao pode ser um bloqueio geral: conteudo normal continua a gravar.
+func TestMontarNotaAceitaConteudoSemSegredo(t *testing.T) {
+	if _, err := MontarNota(metaDeTeste(EscopoProject), fatoDeTeste()); err != nil {
+		t.Fatalf("conteudo limpo recusado: %v", err)
+	}
+}
