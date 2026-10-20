@@ -283,6 +283,13 @@ func (p ProviderDeBuildGo) ConstruirAlvos(
 	plano PlanoDoProjeto,
 	opcoes OpcoesDeBuild,
 ) (ResultadoDeBuild, error) {
+	// O MESMO TRAVAO, ANTES DO PRIMEIRO ALVO.
+	//
+	// `Construir` ja' consulta o pare. Este caminho constroi VARIOS alvos, e parar entre dois seria
+	// produzir metade do artefacto com o pare acionado -- pior do que nao produzir nada.
+	if err := opcoes.Pare.AutorizarExecucao("build multi-alvo"); err != nil {
+		return ResultadoDeBuild{}, err
+	}
 	agregado := ResultadoDeBuild{}
 	if len(plano.Alvos) == 0 {
 		agregado.SemArtefacto = true

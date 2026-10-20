@@ -104,3 +104,32 @@ func escreverProjectoMinimo(t *testing.T, directorio string) {
 		t.Fatalf("escrever main.go: %v", err)
 	}
 }
+
+// O caminho MULTI-ALVO tem o mesmo travao, e para antes do primeiro alvo.
+func TestConstruirAlvosRecusaComPareAcionado(t *testing.T) {
+	raiz := t.TempDir()
+	destino := filepath.Join(raiz, "dist-multi-que-nao-pode-existir")
+	escreverProjectoMinimo(t, raiz)
+
+	pare := NovoPareDeEmergencia()
+	if err := pare.Acionar("paragem multi-alvo", "operador"); err != nil {
+		t.Fatalf("acionar: %v", err)
+	}
+
+	plano := PlanoDoProjeto{Alvos: []PlanoPorAlvo{{Alvo: "linux"}}}
+	_, err := ProviderDeBuildGo{}.ConstruirAlvos(t.Context(), plano, OpcoesDeBuild{
+		Raiz:    raiz,
+		Destino: destino,
+		DryRun:  true,
+		Pare:    pare,
+	})
+	if !errors.Is(err, ErrExecucaoParada) {
+		t.Fatalf("esperava ErrExecucaoParada no caminho multi-alvo, veio %v", err)
+	}
+	if !strings.Contains(err.Error(), "paragem multi-alvo") {
+		t.Fatalf("a recusa tem de citar o motivo: %q", err.Error())
+	}
+	if _, errStat := os.Stat(destino); !os.IsNotExist(errStat) {
+		t.Fatalf("o destino NAO pode ter sido criado (stat: %v)", errStat)
+	}
+}
