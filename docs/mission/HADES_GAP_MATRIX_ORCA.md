@@ -163,7 +163,7 @@ E-1487). O estado `MEDIDO` quer dizer *lido no codigo e verificado por comando*,
 | **B8** | `/goal` e comando real (UI + endpoint de goals); a **conversao conversa->goal com motivo explicado NAO existe** |
 | **C1** | build e instalacao reais; `SigningProvider` **nao assina (proibido)** e implementa `AvaliarCertificado`; o certificado A1 da DZ23 **nao tem o EKU de Code Signing**; publicacao nao existe |
 | **C2** | `ComputerUse` e componente instalavel, nao perfil de autonomia; **sem** botao de emergencia; allowlist e revogacao existem noutros objectos (OAuth, persona) e estao testadas |
-| **C3** | validadores **ligados** (`builder.go` -> `ValidarSegurancaDosComponentes`), `sandbox` presente **e com teste de seguranca**; falta **CSP** |
+| **C3** | validadores **ligados** (`builder.go` -> `ValidarSegurancaDosComponentes`), `sandbox` presente **e com teste de seguranca**; **CSP minima ligada** (`object-src`, `base-uri`, `frame-ancestors`, `E-E-1492`) -- `script-src`/`style-src`/`connect-src` ficam de fora por decisao declarada |
 | **C4** | `--json` de uma linha testado; contrato de exit codes documentado como **observado**; 11 testes da CLI passam |
 | **C5** | **11** presets de missao, **19** testes, CLI `preset list/show` ligada ao catalogo |
 | **C6** | superficie com tenant (`/api/agent/v1/*`) guardada por `authMiddleware`; superficie OpenAI (`/v1/*`) servida por middleware global **sem conceito de organizacao**, com bind por omissao em `127.0.0.1` |

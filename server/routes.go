@@ -1995,6 +1995,8 @@ func (s *Server) GenerateRoutes() (http.Handler, error) {
 
 	r := gin.Default()
 	r.HandleMethodNotAllowed = true
+	// Cabecalhos de seguranca PRIMEIRO: aplicam-se a todas as rotas registadas a seguir.
+	garantirCabecalhosDeSeguranca(r)
 	r.Use(
 		cors.New(corsConfig),
 		allowedHostsMiddleware(s.addr),

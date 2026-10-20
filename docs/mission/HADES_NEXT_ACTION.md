@@ -5486,3 +5486,11 @@ diz **«de 32 camadas»** e o parcial fica 1..31; com 24 GB devolve **32 de 32**
 delega em 100 (compatibilidade). **9 testes PASS**, `golangci-lint` 0 achados, `go build` 0. **E o
 teste novo cacou um defeito meu**: `TestCabeInteiroDevolveOTotalReal` falhou com «32 de **0**» porque o
 retorno do caso comum nao preenchia `CamadasTotais` -- corrigido antes do commit.
+
+**Actualizacao de retomada (E-1492):** **CSP minima LIGADA** -- a ultima lacuna de seguranca que a
+matriz media. `server/cabecalhos_de_seguranca.go` com **tres** directivas (`object-src 'none'`,
+`base-uri 'self'`, `frame-ancestors 'self'`) + `X-Content-Type-Options: nosniff`, ligadas antes de
+qualquer rota. **3 testes PASS**, incluindo um que **falha de proposito** se alguem acrescentar
+`script-src`/`style-src`/`connect-src`/`default-src` sem medir o que a UI carrega. `go test ./server`
+exit 0 (50s); `golangci-lint ./server/...` 0 achados. Limite declarado: e' CSP **parcial** -- as
+directivas que restringem a SPA ficam de fora, e a verificacao num browser e' o `Web E2E` do CI.
