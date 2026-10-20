@@ -24,7 +24,12 @@ type RecomendacaoDeExecucao struct {
 	//
 	// Antes desta fatia `CamadasNaGPU` so' devolvia 0 ou 100: ou cabia, ou nao se dizia nada.
 	// Metade dos casos reais e' exactamente o meio -- cabe em parte, e e' preciso saber quanto.
-	Parcial        bool   `json:"parcial"`
+	Parcial bool `json:"parcial"`
+	// CamadasTotais e' o total que da' sentido a CamadasNaGPU: sem ele, "12 camadas" nao diz 12 de quantas.
+	//
+	// O `E-1490` declarou como limite: o parcial usava a proporcao do peso e nao o numero real de
+	// camadas do GGUF. Com o numero real, o parcial deixa de ser uma percentagem disfarcada.
+	CamadasTotais  int    `json:"camadas_totais"`
 	VRAMUsadaBytes uint64 `json:"vram_usada_bytes"`
 	VRAMLivreBytes uint64 `json:"vram_livre_bytes"`
 	Aviso          string `json:"aviso"`
@@ -63,6 +68,17 @@ const (
 // Preferir qualidade (quantizacao maior) e so' depois contexto -- e' a ordem em que um erro de
 // contexto se nota (resposta truncada) e um erro de quantizacao se nota (qualidade).
 func RecomendarParaVRAM(vramBytes uint64, parametrosB float64) (RecomendacaoDeExecucao, error) {
+	return RecomendarParaVRAMComCamadas(vramBytes, parametrosB, 100)
+}
+
+// RecomendarParaVRAMComCamadas e' a mesma recomendacao com o numero REAL de camadas do modelo.
+//
+// E' a diferenca entre "12 de 100" (percentagem disfarcada de contagem) e "12 de 32" (o que
+// quem usa GGUF precisa de ler para decidir `num_gpu`).
+func RecomendarParaVRAMComCamadas(vramBytes uint64, parametrosB float64, camadasTotais int) (RecomendacaoDeExecucao, error) {
+	if camadasTotais < 1 {
+		return RecomendacaoDeExecucao{}, fmt.Errorf("%w: numero de camadas invalido (%d)", ErrVRAMDesconhecida, camadasTotais)
+	}
 	if vramBytes == 0 {
 		return RecomendacaoDeExecucao{}, ErrVRAMDesconhecida
 	}
@@ -83,7 +99,7 @@ func RecomendarParaVRAM(vramBytes uint64, parametrosB float64) (RecomendacaoDeEx
 			if necessario > vramBytes {
 				continue
 			}
-			camadas := 100
+			camadas := camadasTotais
 			usada := necessario
 			aviso := ""
 			if pesoDoModelo > vramBytes {
@@ -103,6 +119,7 @@ func RecomendarParaVRAM(vramBytes uint64, parametrosB float64) (RecomendacaoDeEx
 					formatarBytes(folga), formatarBytes(necessario), formatarBytes(vramBytes),
 					formatarBytes(vramBytes-usada)),
 				EContabilizado: true,
+				CamadasTotais:  camadasTotais,
 			}, nil
 		}
 	}
@@ -128,18 +145,19 @@ func RecomendarParaVRAM(vramBytes uint64, parametrosB float64) (RecomendacaoDeEx
 				menor.nome, contextoPadrao, formatarBytes(peso), formatarBytes(vramBytes), formatarBytes(folgaMinima)),
 			EContabilizado: false,
 			Parcial:        false,
+			CamadasTotais:  camadasTotais,
 		}, nil
 	}
 
 	disponivelParaPeso := vramBytes - folgaMinima
-	camadas := int(float64(disponivelParaPeso) * 100 / float64(peso))
-	if camadas > 99 {
-		camadas = 99
+	camadas := int(float64(disponivelParaPeso) * float64(camadasTotais) / float64(peso))
+	if camadas > camadasTotais-1 { // "todas" e' o caminho de "cabe inteiro"
+		camadas = camadasTotais - 1
 	}
 	if camadas < 1 {
 		camadas = 1
 	}
-	usada := uint64(float64(peso) * float64(camadas) / 100)
+	usada := uint64(float64(peso) * float64(camadas) / float64(camadasTotais))
 	if usada > disponivelParaPeso {
 		usada = disponivelParaPeso
 	}
@@ -150,14 +168,15 @@ func RecomendarParaVRAM(vramBytes uint64, parametrosB float64) (RecomendacaoDeEx
 		VRAMUsadaBytes: usada,
 		VRAMLivreBytes: vramBytes - usada,
 		Aviso: fmt.Sprintf(
-			"offload PARCIAL: %d de 100 camadas na GPU; as restantes correm em CPU (mais lento, e a qualidade nao muda)",
-			camadas),
+			"offload PARCIAL: %d de %d camadas na GPU; as restantes correm em CPU (mais lento, e a qualidade nao muda)",
+			camadas, camadasTotais),
 		Motivo: fmt.Sprintf(
-			"nao cabe inteiro: %s com contexto %d precisa ~%s e ha' %s medidos; sobram %s para o peso, o que da' %d de 100 camadas na GPU",
+			"nao cabe inteiro: %s com contexto %d precisa ~%s e ha' %s medidos; sobram %s para o peso, o que da' %d de %d camadas na GPU",
 			menor.nome, contextoPadrao, formatarBytes(peso+folgaMinima), formatarBytes(vramBytes),
-			formatarBytes(disponivelParaPeso), camadas),
+			formatarBytes(disponivelParaPeso), camadas, camadasTotais),
 		EContabilizado: false,
 		Parcial:        true,
+		CamadasTotais:  camadasTotais,
 	}, nil
 }
 

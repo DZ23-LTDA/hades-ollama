@@ -6476,3 +6476,10 @@ com 0 camadas. **5 testes PASS** (2 novos + monotonicidade das camadas + 1 que *
 `TestQuandoNaoCabeDizQueNaoCabe` -> `TestQuandoNaoCabeInteiroDaOParcial`, porque a funcao passou a
 calcular o parcial). `golangci-lint` 0 achados; `go build` 0. Limites: parcela por proporcao do peso
 (nao numero real de camadas), folga de contexto fixa, e **nada exposto** (sem rota/doctor).
+
+**Actualizacao de retomada (E-1491):** **camadas reais** -- `RecomendarParaVRAMComCamadas(vram, params,
+camadasTotais)` fecha o segundo limite declarado no `E-1490`: com 32 camadas e 4 GB para 70 B o aviso
+diz **«de 32 camadas»** e o parcial fica 1..31; com 24 GB devolve **32 de 32**. `RecomendarParaVRAM`
+delega em 100 (compatibilidade). **9 testes PASS**, `golangci-lint` 0 achados, `go build` 0. **E o
+teste novo cacou um defeito meu**: `TestCabeInteiroDevolveOTotalReal` falhou com «32 de **0**» porque o
+retorno do caso comum nao preenchia `CamadasTotais` -- corrigido antes do commit.
