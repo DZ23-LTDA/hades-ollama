@@ -148,3 +148,53 @@ func (a *agentAPI) appendMemoriaNoVault(c *gin.Context) {
 		c.JSON(http.StatusCreated, gin.H{"ok": true, "escreveu": escreveu})
 	}
 }
+
+// LerDoVaultGovernado trata GET /memory/vault/read.
+//
+// Mesma regra do append: identidade e organizacao vem do contexto do middleware, nunca da query nem
+// do corpo. Negacao de permissao, nota inexistente e nota de outro tenant devolvem a MESMA resposta
+// (403) -- distinguir entre elas entregaria a existencia por omissao.
+func (a *agentAPI) lerMemoriaDoVault(c *gin.Context) {
+	raiz := strings.TrimSpace(os.Getenv("HADES_VAULT_ROOT"))
+	if raiz == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "vault_memory_disabled"})
+		return
+	}
+	identidade, ok := IdentidadeDaSessao(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "session identity required"})
+		return
+	}
+	tenant, ok := OrganizacaoDaSessao(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "session organization required"})
+		return
+	}
+	politica, erroDePolitica := agent.ParsearPoliticaDeAcesso(os.Getenv("HADES_VAULT_ACL"))
+	if erroDePolitica != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "vault_acl_invalid"})
+		return
+	}
+	relativo := strings.TrimSpace(c.Query("relativo"))
+	if relativo == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "relativo is required"})
+		return
+	}
+
+	leitura := agent.LeituraGovernada{Raiz: raiz, Politica: politica}
+	memoria, err := leitura.Ler(agent.PedidoDeLeitura{Identidade: identidade, Tenant: tenant, Relativo: relativo})
+	switch {
+	case errors.Is(err, agent.ErrAcessoNegado):
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+	case errors.Is(err, agent.ErrForaDaRaiz):
+		c.JSON(http.StatusBadRequest, gin.H{"error": "path outside the vault root"})
+	case errors.Is(err, agent.ErrIdentidadeDeSessaoAusente), errors.Is(err, agent.ErrTenantDaSessaoAusente):
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "session scope required"})
+	case errors.Is(err, agent.ErrRaizDoVaultAusente):
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "vault_memory_disabled"})
+	case err != nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "vault read failed"})
+	default:
+		c.JSON(http.StatusOK, memoria)
+	}
+}

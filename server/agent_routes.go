@@ -634,6 +634,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// Memoria governada do vault: identidade e organizacao vem do `authMiddleware`,
 	// nunca do corpo. Sem `HADES_VAULT_ROOT` a rota fica desligada (503).
 	group.POST("/memory/vault/append", a.appendMemoriaNoVault)
+	group.GET("/memory/vault/read", a.lerMemoriaDoVault)
 	group.GET("/grok/status", a.grokStatus)
 	group.GET("/config/safe", a.safeConfig)
 	group.GET("/diagnostics", a.diagnostics)
