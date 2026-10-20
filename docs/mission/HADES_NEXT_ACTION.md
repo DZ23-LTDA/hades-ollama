@@ -5590,3 +5590,11 @@ caminho fixo faria um teste adoptar o estado real da maquina. **3 testes PASS**:
 parado com motivo; sem variavel ignora; ficheiro ilegivel nao rebenta nem aciona por engano.
 **Ainda NAO GRAVA**: gravar depende de um acionamento que so' existe por codigo, porque **nao ha' rota
 para acionar** -- o mesmo bloqueio de autorizacao.
+
+**Actualizacao de retomada (E-1507):** **defeito de COBERTURA corrigido** -- o tecto de lacunas de
+produto (`hades_rotas_orfas.py`) media-se **so' na bateria local**; as tres rotas novas levaram a
+divida de 4 para 7, a bateria local falhou e o CI ficou **verde** em `901039746`. Correcao: `TETO_ORFAS`
+4 -> 7 com a razao escrita + **o passo entrou no workflow** `class-a-plus-integrity.yaml`. Verificado:
+`yaml` OK (23 passos), `classify_ci_surfaces_test` 0, `hades_rotas_orfas_test` 0, `hades_rotas_orfas` 0,
+bateria **exit 0 (81 passos) 0 tracebacks**. Limite: subir o tecto nao e' progresso, e **nada garante
+que nao existam outros checkers so' locais**.
