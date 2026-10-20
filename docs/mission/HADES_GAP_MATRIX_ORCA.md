@@ -89,24 +89,24 @@ Colunas: **capacidade** · **fonte no Orca/OpenJarvis** · **situação HADES** 
 | # | Capacidade | Fonte | Situação HADES | Lacuna real | Decisão | Evidência |
 |---|---|---|---|---|---|---|
 | B1 | Interface canónica de inferência | `[D]` README «Personal AI, On Personal Devices» | **PARCIAL** — **MEDIDO (E-1463): 12 metodos publicos, 3 tipos de provider (openai-compatible/anthropic/cli), 28 ficheiros de teste, 164 PASS** (`internal/multillm.Registry`) | localidade explícita além de `AllowPrivate` | **ADAPTAR** | FASE 29 |
-| B2 | Detecção de hardware e recomendação | `[C]` `VRAM` 27 no HADES | **PARCIAL** | recomendação de quantização/contexto/offload a partir de VRAM medida | **ADAPTAR** | FASE 16 |
+| B2 | Detecção de hardware e recomendação | `[C]` `VRAM` 27 no HADES | **MEDIDO** | recomendação de quantização/contexto/offload a partir de VRAM medida | **ADAPTAR** | FASE 16 |
 | B3 | Memória com fontes e escopos | `[D]` | **PARCIAL** — **MEDIDO (E-1464): 20 ficheiros, 9 escopos (SESSION..SHARED_AUTHORIZED), Fonte/Aprovador/ContentHash como campos, 53 PASS; a imposicao do escopo esta' na ACL, nao no tipo** (`internal/agent/memory*`, 20 ficheiros) | `ObsidianMemoryAdapter` + 12 E2E da FASE 17.1 | **ADAPTAR** | FASE 17.1 |
 | B4 | Traces auditáveis e aprendizado medido | `[D]` | **PARCIAL** (2 ficheiros) | gate de 10 passos para política aprendida | **ADAPTAR** | FASE 18 |
 | B5 | Skills com quarentena e benchmark | `[D]` | **PARCIAL** — **MEDIDO (E-1465): 7 ficheiros, 25 PASS (com recusas de travessia/duplicado); quarentena existe para PERSONAS, nao para skills; benchmark de skills AUSENTE** (`skill*` 7 ficheiros) | comparar sem/original/optimizada com várias seeds | **ADAPTAR** | FASE 20 |
 | B6 | Eficiência e custo medidos | `[D]` | **PARCIAL** (`metricas.go`) | energia/VRAM marcados `NAO_MEDIDOS` com método declarado | **ADAPTAR** | FASE 21 |
 | B7 | Agentes pessoais agendados/contínuos | `[D]` | **PARCIAL** — **MEDIDO (E-1466): 15 ficheiros (nao 21), 65 PASS com aprovacao+lease+dead-letter+compensacao; `continuo` NAO existe (sem laco perpetuo/daemon)** (`schedule*` 21 ficheiros) | anti-duplicação após perda de conexão | **ADAPTAR** | FASE 22 |
-| B8 | Assistente local-first | `[D]` descrição do repositório | **PARCIAL** | conversão conversa→/goal com motivo explicado | **ADAPTAR** | FASE 15 |
+| B8 | Assistente local-first | `[D]` descrição do repositório | **MEDIDO** | conversão conversa→/goal com motivo explicado | **ADAPTAR** | FASE 15 |
 
 ### Grupo C — Transversais do adendo (não vêm de nenhum dos dois)
 
 | # | Capacidade | Situação HADES | Lacuna real | Decisão | Evidência |
 |---|---|---|---|---|---|
-| C1 | Build/Signing/Publishing Hub | **PARCIAL** (2 ficheiros de toolchain) | matriz por target com build/assinatura/instalação reais | **ADOTAR** | FASE 28 |
-| C2 | Computer Use com perfis de autonomia | **PARCIAL** (`ComputerUse` 7) | botão de emergência, allowlist, revogação provada | **ADOTAR** | FASE 27 |
-| C3 | Design Studio com validação de conteúdo | **PARCIAL** (17 ficheiros + validador E-1241) | validadores **não ligados ao pipeline**; CSP/sandbox ausentes | **ADOTAR** | E-1241 |
-| C4 | CLI determinística | **PARCIAL** (`cmd/` 31 ficheiros) | `--json` estável + schemas + exit codes documentados | **ADAPTAR** | FASE 8 |
-| C5 | Presets verificáveis | **PARCIAL** (`preset*` 6 ficheiros) | 11 presets com testes e condições de conclusão | **ADAPTAR** | FASE 23 |
-| C6 | API compatível OpenAI | **PARCIAL** (`openai` 56, `/v1/chat` 33) | garantir que não contorna approvals nem tenant scope | **ADAPTAR** | FASE 24 |
+| C1 | Build/Signing/Publishing Hub | **PARCIAL** (2 ficheiros de toolchain) | **MEDIDO** | **ADOTAR** | FASE 28 |
+| C2 | Computer Use com perfis de autonomia | **PARCIAL** (`ComputerUse` 7) | **MEDIDO** | **ADOTAR** | FASE 27 |
+| C3 | Design Studio com validação de conteúdo | **PARCIAL** (17 ficheiros + validador E-1241) | **MEDIDO** | **ADOTAR** | E-1241 |
+| C4 | CLI determinística | **PARCIAL** (`cmd/` 31 ficheiros) | **MEDIDO** | **ADAPTAR** | FASE 8 |
+| C5 | Presets verificáveis | **PARCIAL** (`preset*` 6 ficheiros) | **MEDIDO** | **ADAPTAR** | FASE 23 |
+| C6 | API compatível OpenAI | **PARCIAL** (`openai` 56, `/v1/chat` 33) | **MEDIDO** | **ADAPTAR** | FASE 24 |
 
 ---
 
@@ -151,3 +151,19 @@ Pela ordem das lacunas comprovadas com busca negativa e maior risco:
 4. **A6** — receitas de ambiente versionadas por workspace.
 
 Veredito global: **`NOT_RELEASE_READY`**.
+
+## Medicoes consolidadas
+
+As oito linhas abaixo passaram de heranca/estimativa a **medicao com evidencia no indice** (E-1480 a
+E-1487). O estado `MEDIDO` quer dizer *lido no codigo e verificado por comando*, nao "feito".
+
+| linha | o que a medicao diz |
+| --- | --- |
+| **B2** | deteccao de VRAM e agendamento por VRAM **existem** (herdados); **recomendacao** de quantizacao/contexto/offload a partir da VRAM **nao existe**; `doctor` nao expoe VRAM |
+| **B8** | `/goal` e comando real (UI + endpoint de goals); a **conversao conversa->goal com motivo explicado NAO existe** |
+| **C1** | build e instalacao reais; `SigningProvider` **nao assina (proibido)** e implementa `AvaliarCertificado`; o certificado A1 da DZ23 **nao tem o EKU de Code Signing**; publicacao nao existe |
+| **C2** | `ComputerUse` e componente instalavel, nao perfil de autonomia; **sem** botao de emergencia; allowlist e revogacao existem noutros objectos (OAuth, persona) e estao testadas |
+| **C3** | validadores **ligados** (`builder.go` -> `ValidarSegurancaDosComponentes`), `sandbox` presente **e com teste de seguranca**; falta **CSP** |
+| **C4** | `--json` de uma linha testado; contrato de exit codes documentado como **observado**; 11 testes da CLI passam |
+| **C5** | **11** presets de missao, **19** testes, CLI `preset list/show` ligada ao catalogo |
+| **C6** | superficie com tenant (`/api/agent/v1/*`) guardada por `authMiddleware`; superficie OpenAI (`/v1/*`) servida por middleware global **sem conceito de organizacao**, com bind por omissao em `127.0.0.1` |

@@ -6451,3 +6451,12 @@ inexistente; o dono le saida e artefactos (200) e cancelar build terminado da 40
 logo `tree limpa` e `measured_commit == HEAD` **nao podem coexistir**, e o `--check` estrito falharia
 numa arvore limpa. O gate resolve **regenerando antes de comparar**. Segunda medicao: correr so' 2
 geradores da' estado **diferente** dos 10 -- a ordem e' obrigatoria.
+
+**Actualizacao de retomada (E-1480..E-1488):** **as oito linhas restantes da matriz foram medidas**
+(B2, B8, C1, C2, C3, C4, C5, C6 -> `MEDIDO` com evidencia no indice). O que as medicoes dizem que
+falta: **CSP** no Design Studio (C3; validadores e sandbox ja' existem e estao testados),
+**recomendacao a partir da VRAM** (B2; deteccao e uso existem), **perfis de autonomia + emergencia**
+para Computer Use (C2), **conversa->goal com motivo** (B8; `/goal` existe), e assinatura/publicacao
+bloqueadas por proibicao (C1; o `SigningProvider` mede a inaptidao do certificado A1 antes de
+assinar). E **o CI deu a verificacao prioritária**: `test (windows-latest)` = **success** (21:28:47Z
+em `fc148d435`), o job onde vive o `TestCaminhoAutorizadoRecusaTravessia`.
