@@ -3,6 +3,8 @@ package agent
 import (
 	"bytes"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -310,5 +312,84 @@ func TestMontarNotaRecusaConteudoComSegredo(t *testing.T) {
 func TestMontarNotaAceitaConteudoSemSegredo(t *testing.T) {
 	if _, err := MontarNota(metaDeTeste(EscopoProject), fatoDeTeste()); err != nil {
 		t.Fatalf("conteudo limpo recusado: %v", err)
+	}
+}
+
+// --- I/O confinado a directorio temporario (nunca o vault operacional) ---
+
+// Caminho que sai da raiz e' recusado ANTES de qualquer escrita. Inclui o caso que uma comparacao de strings
+// ingenua deixaria passar depois de normalizar.
+func TestCaminhoAutorizadoRecusaTravessia(t *testing.T) {
+	raiz := t.TempDir()
+	casos := []string{"../fora.md", "sub/../../fora.md", "/etc/passwd", "."}
+	for _, c := range casos {
+		if _, err := CaminhoAutorizado(raiz, c); !errors.Is(err, ErrForaDaRaiz) {
+			t.Fatalf("caminho %q devia ser recusado, veio %v", c, err)
+		}
+	}
+	ok, err := CaminhoAutorizado(raiz, "sub/nota.md")
+	if err != nil {
+		t.Fatalf("caminho legitimo recusado: %v", err)
+	}
+	if !strings.HasPrefix(ok, raiz) {
+		t.Fatalf("caminho resolvido fora da raiz: %q", ok)
+	}
+}
+
+// Grava, volta a ler, e prova que o segundo escritor com a mesma versao recebe conflito SEM alterar o ficheiro.
+func TestAnexarEmArquivoGravaELe(t *testing.T) {
+	raiz := t.TempDir()
+	meta := metaDeTeste(EscopoProject)
+	m := fatoDeTeste()
+
+	anexou, err := AnexarEmArquivo(raiz, "notas/memoria.md", meta, m, 0)
+	if err != nil || !anexou {
+		t.Fatalf("primeira escrita: anexou=%v err=%v", anexou, err)
+	}
+
+	dados, err := os.ReadFile(filepath.Join(raiz, "notas", "memoria.md"))
+	if err != nil {
+		t.Fatalf("ler de volta: %v", err)
+	}
+	meta2, m2, err := LerNota(dados)
+	if err != nil {
+		t.Fatalf("LerNota: %v", err)
+	}
+	if m2.ID != m.ID || meta2.Escopo != meta.Escopo {
+		t.Fatalf("identidade perdida no disco: %#v", m2)
+	}
+	if err := IntegridadeDaNota(meta2, m2); err != nil {
+		t.Fatalf("nota gravada nao passa a propria integridade: %v", err)
+	}
+
+	// Segundo escritor com a leitura antiga: conflito, e os bytes no disco NAO mudam.
+	if _, err := AnexarEmArquivo(raiz, "notas/memoria.md", meta, m, 0); !errors.Is(err, ErrVersaoDivergente) {
+		t.Fatalf("esperava ErrVersaoDivergente, veio %v", err)
+	}
+	depois, err := os.ReadFile(filepath.Join(raiz, "notas", "memoria.md"))
+	if err != nil {
+		t.Fatalf("reler: %v", err)
+	}
+	if !bytes.Equal(dados, depois) {
+		t.Fatalf("a recusa de conflito alterou o ficheiro em disco")
+	}
+}
+
+// Escrita atomica: depois do sucesso nao sobra temporario nenhum no directorio.
+func TestAnexarEmArquivoNaoDeixaTemporarios(t *testing.T) {
+	raiz := t.TempDir()
+	if _, err := AnexarEmArquivo(raiz, "memoria.md", metaDeTeste(EscopoProject), fatoDeTeste(), 0); err != nil {
+		t.Fatalf("escrita: %v", err)
+	}
+	entradas, err := os.ReadDir(raiz)
+	if err != nil {
+		t.Fatalf("ReadDir: %v", err)
+	}
+	if len(entradas) != 1 || entradas[0].Name() != "memoria.md" {
+		var nomes []string
+		for _, e := range entradas {
+			nomes = append(nomes, e.Name())
+		}
+		t.Fatalf("esperava apenas memoria.md, encontrei %v", nomes)
 	}
 }
