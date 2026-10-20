@@ -8,15 +8,15 @@
 
 | Número | Valor |
 | --- | --- |
-| **Commit medido** (`measured_commit`) | `bedb72b98ad8b76671ec2acfde3d1de65c12e86c` |
+| **Commit medido** (`measured_commit`) | `52e0983636cdba81d8782ec7bf4c3a70e68521d1` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
-| **Gerado em** (`measured_at`) | 2026-10-20T11:15:49-03:00 |
-| **Snapshot real** (`gate_head`) | `bedb72b98ad8b76671ec2acfde3d1de65c12e86c` |
+| **Gerado em** (`measured_at`) | 2026-10-20T11:20:50-03:00 |
+| **Snapshot real** (`gate_head`) | `52e0983636cdba81d8782ec7bf4c3a70e68521d1` |
 | **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
-| **Entradas nao commitadas** (`gate_dirty`) | 3 |
+| **Entradas nao commitadas** (`gate_dirty`) | 4 |
 | **O gate prova o snapshot candidato?** (`gate_snapshot`) | **MESMO** |
 | Estágios | 38 |
-| Linhas de evidência no índice | 1246 |
+| Linhas de evidência no índice | 1247 |
 | `COMPLETED_VERIFIED` | 14 |
 | `IN_PROGRESS` | 3 |
 | `BLOCKED_BY_EXTERNAL_DEPENDENCY` | 21 |
@@ -97,7 +97,7 @@ possível sem ele**.
 
 ## Referências
 
-- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (1246 linhas).
+- Índice de evidências: [`HADES_EVIDENCE_INDEX.md`](HADES_EVIDENCE_INDEX.md) (1247 linhas).
 - Estado da missão: [`HADES_MASTER_STATE.json`](HADES_MASTER_STATE.json).
 - Gate global: [`HADES_FINAL_RELEASE_GATE.md`](HADES_FINAL_RELEASE_GATE.md).
 - Gate intermediário de engenharia (estágio 22): [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md).
