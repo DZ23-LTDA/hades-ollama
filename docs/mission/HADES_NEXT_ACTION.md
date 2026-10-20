@@ -5509,3 +5509,10 @@ prova nada sobre a CSP: corre sobre vite preview.
 `audit_tenant_guards` passou **com** as fatias novas dentro, nao apenas isoladas. Os 10 ficheiros
 deixados alterados sao os **gerados** (regra do `E-1479`: nomeiam o commit anterior por construcao) e
 foram comitados junto.
+
+**Actualizacao de retomada (E-1496):** **C2 ganhou o travao** -- `PareDeEmergencia` com `Acionar(motivo,
+porQuem)`, `Bloqueia()`, `Estado()`, `Rearmar(porQuem, justificacao)`. Regras: fail-closed, **motivo
+obrigatorio** (`ErrPareSemMotivo`, tentativa recusada nao altera estado), **primeiro motivo vence**
+(tentativas contadas), **rearme exige justificacao** e o motivo original sobrevive. **7 testes PASS**
+(incluindo 50 goroutines). Limite declarado: **e' a primitiva, nao o botao** -- nao esta' ligada a
+nenhum executor, logo hoje protege **zero** chamadas.

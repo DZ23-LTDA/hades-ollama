@@ -162,7 +162,7 @@ E-1487). O estado `MEDIDO` quer dizer *lido no codigo e verificado por comando*,
 | **B2** | deteccao de VRAM e agendamento **existem** (herdados); a **recomendacao** existe agora como funcao testada (`RecomendarParaVRAM`, `E-1489`) mas **nao esta' exposta** em `doctor` nem em rota; `doctor` continua sem VRAM |
 | **B8** | `/goal` e comando real (UI + endpoint de goals); a **conversao conversa->goal com motivo explicado NAO existe** |
 | **C1** | build e instalacao reais; `SigningProvider` **nao assina (proibido)** e implementa `AvaliarCertificado`; o certificado A1 da DZ23 **nao tem o EKU de Code Signing**; publicacao nao existe |
-| **C2** | `ComputerUse` e componente instalavel, nao perfil de autonomia; **sem** botao de emergencia; allowlist e revogacao existem noutros objectos (OAuth, persona) e estao testadas |
+| **C2** | `ComputerUse` e componente instalavel, nao perfil de autonomia; **`PareDeEmergencia` existe agora** (`E-E-1496`: motivo obrigatorio, primeiro motivo vence, rearme justificado, 7 testes) mas **nao esta' ligado a nenhum executor** -- protege zero chamadas; allowlist e revogacao existem noutros objectos (OAuth, persona) e estao testadas |
 | **C3** | validadores **ligados** (`builder.go` -> `ValidarSegurancaDosComponentes`), `sandbox` presente **e com teste de seguranca**; **CSP minima ligada** (`object-src`, `base-uri`, `frame-ancestors`, `E-E-1492`) -- `script-src`/`style-src`/`connect-src` ficam de fora por decisao declarada |
 | **C4** | `--json` de uma linha testado; contrato de exit codes documentado como **observado**; 11 testes da CLI passam |
 | **C5** | **11** presets de missao, **19** testes, CLI `preset list/show` ligada ao catalogo |
