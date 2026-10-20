@@ -42,7 +42,10 @@ func TestJornadaLocalOnlyNaoEscapaNemPassthrough(t *testing.T) {
 			"local": {
 				Name: "local", Type: ProviderTypeOpenAICompatible,
 				BaseURL: local.URL, Locality: "local",
-				Paths: []string{"/v1/chat/completions"},
+				// Loopback exige permissao de rede privada: sem isto o guarda de egresso recusa
+				// o proprio upstream local ("resolved to a private or link-local address").
+				AllowPrivate: true,
+				Paths:        []string{"/v1/chat/completions"},
 			},
 			"remoto": {
 				Name: "remoto", Type: ProviderTypeOpenAICompatible,
@@ -93,13 +96,18 @@ func TestJornadaLocalOnlyNaoEscapaNemPassthrough(t *testing.T) {
 		t.Fatalf("o upstream local foi contactado %d vez(es) para um modelo remoto", n)
 	}
 
-	// NOTA HONESTA -- o POSITIVO desta jornada NAO esta aqui.
-	//
-	// Com `LocalOnly=true` e um modelo LOCAL declarado, o gateway tentou encaminhar e respondeu
-	// 502 sem o upstream de teste ter recebido nada. O caminho negativo (recusa) esta' provado;
-	// o positivo tem um defeito de encaminhamento ainda nao diagnosticado. Nao escrevo a
-	// assercao positiva para "passar": deixo-a em falta, com o sintoma registado.
-	//
-	//   Sintoma: 502, contador local = 0, contador remoto = 0.
-	//   Próximo passo: ler a construcao do URL de destino no middleware (depois de :144).
+	// POSITIVO: modelo LOCAL sob LOCAL_ONLY e' servido pelo upstream local.
+	recLocal := pedir("local/modelo")
+	if n := atomic.LoadInt32(&pedidosLocais); n != 1 {
+		t.Fatalf("o upstream local devia receber 1 pedido, recebeu %d (status %d)", n, recLocal.Code)
+	}
+	if recLocal.Code != http.StatusOK {
+		t.Fatalf("modelo local devia ser servido, veio %d (%s)", recLocal.Code, recLocal.Body.String())
+	}
+	if !strings.Contains(recLocal.Body.String(), "local") {
+		t.Fatalf("a resposta devia vir do provedor local: %s", recLocal.Body.String())
+	}
+	if n := atomic.LoadInt32(&pedidosRemotos); n != 0 {
+		t.Fatalf("o remoto recebeu %d pedido(s) no total: a jornada vazou", n)
+	}
 }
