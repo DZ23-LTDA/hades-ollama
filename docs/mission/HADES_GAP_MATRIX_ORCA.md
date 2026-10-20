@@ -88,7 +88,7 @@ Colunas: **capacidade** · **fonte no Orca/OpenJarvis** · **situação HADES** 
 
 | # | Capacidade | Fonte | Situação HADES | Lacuna real | Decisão | Evidência |
 |---|---|---|---|---|---|---|
-| B1 | Interface canónica de inferência | `[D]` README «Personal AI, On Personal Devices» | **PARCIAL** (`internal/multillm.Registry`) | localidade explícita além de `AllowPrivate` | **ADAPTAR** | FASE 29 |
+| B1 | Interface canónica de inferência | `[D]` README «Personal AI, On Personal Devices» | **PARCIAL** — **MEDIDO (E-1463): 12 metodos publicos, 3 tipos de provider (openai-compatible/anthropic/cli), 28 ficheiros de teste, 164 PASS** (`internal/multillm.Registry`) | localidade explícita além de `AllowPrivate` | **ADAPTAR** | FASE 29 |
 | B2 | Detecção de hardware e recomendação | `[C]` `VRAM` 27 no HADES | **PARCIAL** | recomendação de quantização/contexto/offload a partir de VRAM medida | **ADAPTAR** | FASE 16 |
 | B3 | Memória com fontes e escopos | `[D]` | **PARCIAL** (`internal/agent/memory*`, 20 ficheiros) | `ObsidianMemoryAdapter` + 12 E2E da FASE 17.1 | **ADAPTAR** | FASE 17.1 |
 | B4 | Traces auditáveis e aprendizado medido | `[D]` | **PARCIAL** (2 ficheiros) | gate de 10 passos para política aprendida | **ADAPTAR** | FASE 18 |

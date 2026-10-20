@@ -5348,3 +5348,7 @@ busca negativa escrita, portanto a `E-1459` duplicou-a em parte; o que ela acres
 matiz de que o unico `--sandbox` do repo e' **delegado a CLI externa** (codex). E o script dessa
 ronda imprimiu "matriz A6 actualizada" **sem que o replace tivesse casado** -- terceira vez nesta
 missao que se imprime sucesso de escrita sem verificar.
+
+**Actualizacao de retomada (E-1463):** B1 medido -- `internal/multillm.Registry` tem 12 metodos
+publicos, 3 tipos de provider (openai-compatible/anthropic/cli) e **164 testes PASS / 0 FAIL** em 28
+ficheiros. Interface canonica existe; nao garante uniformidade de comportamento entre os 3 adaptadores.
