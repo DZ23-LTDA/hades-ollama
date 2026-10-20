@@ -165,6 +165,30 @@ $lInjecao = Pedido 'Get' "$base/memory/vault/read?relativo=notas/quarentena.md" 
 Exigir ($lInjecao.Codigo -eq 200) ('leitura da nota nao confiavel -> 200 (veio ' + $lInjecao.Codigo + ')')
 Exigir ($lInjecao.Corpo -match 'ignore all previous instructions') 'o texto hostil volta como CONTEUDO, literalmente'
 Exigir ($lInjecao.Corpo -match 'UNTRUSTED_CONTENT') 'o rotulo UNTRUSTED_CONTENT acompanha a nota'
+# --- fase 5: reinicio, ficheiro parcialmente escrito e residuos ------------------
+# Truncar a nota no disco simula escrita interrompida. O servico tem de RECUSAR servir
+# o conteudo truncado (o hash deixa de bater) e o servidor tem de continuar vivo.
+$alvo = Join-Path $vault 'notas\decisao.md'
+$bytes = [System.IO.File]::ReadAllBytes($alvo)
+$metade = [int]($bytes.Length / 2)
+[System.IO.File]::WriteAllBytes($alvo, $bytes[0..$metade])
+
+Parar
+Exigir (Arrancar) 'servidor reinicia depois do ficheiro ficar parcial'
+
+$rParcial = Pedido 'Get' "$base/memory/vault/read?relativo=notas/decisao.md" $tokA $null
+Exigir ($rParcial.Codigo -eq 403) ('leitura de ficheiro parcial -> 403, indistinguivel de inexistente (veio ' + $rParcial.Codigo + ')')
+Exigir (-not ($rParcial.Corpo -match 'decisao tomada no chat A')) 'o conteudo truncado NAO e servido'
+
+$rIntacto = Pedido 'Get' "$base/memory/vault/read?relativo=notas/quarentena.md" $tokA $null
+Exigir ($rIntacto.Codigo -eq 200) 'o servidor continua a servir as outras notas'
+
+$locks = @(Get-ChildItem $vault -Recurse -Filter '*.lock' -ErrorAction SilentlyContinue)
+Exigir ($locks.Count -eq 0) ('sem ficheiros .lock residuais (ha ' + $locks.Count + ')')
+$temps = @(Get-ChildItem $vault -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '*.tmp*' -or $_.Name.StartsWith('.') })
+Exigir ($temps.Count -eq 0) ('sem temporarios residuais (ha ' + $temps.Count + ')')
+$restaurado = @(Get-ChildItem $vault -Recurse -File -ErrorAction SilentlyContinue).Count
+Exigir ($restaurado -eq 3) ('as 3 notas continuam no disco depois do reinicio (ha ' + $restaurado + ')')
 $ficheiros = @(Get-ChildItem $vault -Recurse -File -ErrorAction SilentlyContinue)
 Exigir ($ficheiros.Count -eq 3) ('o vault tem exactamente 3 ficheiros: decisao.md, versao.md e quarentena.md (tem ' + $ficheiros.Count + ')')
 

@@ -259,3 +259,30 @@ func TestHTTPNotaNaoConfiavelVoltaComoConteudo(t *testing.T) {
 		t.Fatalf("o rotulo UNTRUSTED_CONTENT devia acompanhar: %s", rec.Body.String())
 	}
 }
+
+// NEGATIVO: nota estruturalmente legivel mas com hash que ja' nao corresponde -> 409, e nunca
+// o conteudo adulterado. 500 esconderia a causa; 403 diria a coisa errada ("nao tens acesso").
+func TestHTTPNotaAdulteradaResponde409(t *testing.T) {
+	raiz := prepararVaultDeTeste(t)
+	router := montarRotaDoVault(t, "user-permitido", "org-1")
+	if rec := pedirAppend(t, router, `{"relativo":"notas/adulterada.md","conteudo":"original","rotulo":"FACT_VERIFIED","fonte":"chat-A"}`); rec.Code != http.StatusCreated {
+		t.Fatalf("preparacao falhou: %d (%s)", rec.Code, rec.Body.String())
+	}
+
+	alvo := filepath.Join(raiz, "notas", "adulterada.md")
+	dados, err := os.ReadFile(alvo)
+	if err != nil {
+		t.Fatalf("ler para adulterar: %v", err)
+	}
+	if err := os.WriteFile(alvo, append(dados, []byte("\nlinha inserida a mao\n")...), 0o600); err != nil {
+		t.Fatalf("adulterar: %v", err)
+	}
+
+	rec := pedirLeitura(t, router, "notas/adulterada.md")
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("nota adulterada devia ser 409, veio %d (%s)", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "content was modified") {
+		t.Fatalf("o 409 tem de dizer a causa: %s", rec.Body.String())
+	}
+}
