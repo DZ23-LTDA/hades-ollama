@@ -631,6 +631,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// Comandos slash (§6/§11.1): descoberta e execução pelo registro canônico.
 	group.GET("/commands", a.commandDiscovery)
 	group.POST("/commands", a.runCommand)
+	// Memoria governada do vault: identidade e organizacao vem do `authMiddleware`,
+	// nunca do corpo. Sem `HADES_VAULT_ROOT` a rota fica desligada (503).
+	group.POST("/memory/vault/append", a.appendMemoriaNoVault)
 	group.GET("/grok/status", a.grokStatus)
 	group.GET("/config/safe", a.safeConfig)
 	group.GET("/diagnostics", a.diagnostics)

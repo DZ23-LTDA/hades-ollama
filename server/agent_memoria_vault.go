@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -70,4 +72,72 @@ func DecodificarCorpoEstrito(corpo io.Reader, destino any) error {
 		return ErrCorpoComCampoDesconhecido
 	}
 	return nil
+}
+
+// AppendNoVaultGovernado trata POST /memory/vault/append.
+//
+// A identidade e a organizacao vem do contexto do `authMiddleware` -- nunca do corpo, que e'
+// descodificado de forma estrita (`DecodificarCorpoEstrito`): um corpo com `identidade` ou `tenant`
+// e' recusado, nao ignorado.
+//
+// A politica nasce VAZIA: sem concessao explicita, ninguem escreve. Nesta fatia nao ha' UI nem
+// configuracao de concessoes; o endpoint fica, por construcao, a negar. E' preferivel uma porta que
+// recusa a uma porta que aceita.
+func (a *agentAPI) appendMemoriaNoVault(c *gin.Context) {
+	raiz := strings.TrimSpace(os.Getenv("HADES_VAULT_ROOT"))
+	if raiz == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "vault_memory_disabled"})
+		return
+	}
+	identidade, ok := IdentidadeDaSessao(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "session identity required"})
+		return
+	}
+	tenant, ok := OrganizacaoDaSessao(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "session organization required"})
+		return
+	}
+
+	var corpo struct {
+		Relativo       string `json:"relativo"`
+		VersaoEsperada int    `json:"versao_esperada"`
+		Conteudo       string `json:"conteudo"`
+		Fonte          string `json:"fonte"`
+		Aprovador      string `json:"aprovador"`
+		Rotulo         string `json:"rotulo"`
+	}
+	if err := DecodificarCorpoEstrito(c.Request.Body, &corpo); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		return
+	}
+
+	servico := agent.ServicoDeAppendGovernado{Raiz: raiz}
+	escreveu, err := servico.Anexar(agent.PedidoDeAppendGovernado{
+		Identidade:     identidade,
+		Tenant:         tenant,
+		Relativo:       corpo.Relativo,
+		VersaoEsperada: corpo.VersaoEsperada,
+		Memoria: agent.Memoria{
+			Rotulo:    agent.RotuloDeMemoria(strings.TrimSpace(corpo.Rotulo)),
+			Conteudo:  corpo.Conteudo,
+			Fonte:     corpo.Fonte,
+			Aprovador: corpo.Aprovador,
+		},
+	})
+	switch {
+	case errors.Is(err, agent.ErrAcessoNegado):
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+	case errors.Is(err, agent.ErrForaDaRaiz):
+		c.JSON(http.StatusBadRequest, gin.H{"error": "path outside the vault root"})
+	case errors.Is(err, agent.ErrIdentidadeDeSessaoAusente), errors.Is(err, agent.ErrTenantDaSessaoAusente):
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "session scope required"})
+	case errors.Is(err, agent.ErrRaizDoVaultAusente):
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "vault_memory_disabled"})
+	case err != nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "vault append failed"})
+	default:
+		c.JSON(http.StatusCreated, gin.H{"ok": true, "escreveu": escreveu})
+	}
 }
