@@ -150,7 +150,7 @@ def avaliar(candidatos: list[str], residuais: int) -> list[str]:
 def executar(script: str) -> str:
     resultado = subprocess.run(
         [sys.executable, str(SCRIPTS / script)],
-        capture_output=True, text=True, cwd=str(RAIZ),
+        capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=str(RAIZ),
     )
     return resultado.stdout
 

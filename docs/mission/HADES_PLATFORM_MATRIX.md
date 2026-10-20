@@ -29,7 +29,7 @@ Pacotes que vivem em `dist/` e nao correspondem a um alvo de produto. *Sem esta 
 
 | Componente | Pacote | Tamanho | Hash (SHA-256[:32]) | Proveniencia | Escrito em |
 | --- | --- | --- | --- | --- | --- |
-| `browser-bridge` | `dist\browser-bridge\hades-browser-bridge-0.1.0-unsigned.zip` | 112 KB | `9348865dad6f0bcb88b605bdc60cbbb3` | 8f1487295a75 | 2026-10-20 17:20 |
+| `browser-bridge` | `dist\browser-bridge\hades-browser-bridge-0.1.0-unsigned.zip` | 112 KB | `e1bbba9d65204308669de4d21e9b50df` | 941b3546d8ce | 2026-10-20 17:47 |
 | `browser-bridge-firefox` | `dist\browser-bridge-firefox\hades-browser-bridge-firefox-UNSIGNED.zip` | 108 KB | `dcd66d17482b2e1ad26313ab0206e520` | a313019e48ef | 2026-10-17 18:23 |
 
 

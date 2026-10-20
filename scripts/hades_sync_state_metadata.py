@@ -42,7 +42,7 @@ FUSO_BR = datetime.timezone(datetime.timedelta(hours=-3))
 
 def head_real() -> str:
     return subprocess.run(["git", "rev-parse", "HEAD"], cwd=RAIZ, capture_output=True,
-                          text=True, check=True).stdout.strip()
+                          text=True, encoding="utf-8", errors="replace", check=True).stdout.strip()
 
 
 def agora_br() -> str:

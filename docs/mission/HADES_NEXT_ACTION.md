@@ -5428,3 +5428,11 @@ traceback** -- `text=True` descodificava `cp1252` como UTF-8 estrito na reader-t
 (`0xe3` em posicao 63), a thread morria e o checker seguia com **exit 0**. Corrigido com
 `encoding="utf-8", errors="replace"`: relatorio completo, **sem traceback**, e **0 ocorrencias** de
 `Traceback|UnicodeDecodeError` no log da bateria inteira, que deu **exit 0 (81 passos)**.
+
+**Actualizacao de retomada (E-1476):** **a CLASSE do `E-1475` foi fechada** -- varredura dos
+`subprocess` em checkers de PRODUCAO: **10 chamadas em 9 ficheiros** ganharam
+`encoding="utf-8", errors="replace"` (`go_test_check`, `manifest`, `worktree_inventory`,
+`sync_state_metadata`, `release_gate` x2, `audit_instruments`, `browser_bridge_package`,
+`firefox_package`, `third_party_notices`). A mais perigosa era o `go test`, cujas mensagens sao em
+pt-BR. Bateria: **exit 0 (81 passos)**, **0 tracebacks** no log. Nota: o `ps1_syntax_check` (que corre
+`powershell.exe`) **ja'** tinha `encoding` -- por isso nunca deu traceback.

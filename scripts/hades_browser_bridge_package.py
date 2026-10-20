@@ -35,7 +35,7 @@ def _source_sha() -> str:
     try:
         r = subprocess.run(["git", "rev-parse", "--short=12", "HEAD"],
                            cwd=str(Path(__file__).resolve().parent.parent),
-                           capture_output=True, text=True, timeout=20)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=20)
         if r.returncode == 0 and r.stdout.strip():
             return r.stdout.strip()
     except (OSError, subprocess.SubprocessError):

@@ -131,7 +131,7 @@ def licenca_do_package_json(base):
 
 def lista_modulos(go, raiz):
     saida = subprocess.run([go, "list", "-m", "all"], cwd=str(raiz),
-                           capture_output=True, text=True)
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
     if saida.returncode != 0:
         print("ERRO: `go list -m all` devolveu", saida.returncode, file=sys.stderr)
         print(saida.stderr[-800:], file=sys.stderr)

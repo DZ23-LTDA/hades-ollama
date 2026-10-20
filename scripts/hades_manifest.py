@@ -119,7 +119,7 @@ LIMITACOES = (
 def _git(*args: str) -> str:
     try:
         saida = subprocess.run(
-            ["git", *args], cwd=RAIZ, capture_output=True, text=True, timeout=30, check=False
+            ["git", *args], cwd=RAIZ, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30, check=False
         )
         return saida.stdout.strip() if saida.returncode == 0 else ""
     except (OSError, subprocess.SubprocessError):

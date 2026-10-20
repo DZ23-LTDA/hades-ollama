@@ -130,7 +130,7 @@ def snapshot_do_git() -> dict:
                 ["git", *args],
                 cwd=RAIZ,
                 capture_output=True,
-                text=True,
+                text=True, encoding="utf-8", errors="replace",
                 timeout=30,
                 check=False,
             )
@@ -170,7 +170,7 @@ def distancia_do_measured(estado: dict, snapshot: dict) -> tuple[str, int]:
             ["git", "rev-list", "--count", f"{medido}..{head}"],
             cwd=RAIZ,
             capture_output=True,
-            text=True,
+            text=True, encoding="utf-8", errors="replace",
             timeout=30,
             check=False,
         )

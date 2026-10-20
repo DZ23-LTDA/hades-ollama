@@ -90,7 +90,7 @@ falhados = []
 for alvo in ALVOS:
     print("    ... %s" % alvo, flush=True)
     resultado = subprocess.run([go, "test", alvo, "-count=1", "-timeout", "30m"],
-                               cwd=str(RAIZ), env=ambiente, capture_output=True, text=True)
+                               cwd=str(RAIZ), env=ambiente, capture_output=True, text=True, encoding="utf-8", errors="replace")
     # PROGRESSO: as linhas uteis de cada pacote, enquanto corre.
     for linha in (resultado.stdout or "").strip().split("\n"):
         if linha.startswith("ok ") or linha.startswith("FAIL"):
