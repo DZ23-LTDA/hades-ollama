@@ -6615,3 +6615,9 @@ stdout). Ao prova-lo com um teste que falha de proposito apareceu **um bug laten
 checker**: o `falhados.append` estava DENTRO do laco das linhas desde a versao original -- com uma
 unica linha de saida parecia "1 de 4", mas com mais diagnostico deu **"45 de 1 FALHARAM"**. Corrigido.
 Prova: `TESTES GO: 1 de 1 FALHARAM` + nome do teste; no conjunto real **exit 0, 4 pacotes OK**.
+
+**Actualizacao de retomada (E-1475):** **`mission_check` perdia a saida do filho e imprimia um
+traceback** -- `text=True` descodificava `cp1252` como UTF-8 estrito na reader-thread do `subprocess`
+(`0xe3` em posicao 63), a thread morria e o checker seguia com **exit 0**. Corrigido com
+`encoding="utf-8", errors="replace"`: relatorio completo, **sem traceback**, e **0 ocorrencias** de
+`Traceback|UnicodeDecodeError` no log da bateria inteira, que deu **exit 0 (81 passos)**.

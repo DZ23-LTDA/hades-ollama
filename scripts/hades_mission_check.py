@@ -338,9 +338,18 @@ def verificar(
     # 6. Gate gerado consistente.
     if conferir_gate:
         resultado = subprocess.run(
+            # TEXTO COM errors="replace", NAO text=True.
+            #
+            # Medido: `text=True` manda o Python descodificar o stdout do filho como UTF-8 estrito
+            # dentro da sua reader-thread. Quando o filho emite um byte cp1252 (0xe3 = "a" til), a
+            # thread morre com UnicodeDecodeError, o TRACEBACK e' impresso no meio do relatorio, e a
+            # saida do filho **perde-se** -- com o checker a terminar em exit 0. Um instrumento que
+            # perde a saida do filho e continua "OK" nao esta' a medir: esta' a fingir.
             [sys.executable, str(RAIZ / "scripts/hades_release_gate.py"), "--check"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         if resultado.returncode != 0:
             problemas.append("gate gerado DIVERGENTE do estado: " + (resultado.stdout or "").strip())
