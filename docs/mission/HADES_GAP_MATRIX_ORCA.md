@@ -82,7 +82,7 @@ Colunas: **capacidade** · **fonte no Orca/OpenJarvis** · **situação HADES** 
 | A9 | Browser controlado emparelhado | `[C]` `paired-runtime-browser-*` | **PARCIAL** — **MEDIDO (E-1456): 22 ficheiros, checker com oraculo exit=0, 3 suites JS exit=0; falta emparelhamento com Chrome real** (`apps/hades-browser-bridge/`) | emparelhamento autenticado, lease, reconexão | **ADAPTAR** | a medir |
 | A10 | Gates com invariante + oráculo + refs de asserção | `[C]` `config/reliability-gates.jsonc` | **PARCIAL** — **MEDIDO (E-1450/E-1451/E-1452): 17 de 38 checkers com oraculo, 12 sem, 9 sem teste proprio; 10 requisitos, 10 citados; violar REQ-3A-03 deixa o gate vermelho**** (gates existem, formato diferente) | declarar por gate o invariante e a asserção que o prova | **ADAPTAR** | a medir |
 | A11 | Arquivo de sessões de IA (`ai-vault`) | `[C]` `src/main/ai-vault/` | **PARCIAL** — **MEDIDO (E-1458): vault governado com 15 ficheiros, 76 testes Go PASS e 75 assercoes de E2E; arquiva MEMORIA com rotulo/fonte/hash, nao transcricoes de sessao** (`internal/agent/historico*`) | busca em histórico de sessões | **ADAPTAR** | a medir |
-| A12 | App móvel como cliente de supervisão | `[C]` `mobile/` | **PARCIAL** (`apps/mobile-agentic`, 17 ficheiros) | allowlist de RPC no celular | **ADAPTAR** | a medir |
+| A12 | App móvel como cliente de supervisão | `[C]` `mobile/` | **PARCIAL** — **MEDIDO (E-1460): 50 ficheiros; 3 testes de politica (offline, contexto de missao, cliente) PASSAM em node puro sem Android; login/aprovacao/outbox e build Android continuam BLOCKED_EXTERNAL** (`apps/mobile-agentic`, 17 ficheiros) | allowlist de RPC no celular | **ADAPTAR** | a medir |
 
 ### Grupo B — OpenJarvis (inteligência local, engines, memória, agentes pessoais, traces, skills)
 

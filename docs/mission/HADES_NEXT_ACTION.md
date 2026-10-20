@@ -5333,3 +5333,8 @@ sessao.
 `--sandbox workspace-write` que aparece no codigo e' **delegado a CLI externa** (codex); as
 localidades de execucao sao LOCAL/SSH/SELF_HOSTED_REMOTE/UNCLASSIFIED; e `receita` no codigo e'
 receita financeira, nao receita de execucao. As 473 ocorrencias de "container" sao do upstream.
+
+**Actualizacao de retomada (E-1460):** A12 medido -- o cliente movel tem 50 ficheiros e os TRES
+testes de politica (`offlinePolicy`, `missionContextPolicy`, `missionContextClient`) passam em
+**node puro, sem Android**. Login, aprovacao, outbox e o build Android continuam
+**BLOCKED_EXTERNAL**.
