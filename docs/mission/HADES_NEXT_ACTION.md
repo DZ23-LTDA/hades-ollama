@@ -5582,3 +5582,11 @@ fica como estava**). **5 testes PASS**: instancia nova carrega e continua parada
 temporario fica a sobrar; caminho vazio e pare nulo recusados. Lint 0, build 0. **Limite declarado:**
 `GuardarEm` ainda **nao e' chamado por ninguem** -- a durabilidade existe mas nao actua; ligar ao
 arranque do servidor e' a proxima peca.
+
+**Actualizacao de retomada (E-1506):** **o servidor adopta o pare guardado no arranque** via
+`HADES_PARE_ESTADO` -- `adoptarParePersistido()` chamado em `routes.go` antes do primeiro pedido.
+**Variavel, nao caminho fixo**: sem ela a persistencia fica **desligada** (estado explicito), e um
+caminho fixo faria um teste adoptar o estado real da maquina. **3 testes PASS**: adopta e continua
+parado com motivo; sem variavel ignora; ficheiro ilegivel nao rebenta nem aciona por engano.
+**Ainda NAO GRAVA**: gravar depende de um acionamento que so' existe por codigo, porque **nao ha' rota
+para acionar** -- o mesmo bloqueio de autorizacao.
