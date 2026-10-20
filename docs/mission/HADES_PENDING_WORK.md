@@ -6499,3 +6499,10 @@ directivas que restringem a SPA ficam de fora, e a verificacao num browser e' o 
 que corre o servidor Go real**: `Web E2E (paineis contra Agent Center real)` = **success** em
 `661432ae5` -- o servidor arrancou e os paineis funcionaram **com a CSP ligada**. O `shell smoke` nao
 prova nada sobre a CSP: corre sobre vite preview.
+
+**Actualizacao de retomada (E-1495):** **bateria completa VERDE depois das quatro fatias de produto** --
+`GATES LOCAIS exit 0 (81 passos)` e **0 tracebacks** no log. O gate que corre `golangci-lint`,
+`gofumpt`, `go test` dos 4 pacotes, `hades_security_check` (com fault injection) e
+`audit_tenant_guards` passou **com** as fatias novas dentro, nao apenas isoladas. Os 10 ficheiros
+deixados alterados sao os **gerados** (regra do `E-1479`: nomeiam o commit anterior por construcao) e
+foram comitados junto.
