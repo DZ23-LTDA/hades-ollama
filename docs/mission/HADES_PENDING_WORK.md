@@ -6433,3 +6433,9 @@ traceback** -- `text=True` descodificava `cp1252` como UTF-8 estrito na reader-t
 `firefox_package`, `third_party_notices`). A mais perigosa era o `go test`, cujas mensagens sao em
 pt-BR. Bateria: **exit 0 (81 passos)**, **0 tracebacks** no log. Nota: o `ps1_syntax_check` (que corre
 `powershell.exe`) **ja'** tinha `encoding` -- por isso nunca deu traceback.
+
+**Actualizacao de retomada (E-1477):** **a fronteira de tenant do build esta' provada ao nivel HTTP**
+(`TestBuildDeOutroTenantNaoVazaNemTemOracle`): o mesmo `agentAPI` servido a duas sessoes; org-a ->
+**200** e ve os campos; org-b -> **404** e o corpo **nao contem** raiz/destino/organizacao do dono; o
+corpo de org-b, com o id normalizado, e' **identico** ao de um id inexistente (**sem oraculo**); a
+lista de org-b da' `"total":0`. `--- PASS` e `go test ./server` **exit 0** (44s).
