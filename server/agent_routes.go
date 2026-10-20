@@ -930,6 +930,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// FASE 28.9 passo 7: `build.verify`. Verifica o LOTE de artefactos de um build contra os
 	// SHA-256 que o build mediu. POST porque a lista nao cabe num URL sem limites arbitrarios.
 	group.POST("/build/start", a.iniciarBuild)
+	// So' LEITURA: nao ha' rota para acionar o pare -- essa exige a decisao de autorizacao.
+	group.GET("/build/pare", a.estadoDoPare)
 	group.POST("/build/verify", a.verificarBuild)
 	group.POST("/build/smoke", a.executarSmoke)
 	// FASE 28.7 do adendo V3: o estado do build. O E-1306 recusou-se a inventar estas rotas
