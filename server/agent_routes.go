@@ -932,6 +932,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/build/start", a.iniciarBuild)
 	// So' LEITURA: nao ha' rota para acionar o pare -- essa exige a decisao de autorizacao.
 	group.GET("/build/pare", a.estadoDoPare)
+	// CALCULO, nao medicao: o servidor NAO mede a VRAM do cliente -- quem a mede passa-a.
+	group.GET("/systems/recomendacao", a.recomendacaoPorVRAM)
 	group.POST("/build/verify", a.verificarBuild)
 	group.POST("/build/smoke", a.executarSmoke)
 	// FASE 28.7 do adendo V3: o estado do build. O E-1306 recusou-se a inventar estas rotas
