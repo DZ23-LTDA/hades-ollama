@@ -290,17 +290,67 @@ $t2 = $r2.Content.ReadAsStringAsync().GetAwaiter().GetResult()
 Exigir ([int]$r1.StatusCode -eq 200 -and [int]$r2.StatusCode -eq 200) ('duas sessoes leem a nota (200/200: ' + [int]$r1.StatusCode + '/' + [int]$r2.StatusCode + ')')
 Exigir ($t1 -eq $t2) 'as duas sessoes recebem estado BYTE-IDENTICO'
 
-# --- fase 10 (ADIADA): duas identidades no mesmo tenant -------------------------
-# Progresso desta ronda, e CORRECCAO do diagnostico anterior:
-#   * `CreateUser` e' IDEMPOTENTE por e-mail (devolve o utilizador existente) -- portanto o
-#     "nao consigo re-login" que eu escrevi na ronda anterior estava ERRADO. O unico bloqueio
-#     real era a nao-persistencia dos TOKENS entre reinicios;
-#   * com adesao idempotente no devToken, o re-login passou a funcionar de facto: mesma conta,
-#     token novo, mesmo tenant (provado: "re-login de C funciona" e "A e o MESMO utilizador").
-# Sintoma NOVO, ainda sem causa: depois do re-login, as chamadas ao vault devolvem 401 -- apesar
-# de os tokens terem sido emitidos pelo servidor em execucao. Suspeita a confirmar: listener
-# antigo a segurar a porta 11500 (o health check passa no processo velho).
-# Fase retirada para o E2E nao ficar vermelho por uma causa ainda nao diagnosticada.
+# --- fase 10: duas identidades no MESMO tenant --------------------------------
+# Jornada do adendo: "duas IAs/harnesses diferentes leem a mesma memoria permitida".
+# Descobertas que tornaram isto possivel (rondas 29-32): (a) a rota de dev passou a aceitar
+# `organization_id`, logo da' para entrar num tenant existente; (b) os tokens NAO sobrevivem ao
+# reinicio, logo e' preciso RE-LOGIN; (c) e o re-login NAO pode rebaixar o papel de quem ja' e'
+# membro -- a primeira versao rebaixava o dono para viewer e ele perdia o direito de escrever.
+
+function Entrar($email, $nome, $organizacaoId) {
+    $corpo = '{"email":"' + $email + '","name":"' + $nome + '","organization_id":"' + $organizacaoId + '"}'
+    $cliente = New-Object Net.Http.HttpClient
+    $pedido = New-Object Net.Http.HttpRequestMessage ([Net.Http.HttpMethod]::Post), "$base/auth/dev/token"
+    $pedido.Headers.Add('X-Ollama-Agent-Dev-Secret', $env:OLLAMA_AGENT_AUTH_DEV_SECRET)
+    $pedido.Content = New-Object Net.Http.StringContent ($corpo, [Text.Encoding]::UTF8, 'application/json')
+    $resp = $cliente.SendAsync($pedido).GetAwaiter().GetResult()
+    $texto = $resp.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+    if ([int]$resp.StatusCode -ne 201) { Write-Host ('  Entrar ' + $email + ' -> ' + [int]$resp.StatusCode + ' ' + $texto); return $null }
+    return ($texto | ConvertFrom-Json)
+}
+
+$c = Entrar 'membro@local' 'Membro C' $a.organization.id
+Exigir ($null -ne $c) 'no 2: C entra no tenant existente de A'
+if ($null -eq $c) { Parar; exit 1 }
+Exigir ($c.organization.id -eq $a.organization.id) 'no 2: C fica no MESMO tenant de A'
+
+$aclDuas = '[{"identidade":"' + $a.user.id + '","escopo":"TENANT","permissoes":["ler","escrever"]},' +
+           '{"identidade":"' + $c.user.id + '","escopo":"TENANT","permissoes":["ler"]}]'
+$env:HADES_VAULT_ACL = $aclDuas
+Parar
+Exigir (Arrancar) 'no 2: servidor reinicia com ACL das duas identidades'
+
+$a2 = Entrar 'usera@local' 'User A' $a.organization.id
+$c2 = Entrar 'membro@local' 'Membro C' $c.organization.id
+Exigir ($null -ne $a2) 'no 2: re-login de A (token novo, sem duplicar conta)'
+Exigir ($null -ne $c2) 'no 2: re-login de C (token novo, sem duplicar conta)'
+if ($null -eq $a2 -or $null -eq $c2) { Parar; exit 1 }
+Exigir ($a2.user.id -eq $a.user.id) 'no 2: A continua o MESMO utilizador'
+
+# (Pedido ja adiciona "Bearer "; passar o token CRU, nunca um header pronto)
+
+
+$escritaA2 = Pedido 'Post' "$base/memory/vault/append" $a2.access_token '{"relativo":"notas/partilhada.md","conteudo":"decisao visivel ao tenant","rotulo":"FACT_VERIFIED","fonte":"chat-A"}'
+Exigir ($escritaA2.Codigo -eq 201) ('no 2: A escreve no tenant -> 201 (veio ' + $escritaA2.Codigo + ': ' + $escritaA2.Corpo + ')')
+
+$leituraC2 = Pedido 'Get' "$base/memory/vault/read?relativo=notas/partilhada.md" $c2.access_token $null
+Exigir ($leituraC2.Codigo -eq 200) ('no 2: C (outra identidade) le a mesma nota -> 200 (veio ' + $leituraC2.Codigo + ')')
+Exigir ($leituraC2.Corpo -match 'decisao visivel ao tenant') 'no 2: C recebe o MESMO conteudo que A gravou'
+Exigir ($leituraC2.Corpo -match 'chat-A') 'no 2: C recebe a proveniencia (fonte)'
+
+$escritaC2 = Pedido 'Post' "$base/memory/vault/append" $c2.access_token '{"relativo":"notas/do-c.md","conteudo":"x","rotulo":"FACT_VERIFIED","fonte":"chat-C"}'
+Exigir ($escritaC2.Codigo -eq 403) ('no 2: C tem so leitura -> escrita negada (veio ' + $escritaC2.Codigo + ')')
+
+$e = Entrar 'sem-acesso@local' 'Sem Acesso' $c.organization.id
+Exigir ($null -ne $e) 'no 3: terceiro utilizador no tenant'
+if ($null -ne $e) {
+    $leituraE = Pedido 'Get' "$base/memory/vault/read?relativo=notas/partilhada.md" $e.access_token $null
+    $inexistE = Pedido 'Get' "$base/memory/vault/read?relativo=notas/nao-existe-mesmo.md" $e.access_token $null
+    Exigir ($leituraE.Codigo -eq 403) ('no 3: sem concessao na ACL -> 403 (veio ' + $leituraE.Codigo + ' ' + $leituraE.Corpo + ')')
+    Exigir ($leituraE.Corpo -eq $inexistE.Corpo) 'no 3: negacao IDENTICA a de nota inexistente (nao infere existencia)'
+    Exigir (-not ($leituraE.Corpo -match 'decisao visivel ao tenant')) 'no 3: nenhum conteudo do tenant vazou'
+}
+
 Parar
 Write-Host ('== fim: ' + $falhas + ' falha(s) ==')
 if ($falhas -gt 0) { exit 1 }
