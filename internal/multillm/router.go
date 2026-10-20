@@ -2,6 +2,8 @@ package multillm
 
 import (
 	"errors"
+	"net"
+	"net/url"
 	"sort"
 	"strings"
 )
@@ -91,7 +93,10 @@ func (r *Registry) RouteCandidates(request RouteRequest) ([]RouteDecision, error
 		if !ok || (request.PreferredProvider != "" && provider.Name != request.PreferredProvider) {
 			continue
 		}
-		if request.LocalOnly && !provider.AllowPrivate {
+		// LocalOnly e' restricao RIGIDA de LOCALIDADE, nao de conectividade. So' passa quem
+		// declara Locality: "local"; desconhecido NAO e' local (fail-closed). O antigo filtro por
+		// AllowPrivate deixava passar provedor remoto com rede privada permitida.
+		if request.LocalOnly && !providerEhLocal(provider) {
 			continue
 		}
 		cost := model.CostPer1KInputCents + model.CostPer1KOutputCents
@@ -197,4 +202,34 @@ func modelIsFree(model Model) bool {
 		return true
 	}
 	return model.CostPer1KInputCents+model.CostPer1KOutputCents == 0
+}
+
+// providerEhLocal diz se a inferencia acontece na maquina do utilizador.
+//
+// Ordem: declaracao explicita (`Locality: "local"`) vence; sem declaracao, um BaseURL de loopback
+// e' evidencia SUFICIENTE de localidade (nao se alcanca 127.0.0.1 por rede) e mantem compatibilidade
+// com as configuracoes existentes, que nao declaram `Locality`. Qualquer outra coisa -- incluindo um
+// BaseURL publico com `AllowPrivate: true` -- NAO e' local.
+func providerEhLocal(p Provider) bool {
+	if strings.EqualFold(strings.TrimSpace(p.Locality), "local") {
+		return true
+	}
+	if strings.TrimSpace(p.Locality) != "" {
+		return false
+	}
+	endereco, err := url.Parse(strings.TrimSpace(p.BaseURL))
+	if err != nil {
+		return false
+	}
+	host := strings.TrimSpace(endereco.Hostname())
+	if host == "" {
+		return false
+	}
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback()
+	}
+	return false
 }

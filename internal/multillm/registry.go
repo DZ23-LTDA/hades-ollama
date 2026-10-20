@@ -69,6 +69,19 @@ type Provider struct {
 	Paths          []string      `json:"paths,omitempty"`
 	AuthStyle      string        `json:"auth_style,omitempty"`
 	AllowPrivate   bool          `json:"allow_private,omitempty"`
+	// Locality diz ONDE a inferencia acontece: "local", "cloud" ou "" (desconhecido).
+	//
+	// PORQUE ISTO EXISTE, e o defeito que corrige: `LocalOnly` filtrava por `AllowPrivate`, que e'
+	// um atributo de CONECTIVIDADE (posso falar com IP privado?), nao de LOCALIDADE (onde corre a
+	// inferencia?). Um provedor remoto com `AllowPrivate: true` -- plausivel quando precisa de
+	// alcancar um espelho interno -- passava o filtro de `LocalOnly` e podia receber uma tarefa que
+	// o utilizador exigiu que nao saisse da maquina.
+	//
+	// *Permitir rede privada e ser local sao perguntas diferentes; responder a uma pela outra e'
+	// como autorizar entrada em casa porque a pessoa tem chave do predio.*
+	//
+	// Vazio significa DESCONHECIDO e NAO conta como local: fail-closed.
+	Locality string `json:"locality,omitempty"`
 	// PassthroughEnv lista nomes de variáveis de ambiente que este provider CLI
 	// precisa receber. Sem declaração explícita o processo só recebe o ambiente
 	// mínimo, para não vazar credencial de outros providers nem do banco.
