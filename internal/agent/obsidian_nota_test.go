@@ -393,3 +393,61 @@ func TestAnexarEmArquivoNaoDeixaTemporarios(t *testing.T) {
 		t.Fatalf("esperava apenas memoria.md, encontrei %v", nomes)
 	}
 }
+
+// Dois escritores nao entram ao mesmo tempo: o segundo recebe ErrNotaBloqueada e NAO escreve.
+func TestBloqueioImpedeSegundoEscritor(t *testing.T) {
+	raiz := t.TempDir()
+	alvo := filepath.Join(raiz, "memoria.md")
+	if err := TravarNota(alvo); err != nil {
+		t.Fatalf("primeiro bloqueio: %v", err)
+	}
+	defer DestravarNota(alvo)
+
+	bloqueado, dono := Bloqueado(alvo)
+	if !bloqueado || !strings.Contains(dono, "pid=") {
+		t.Fatalf("bloqueio nao declarou dono: bloqueado=%v dono=%q", bloqueado, dono)
+	}
+
+	if _, err := AnexarEmArquivoComBloqueio(raiz, "memoria.md", metaDeTeste(EscopoProject), fatoDeTeste(), 0); !errors.Is(err, ErrNotaBloqueada) {
+		t.Fatalf("esperava ErrNotaBloqueada, veio %v", err)
+	}
+	if _, err := os.Stat(alvo); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("o segundo escritor escreveu apesar do bloqueio")
+	}
+}
+
+// Depois de libertar, o escritor seguinte entra e o ficheiro fica correto -- e sem sentinela para tras.
+func TestBloqueioLibertadoPermiteEscrita(t *testing.T) {
+	raiz := t.TempDir()
+	alvo := filepath.Join(raiz, "memoria.md")
+	if err := TravarNota(alvo); err != nil {
+		t.Fatalf("bloquear: %v", err)
+	}
+	if err := DestravarNota(alvo); err != nil {
+		t.Fatalf("destravar: %v", err)
+	}
+	if bloqueado, _ := Bloqueado(alvo); bloqueado {
+		t.Fatalf("destravar deixou o sentinela")
+	}
+
+	anexou, err := AnexarEmArquivoComBloqueio(raiz, "memoria.md", metaDeTeste(EscopoProject), fatoDeTeste(), 0)
+	if err != nil || !anexou {
+		t.Fatalf("escrita apos libertar: anexou=%v err=%v", anexou, err)
+	}
+	entradas, err := os.ReadDir(raiz)
+	if err != nil {
+		t.Fatalf("ReadDir: %v", err)
+	}
+	for _, e := range entradas {
+		if strings.HasSuffix(e.Name(), ".lock") {
+			t.Fatalf("sentinela ficou para tras: %s", e.Name())
+		}
+	}
+}
+
+// Destravar o que nao esta' travado nao e' erro: um retry de limpeza nao pode falhar por ja' estar limpo.
+func TestDestravarIdempotente(t *testing.T) {
+	if err := DestravarNota(filepath.Join(t.TempDir(), "nunca-travado.md")); err != nil {
+		t.Fatalf("destravar sem bloqueio devia ser no-op: %v", err)
+	}
+}
