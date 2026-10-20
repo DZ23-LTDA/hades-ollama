@@ -5352,3 +5352,8 @@ missao que se imprime sucesso de escrita sem verificar.
 **Actualizacao de retomada (E-1463):** B1 medido -- `internal/multillm.Registry` tem 12 metodos
 publicos, 3 tipos de provider (openai-compatible/anthropic/cli) e **164 testes PASS / 0 FAIL** em 28
 ficheiros. Interface canonica existe; nao garante uniformidade de comportamento entre os 3 adaptadores.
+
+**Actualizacao de retomada (E-1464):** B3 medido -- 20 ficheiros de memoria, **9 escopos**
+(SESSION..SHARED_AUTHORIZED), proveniencia como campo (`Fonte`, `Aprovador`, `ContentHash`) e
+**53 PASS / 0 FAIL**. Limite declarado: o escopo e' imposto pela ACL, nao pelo tipo `Memoria`; e os
+53 sobrepoem-se aos testes do vault ja' contados em A11.

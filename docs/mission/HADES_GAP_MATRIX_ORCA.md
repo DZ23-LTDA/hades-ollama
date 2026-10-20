@@ -90,7 +90,7 @@ Colunas: **capacidade** · **fonte no Orca/OpenJarvis** · **situação HADES** 
 |---|---|---|---|---|---|---|
 | B1 | Interface canónica de inferência | `[D]` README «Personal AI, On Personal Devices» | **PARCIAL** — **MEDIDO (E-1463): 12 metodos publicos, 3 tipos de provider (openai-compatible/anthropic/cli), 28 ficheiros de teste, 164 PASS** (`internal/multillm.Registry`) | localidade explícita além de `AllowPrivate` | **ADAPTAR** | FASE 29 |
 | B2 | Detecção de hardware e recomendação | `[C]` `VRAM` 27 no HADES | **PARCIAL** | recomendação de quantização/contexto/offload a partir de VRAM medida | **ADAPTAR** | FASE 16 |
-| B3 | Memória com fontes e escopos | `[D]` | **PARCIAL** (`internal/agent/memory*`, 20 ficheiros) | `ObsidianMemoryAdapter` + 12 E2E da FASE 17.1 | **ADAPTAR** | FASE 17.1 |
+| B3 | Memória com fontes e escopos | `[D]` | **PARCIAL** — **MEDIDO (E-1464): 20 ficheiros, 9 escopos (SESSION..SHARED_AUTHORIZED), Fonte/Aprovador/ContentHash como campos, 53 PASS; a imposicao do escopo esta' na ACL, nao no tipo** (`internal/agent/memory*`, 20 ficheiros) | `ObsidianMemoryAdapter` + 12 E2E da FASE 17.1 | **ADAPTAR** | FASE 17.1 |
 | B4 | Traces auditáveis e aprendizado medido | `[D]` | **PARCIAL** (2 ficheiros) | gate de 10 passos para política aprendida | **ADAPTAR** | FASE 18 |
 | B5 | Skills com quarentena e benchmark | `[D]` | **PARCIAL** (`skill*` 7 ficheiros) | comparar sem/original/optimizada com várias seeds | **ADAPTAR** | FASE 20 |
 | B6 | Eficiência e custo medidos | `[D]` | **PARCIAL** (`metricas.go`) | energia/VRAM marcados `NAO_MEDIDOS` com método declarado | **ADAPTAR** | FASE 21 |
