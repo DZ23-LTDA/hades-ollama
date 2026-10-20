@@ -5408,3 +5408,10 @@ build (agent e server) ok, e **`hades_local_gates.ps1` exit 0** (81 passos).
 **E uma falha de bateria que ainda nao tem causa:** `hades_local_gates.ps1` falhou 1 de 81 passos
 (`hades_go_test_check`: `1 de 4 FALHARAM: ./internal/agent`), e o MESMO pacote passou **duas vezes
 isolado** (419 s e 424 s). Log nao nomeia o teste; a bateria fica **PARTIAL**, nao verde.
+
+**Actualizacao de retomada (E-1473):** a falha da bateria em `internal/agent` era **ONE-OFF** -- o
+mesmo pacote passou nas QUATRO execucoes seguintes (`ok 419s`, `ok 424s`, `ok 424s -shuffle=on`, e a
+bateria completa -> `TESTES GO: TODOS PASSAM`, **GATES LOCAIS exit=0, 81 passos**). Hipoteses
+refutadas com hipotese escrita antes: ordem (`-shuffle`) e timeout (`-timeout 30m` vs 424s).
+**Fica declarado o que NAO tem causa** (a ocorrencia unica) e o que NAO foi corrigido: a tentativa de
+fazer o checker nomear o teste ABORTOU (substituicao nao casou), logo ele continua a nomear o pacote.
