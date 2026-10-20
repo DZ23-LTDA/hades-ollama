@@ -6572,3 +6572,10 @@ corpo traz a CONVERSA, nunca a identidade (organizacao vem da sessao). **4 teste
 401; `[]`/espacos/`{}` -> 400 sem proposta; conversa com metrica -> 200; conversa vaga -> `faltando` nao
 vazio e metrica nao inventada. Lint 0, build 0. **Os tres itens antes inacessiveis tem rota agora**
 (`E-1502`, `E-1503`, `E-1504`). O **gatilho do pare** continua inexistente, por decisao de autorizacao.
+
+**Actualizacao de retomada (E-1505):** **o pare sobrevive ao reinicio** -- `GuardarEm` (temporario +
+`Sync` + `rename`, atomico) e `CarregarDe` (**inexistente nao e' erro**; **ilegivel e' erro e o pare
+fica como estava**). **5 testes PASS**: instancia nova carrega e continua parada com o motivo; nenhum
+temporario fica a sobrar; caminho vazio e pare nulo recusados. Lint 0, build 0. **Limite declarado:**
+`GuardarEm` ainda **nao e' chamado por ninguem** -- a durabilidade existe mas nao actua; ligar ao
+arranque do servidor e' a proxima peca.
