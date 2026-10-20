@@ -5543,3 +5543,13 @@ fechar o veredito.
 `ctx.Err()`, da senha e da versao publicada (*um sistema parado nao precisa de saber se a senha e'
 valida*). **3 testes PASS**, lint 0, build 0. Os dois commits (`33a42bba1`, `f95ec6d1b`) estao
 **locais**: o push sai junto com esta evidencia, quando o run de `a525c6481` fechar.
+
+**Actualizacao de retomada (E-1501):** **VEREDITO COMPLETO do SHA de branch** -- `690f53bc5` = **30 de
+30 verificacoes verdes**, incluindo **`Preserve Class A+ surfaces`**, **`PR gate`**, **`Go agentic and
+server gates`**, **`Go agentic Windows portability`**, **`CGO-free and Windows build gate`**, `test
+(windows/ubuntu/macos)`, **`race (ubuntu)` e `race (macos)`**, os dois **`Web E2E`**, `gitleaks` x2,
+`PostgreSQL RLS`, SBOM, `patches` x2, `go_mod_tidy`, `changes`; e a **bateria local exit 0 (81 passos),
+0 tracebacks** no mesmo SHA. Isto resolve as duas pendencias prioritarias do adendo: o teste Windows e o
+`race` de macOS (antes `BLOCKED_EXTERNAL`, agora **medido e verde**). **NAO e' homologacao**: e' veredito
+de SHA de branch; o SHA de merge e' inobtenivel (merge proibido) e `release_state` continua
+`NOT_RELEASE_READY`.
