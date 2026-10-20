@@ -189,3 +189,28 @@ func TestHTTPACLInvalidaResponde503ENaoEscreve(t *testing.T) {
 		t.Fatalf("com ACL invalida foram criadas %d entrada(s)", len(entradas))
 	}
 }
+
+// NEGATIVO de concorrencia: a MESMA versao esperada nao pode escrever duas vezes, e o conflito
+// tem de ser 409 -- nao 500. Um 500 esconde a causa e faz o cliente repetir a' cegas.
+func TestHTTPConflitoDeVersaoResponde409(t *testing.T) {
+	prepararVaultDeTeste(t)
+	router := montarRotaDoVault(t, "user-permitido", "org-1")
+
+	primeira := pedirAppend(t, router, `{"relativo":"notas/versao.md","conteudo":"primeira","rotulo":"FACT_VERIFIED","fonte":"chat-A","versao_esperada":0}`)
+	if primeira.Code != http.StatusCreated {
+		t.Fatalf("primeira escrita devia ser 201, veio %d (%s)", primeira.Code, primeira.Body.String())
+	}
+
+	segunda := pedirAppend(t, router, `{"relativo":"notas/versao.md","conteudo":"com-versao-velha","rotulo":"FACT_VERIFIED","fonte":"chat-A","versao_esperada":0}`)
+	if segunda.Code != http.StatusConflict {
+		t.Fatalf("conflito de versao devia ser 409, veio %d (%s)", segunda.Code, segunda.Body.String())
+	}
+	if !strings.Contains(segunda.Body.String(), "version diverged") {
+		t.Fatalf("o 409 tem de dizer a causa: %s", segunda.Body.String())
+	}
+
+	leitura := pedirLeitura(t, router, "notas/versao.md")
+	if strings.Contains(leitura.Body.String(), "com-versao-velha") {
+		t.Fatal("a escrita recusada entrou na nota")
+	}
+}

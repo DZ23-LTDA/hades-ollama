@@ -134,6 +134,12 @@ func (a *agentAPI) appendMemoriaNoVault(c *gin.Context) {
 		},
 	})
 	switch {
+	case errors.Is(err, agent.ErrVersaoDivergente):
+		// Conflito de versao nao e' falha do servidor: e' o resultado normal de duas escritas
+		// concorrentes. 500 esconderia a causa e faria o cliente repetir a escrita a' cegas.
+		c.JSON(http.StatusConflict, gin.H{"error": "version diverged", "detail": "re-read the note and retry with the current version"})
+	case errors.Is(err, agent.ErrConteudoAlterado):
+		c.JSON(http.StatusConflict, gin.H{"error": "content was modified", "detail": "the note no longer matches its content_hash"})
 	case errors.Is(err, agent.ErrAcessoNegado):
 		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
 	case errors.Is(err, agent.ErrForaDaRaiz):
@@ -184,6 +190,12 @@ func (a *agentAPI) lerMemoriaDoVault(c *gin.Context) {
 	leitura := agent.LeituraGovernada{Raiz: raiz, Politica: politica}
 	memoria, err := leitura.Ler(agent.PedidoDeLeitura{Identidade: identidade, Tenant: tenant, Relativo: relativo})
 	switch {
+	case errors.Is(err, agent.ErrVersaoDivergente):
+		// Conflito de versao nao e' falha do servidor: e' o resultado normal de duas escritas
+		// concorrentes. 500 esconderia a causa e faria o cliente repetir a escrita a' cegas.
+		c.JSON(http.StatusConflict, gin.H{"error": "version diverged", "detail": "re-read the note and retry with the current version"})
+	case errors.Is(err, agent.ErrConteudoAlterado):
+		c.JSON(http.StatusConflict, gin.H{"error": "content was modified", "detail": "the note no longer matches its content_hash"})
 	case errors.Is(err, agent.ErrAcessoNegado):
 		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
 	case errors.Is(err, agent.ErrForaDaRaiz):

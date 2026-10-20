@@ -132,8 +132,22 @@ Exigir ($escritaB.Codigo -eq 403) ('append com B (so leitura) -> 403 (veio ' + $
 $semToken = Pedido 'Post' "$base/memory/vault/append" $null '{"relativo":"notas/x.md"}'
 Exigir ($semToken.Codigo -eq 401) ('append sem token -> 401 (veio ' + $semToken.Codigo + ')')
 
+# --- fase 2: concorrencia optimista na MESMA nota -------------------------------
+# `versao_esperada` e' o mecanismo: um segundo escritor com versao desactualizada
+# tem de ser RECUSADO com conflito explicito, nunca sobrescrever em silencio.
+$v0 = Pedido 'Post' "$base/memory/vault/append" $tokA '{"relativo":"notas/versao.md","conteudo":"primeira","rotulo":"FACT_VERIFIED","fonte":"chat-A","versao_esperada":0}'
+Exigir ($v0.Codigo -eq 201) ('1a escrita com versao_esperada=0 -> 201 (veio ' + $v0.Codigo + ')')
+
+$vDesactualizada = Pedido 'Post' "$base/memory/vault/append" $tokA '{"relativo":"notas/versao.md","conteudo":"segunda-com-versao-velha","rotulo":"FACT_VERIFIED","fonte":"chat-A","versao_esperada":0}'
+Exigir ($vDesactualizada.Codigo -eq 409) ('2a escrita com a MESMA versao_esperada -> 409 (veio ' + $vDesactualizada.Codigo + ')')
+
+$confirmacao = Pedido 'Get' "$base/memory/vault/read?relativo=notas/versao.md" $tokA $null
+Exigir (-not ($confirmacao.Corpo -match 'segunda-com-versao-velha')) 'a escrita recusada NAO entrou na nota'
+
+$vCorrecta = Pedido 'Post' "$base/memory/vault/append" $tokA '{"relativo":"notas/versao.md","conteudo":"terceira-com-versao-certa","rotulo":"FACT_VERIFIED","fonte":"chat-A","versao_esperada":1}'
+Exigir ($vCorrecta.Codigo -eq 201) ('escrita com versao_esperada=1 -> 201 (veio ' + $vCorrecta.Codigo + ')')
 $ficheiros = @(Get-ChildItem $vault -Recurse -File -ErrorAction SilentlyContinue)
-Exigir ($ficheiros.Count -eq 1) ('o vault tem exactamente 1 ficheiro (tem ' + $ficheiros.Count + ')')
+Exigir ($ficheiros.Count -eq 2) ('o vault tem exactamente 2 ficheiros: decisao.md e versao.md (tem ' + $ficheiros.Count + ')')
 
 Parar
 Write-Host ('== fim: ' + $falhas + ' falha(s) ==')
