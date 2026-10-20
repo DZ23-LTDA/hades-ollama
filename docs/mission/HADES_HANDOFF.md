@@ -6521,3 +6521,8 @@ explicitamente versoes diferentes (`v !== PROTOCOLO` -> `protocolo_incompativel`
 **76 testes Go PASS** e **75 assercoes de E2E** contra servidor real. O que ele arquiva e' MEMORIA
 governada (rotulo, fonte, aprovador, hash, compactacao nao destrutiva), **nao** transcricoes de
 sessao.
+
+**Actualizacao de retomada (E-1459):** A6 medido -- **nao existe** sandbox proprio no HADES. O
+`--sandbox workspace-write` que aparece no codigo e' **delegado a CLI externa** (codex); as
+localidades de execucao sao LOCAL/SSH/SELF_HOSTED_REMOTE/UNCLASSIFIED; e `receita` no codigo e'
+receita financeira, nao receita de execucao. As 473 ocorrencias de "container" sao do upstream.
