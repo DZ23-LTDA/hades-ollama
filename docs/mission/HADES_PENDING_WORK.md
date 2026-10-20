@@ -6445,3 +6445,9 @@ lista de org-b da' `"total":0`. `--- PASS` e `go test ./server` **exit 0** (44s)
 `E-1477` declarou): org-b -> 404 sem vazar saida/raiz/`cancelado`, corpo **identico** ao de id
 inexistente; o dono le saida e artefactos (200) e cancelar build terminado da 409. **4 PASS**;
 `go test ./server` exit 0.
+
+**Actualizacao de retomada (E-1479):** **o estado gerado nomeia sempre o commit PAI** --
+`HADES_MASTER_STATE.json` grava `measured_commit` = HEAD no momento de gerar, e comitar muda o HEAD;
+logo `tree limpa` e `measured_commit == HEAD` **nao podem coexistir**, e o `--check` estrito falharia
+numa arvore limpa. O gate resolve **regenerando antes de comparar**. Segunda medicao: correr so' 2
+geradores da' estado **diferente** dos 10 -- a ordem e' obrigatoria.
