@@ -94,7 +94,7 @@ Colunas: **capacidade** · **fonte no Orca/OpenJarvis** · **situação HADES** 
 | B4 | Traces auditáveis e aprendizado medido | `[D]` | **PARCIAL** (2 ficheiros) | gate de 10 passos para política aprendida | **ADAPTAR** | FASE 18 |
 | B5 | Skills com quarentena e benchmark | `[D]` | **PARCIAL** — **MEDIDO (E-1465): 7 ficheiros, 25 PASS (com recusas de travessia/duplicado); quarentena existe para PERSONAS, nao para skills; benchmark de skills AUSENTE** (`skill*` 7 ficheiros) | comparar sem/original/optimizada com várias seeds | **ADAPTAR** | FASE 20 |
 | B6 | Eficiência e custo medidos | `[D]` | **PARCIAL** (`metricas.go`) | energia/VRAM marcados `NAO_MEDIDOS` com método declarado | **ADAPTAR** | FASE 21 |
-| B7 | Agentes pessoais agendados/contínuos | `[D]` | **PARCIAL** (`schedule*` 21 ficheiros) | anti-duplicação após perda de conexão | **ADAPTAR** | FASE 22 |
+| B7 | Agentes pessoais agendados/contínuos | `[D]` | **PARCIAL** — **MEDIDO (E-1466): 15 ficheiros (nao 21), 65 PASS com aprovacao+lease+dead-letter+compensacao; `continuo` NAO existe (sem laco perpetuo/daemon)** (`schedule*` 21 ficheiros) | anti-duplicação após perda de conexão | **ADAPTAR** | FASE 22 |
 | B8 | Assistente local-first | `[D]` descrição do repositório | **PARCIAL** | conversão conversa→/goal com motivo explicado | **ADAPTAR** | FASE 15 |
 
 ### Grupo C — Transversais do adendo (não vêm de nenhum dos dois)

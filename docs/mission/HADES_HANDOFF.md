@@ -6554,3 +6554,8 @@ ficheiros. Interface canonica existe; nao garante uniformidade de comportamento 
 **Actualizacao de retomada (E-1465):** B5 medido -- skills: 7 ficheiros, **25 PASS** com recusas de
 travessia/duplicado; **quarentena existe para PERSONAS, nao para skills**; **benchmark de skills
 AUSENTE** (zero ocorrencias no codigo e em `scripts/`). A etiqueta `PARCIAL` juntava tres coisas.
+
+**Actualizacao de retomada (E-1466):** B7 medido -- 15 ficheiros (a matriz dizia 21) e **65 PASS** com
+aprovacao, lease, dead-letter e compensacao; **`continuo` nao existe**: nao ha' laco perpetuo nem
+daemon no agendador. E o CI corre `race (macos-latest)` (estava `queued`); o `BLOCKED_EXTERNAL` de
+macOS e' so' local, nao do CI.
