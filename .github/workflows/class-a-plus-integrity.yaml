@@ -177,6 +177,18 @@ jobs:
           python3 scripts/hades_ci_gate_check.py
       - name: Verify the mission bookkeeping checker itself (fault injection)
         run: python3 scripts/hades_mission_check_test.py
+      # PORQUE ESTE PASSO ENTROU (E-1507)
+      #
+      # `hades_rotas_orfas.py` media o tecto de lacunas de produto -- rotas de negocio que o frontend
+      # nao consome -- e corria **so' na bateria local**. Resultado medido nesta serie: tres rotas
+      # novas (`/build/pare`, `/systems/recomendacao`, `/goals/proposta`) levaram o numero de 4 para 7,
+      # a bateria local FALHOU, e o CI deste job ficou **verde** nos mesmos commits.
+      #
+      # ***Um gate que so' corre na maquina de quem constroi nao e' um gate da equipa.***
+      - name: Verify the product-gap ceiling (orphan routes vs frontend surface)
+        run: |
+          python3 scripts/hades_rotas_orfas_test.py
+          python3 scripts/hades_rotas_orfas.py
       # E-661: o gate anterior era `test -z "$(gofmt -l ...)"` - e um arquivo que NAO PARSEIA faz o gofmt
       # escrever o erro em STDERR e sair com STDOUT VAZIO => `test -z ""` PASSAVA. Verde por construcao:
       # foi assim que um `internal/agent/adaptive_router.go` com um `}` faltando atravessou o CI verde.
