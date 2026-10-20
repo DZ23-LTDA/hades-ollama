@@ -6635,3 +6635,9 @@ pt-BR. Bateria: **exit 0 (81 passos)**, **0 tracebacks** no log. Nota: o `ps1_sy
 **200** e ve os campos; org-b -> **404** e o corpo **nao contem** raiz/destino/organizacao do dono; o
 corpo de org-b, com o id normalizado, e' **identico** ao de um id inexistente (**sem oraculo**); a
 lista de org-b da' `"total":0`. `--- PASS` e `go test ./server` **exit 0** (44s).
+
+**Actualizacao de retomada (E-1478):** **os SEIS handlers de build estao provados ao nivel HTTP** --
+`TestTodosOsHandlersDeBuildRespeitamOTenant` cobre `logs`, `artifacts` e `cancel` (a lacuna que o
+`E-1477` declarou): org-b -> 404 sem vazar saida/raiz/`cancelado`, corpo **identico** ao de id
+inexistente; o dono le saida e artefactos (200) e cancelar build terminado da 409. **4 PASS**;
+`go test ./server` exit 0.
