@@ -22,7 +22,7 @@ versão e com que contexto foram medidos.
 | SO | `Windows 11` (build `10.0.26300`, arch `AMD64`) |
 | Python | `3.12.10` |
 | Go | `go version go1.26.9 windows/amd64` |
-| Disco livre | `278.2 GB` |
+| Disco livre | `276.3 GB` |
 | Cores lógicos | `32` |
 
 ## Ollama
@@ -69,8 +69,8 @@ versão e com que contexto foram medidos.
 
 | Item | Valor |
 | --- | --- |
-| Commit | `690f53bc5` |
-| Estado do worktree | `dirty(8)` |
+| Commit | `ed59c5565` |
+| Estado do worktree | `limpo` |
 | `HADES_T2_MATRIX.md` | sha256 `985ea65c51e94041` |
 | `HADES_T2_REPETICAO.md` | sha256 `07efb3893c2acda4` |
 
