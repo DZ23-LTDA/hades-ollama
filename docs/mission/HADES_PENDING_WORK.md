@@ -6520,3 +6520,10 @@ recusa (`ErrExecucaoParada`, com o motivo) **e o destino NAO e' criado** (`os.St
 desarmado segue; nil segue como antes; rearme devolve a capacidade. **4 testes PASS**, `go test -run
 'Build|Pare'` ok, `golangci-lint` 0 achados. Limite: cobre **um executor** (build) e a rota HTTP ainda
 nao cria um `Pare`, logo em producao continua inerte ate' alguem o ligar.
+
+**Actualizacao de retomada (E-1498):** **a rota HTTP de build passou a consultar o pare** --
+`pareDoServidor` (uma instancia do servidor, nao por pedido) e `iniciarBuild` passa `Pare:` em
+`OpcoesDeBuild`. Teste: pare acionado -> rota recusa (nao 200/201), **motivo no corpo**, e
+`os.Stat(destino)` = `IsNotExist`. **PASS**; lint 0; build 0. Limite declarado: **ninguem consegue
+ACIONAR o pare em producao** -- nao ha' rota nem UI para o gatilho, por decisao (quem pode parar tudo?
+com que autorizacao?); o executor consulta, o gatilho nao existe.

@@ -230,6 +230,9 @@ func (a *agentAPI) iniciarBuild(c *gin.Context) {
 		Destino: strings.TrimSpace(pedido.Destino),
 		DryRun:  pedido.DryRun,
 		Timeout: timeout,
+		// O executor HTTP consulta o travao do servidor. Sem isto, a verificacao existiria no
+		// executor e nunca seria feita por quem serve pedidos.
+		Pare: pareDoServidor,
 	}
 
 	// MODO ASSINCRONO: o cliente recebe o ID e pergunta depois. E' o unico modo em que
