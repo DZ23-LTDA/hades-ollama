@@ -5310,3 +5310,12 @@ completa.
 **A proxima accao unica**: **os 14 findings ainda não foram validados contra o código**. O
 `E-1070` mostrou o método (reproduzir num worktree limpo). O **#6 (P0)** e o **#2/#4/#5** são
 os primeiros. **E esperar as runs antes do push.**
+
+---
+
+**Actualizacao de retomada (E-1454, E-1455, E-1456):** A5 foi medido em duas etapas -- a `E-1454`
+caracterizou o cliente SSH (`SSHEnvironment` -> `runOverSSH` -> `ssh.NewClientConn`, com
+`HostKeyCallback` obrigatoria e sem `InsecureIgnoreHostKey`) e a `E-1455` provou-o a serio, com
+servidor SSH efemero em processo: comando executado do outro lado (3 testes PASS, 0 FAIL). A
+`E-1456` mediu A9 (browser emparelhado): 22 ficheiros versionados, checker com oraculo exit=0 e
+tres suites JS exit=0.

@@ -6503,3 +6503,12 @@ migrada, **`BLOCKED` no daemon do Gradle** (`E-1073`), **sem APK**. macOS/iOS ->
 **Doutrina em uma linha**: um `--check` que precisa de rede nao e' um `--check` -- o JSON e' a
 prova do que a API disse naquele dia, e o MD e' a sua leitura; e um indice por posicao fixa
 quebra quando a decoracao muda.
+
+---
+
+**Actualizacao de retomada (E-1454, E-1455, E-1456):** A5 foi medido em duas etapas -- a `E-1454`
+caracterizou o cliente SSH (`SSHEnvironment` -> `runOverSSH` -> `ssh.NewClientConn`, com
+`HostKeyCallback` obrigatoria e sem `InsecureIgnoreHostKey`) e a `E-1455` provou-o a serio, com
+servidor SSH efemero em processo: comando executado do outro lado (3 testes PASS, 0 FAIL). A
+`E-1456` mediu A9 (browser emparelhado): 22 ficheiros versionados, checker com oraculo exit=0 e
+tres suites JS exit=0.
