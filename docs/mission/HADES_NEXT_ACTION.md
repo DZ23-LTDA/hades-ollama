@@ -1,4 +1,39 @@
-## JANELA E-1443
+## JANELA E-1443 — 2026-10-19 (rondas 249–256)
+
+**A cabeça do índice é **E-1443**.** Este bloco substitui a janela anterior (E-1396).
+
+### O que entrou — adaptador de memória Obsidian, ainda interno
+
+| evidência | aresta |
+|---|---|
+| **E-1440** | `obsidian_arquivo.go` — `CaminhoAutorizado` (raiz, `..`, caminho enraizado) + `AnexarEmArquivo` com escrita atómica (`temp` → `Sync` → `Rename`) |
+| **E-1441** | `obsidian_lock.go` — exclusão mútua portátil com sentinela `O_EXCL`, `pid` do dono declarado, `ErrNotaBloqueada` |
+| **E-1442** | `obsidian_acl.go` — `PoliticaDeAcesso.Autorizar` por identidade × escopo × permissão, **negada por defeito** |
+| **E-1443** | `AnexarAutorizado` — a escrita passa a **consultar a ACL** |
+
+### Medições
+
+`go test ./internal/agent` **exit 0** em cada ronda · `gofmt`/`gofumpt` limpos · `gitleaks` **0** · `mission` **0** · 46 `scripts/*_test.py` **0** · `git diff --check` **0**. 29 testes no ficheiro do adaptador.
+
+### Limites — sem arredondar
+
+Nenhum consumidor de produto invoca `AnexarAutorizado`: a cadeia formato → I/O → bloqueio → ACL é hoje uma **biblioteca testada**, não memória compartilhada. Sem `flock` do sistema operacional (a janela entre travar e `rename` é menor, não zero), sem watcher, sem busca com citações, sem MCP governado, sem classificador de PII em prosa. **12 E2E do adendo: 0/12.** Vault operacional **nunca tocado**.
+
+### Bloqueios
+
+**P1** aguarda decisão do proprietário (gitleaks histórico, 3 achados — E-1427). `BLOCKED_EXTERNAL`: Android · Docker · MLX/macOS · Semgrep. `graphlint` recusa o checkout (E-1430).
+
+### Próximo passo
+
+Ligar `AnexarAutorizado` a **um** tool de append governado no MCP, com a identidade vinda da **sessão autenticada** — nunca do corpo do pedido. Teste discriminante: sem concessão → `ErrAcessoNegado` **e** `os.ReadDir` vazio. Só então o E2E nº 1 do adendo (Chat A grava · Chat B recupera sem histórico) passa a ser possível.
+
+### Nota de instrumento
+
+Nesta janela, dois `replace` meus foram no-ops silenciosos: procurei `A cabeca do indice e E-NNN.` quando o texto real é `A cabeça do índice é **E-NNNN**.`. O cabeçalho da janela avançou e o corpo ficou atrás. Regra que passa a valer: **grep da string literal antes do `replace`; verificação no ficheiro depois — nunca com o `print` do próprio script**.
+
+**Veredito: `NOT_RELEASE_READY`.** Máximo desta janela: `PARTIAL_IMPLEMENTED_NOT_E2E_VERIFIED` para 17.1.
+
+## JANELA E-1396
 
 **A cabeca do indice e' E-1396.** Este bloco substitui a janela anterior (E-1363) e cobre o que foi feito
 desde entao. O documento seguinte continua a ser o historico; este e' o que se le' primeiro.
