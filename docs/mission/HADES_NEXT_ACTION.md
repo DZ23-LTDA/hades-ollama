@@ -5323,3 +5323,8 @@ tres suites JS exit=0.
 **Actualizacao de retomada (E-1457):** A8 medido -- o protocolo da bridge e' versionado e recusa
 explicitamente versoes diferentes (`v !== PROTOCOLO` -> `protocolo_incompativel`, provado com
 `v: 99`), mas a compatibilidade **N/N-1 nao existe**: so' a versao corrente e' aceite.
+
+**Actualizacao de retomada (E-1458):** A11 medido -- HADES tem o vault governado com 15 ficheiros,
+**76 testes Go PASS** e **75 assercoes de E2E** contra servidor real. O que ele arquiva e' MEMORIA
+governada (rotulo, fonte, aprovador, hash, compactacao nao destrutiva), **nao** transcricoes de
+sessao.
