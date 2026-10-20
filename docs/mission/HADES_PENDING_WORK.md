@@ -6316,3 +6316,7 @@ caracterizou o cliente SSH (`SSHEnvironment` -> `runOverSSH` -> `ssh.NewClientCo
 servidor SSH efemero em processo: comando executado do outro lado (3 testes PASS, 0 FAIL). A
 `E-1456` mediu A9 (browser emparelhado): 22 ficheiros versionados, checker com oraculo exit=0 e
 tres suites JS exit=0.
+
+**Actualizacao de retomada (E-1457):** A8 medido -- o protocolo da bridge e' versionado e recusa
+explicitamente versoes diferentes (`v !== PROTOCOLO` -> `protocolo_incompativel`, provado com
+`v: 99`), mas a compatibilidade **N/N-1 nao existe**: so' a versao corrente e' aceite.
