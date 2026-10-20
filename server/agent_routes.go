@@ -1797,6 +1797,11 @@ func (a *agentAPI) devToken(c *gin.Context) {
 		// Entrar num tenant existente exige que a organizacao exista: `AddMembership` falha
 		// fechado se nao existir (`os.ErrNotExist`), e o erro vira 400 -- nunca um tenant novo
 		// criado por engano com o id que o chamador pediu.
+		// Idempotente SEM REBAIXAR: quem ja' e' membro mantem o papel que tem.
+		if _, jaMembro := a.auth.AdesaoExistente(user.ID, entrada); jaMembro {
+			organization = agent.Organization{ID: entrada}
+			goto emitir
+		}
 		if _, errMembro := a.auth.AddMembership(user.ID, entrada, agent.RoleViewer); errMembro != nil {
 			// Adesao IDEMPOTENTE: se a organizacao existe mas o utilizador JA' e' membro, a rota
 			// continua -- e' o que permite RE-LOGIN (token novo para o mesmo utilizador no mesmo
