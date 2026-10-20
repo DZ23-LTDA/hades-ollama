@@ -6573,3 +6573,10 @@ historico e arvore **success**, `patches` (windows e ubuntu) **success**, `CGO-f
 **success**. **Ainda `in_progress`:** `test (windows/ubuntu/macos)`, `race (ubuntu/macos)`, `Web
 E2E`, `PR gate` -- logo **nao e' CI verde**, e a verificacao prioritária (`test (windows-latest)`,
 onde vive o `TestCaminhoAutorizadoRecusaTravessia`) ainda nao tinha concluido.
+
+**Actualizacao de retomada (E-1469):** **TODAS as 30 verificacoes de `a040c7a8a` estao `success`**
+(3 `skipped` sao condicionais) -- incluindo `test (windows-latest)` (a verificacao prioritária do
+adendo, onde vive o `TestCaminhoAutorizadoRecusaTravessia`) e **`race (macos-latest)`**. CORRECCAO:
+durante ~50 rondas escrevi `race (macos)` como `BLOCKED_EXTERNAL`; o que e' impossivel e' eu correr
+Darwin LOCALMENTE -- o CI corre e **passa**. E o veredito no **SHA de merge** continua impossivel
+(merge proibido), portanto **nao** declaro CI verde no sentido que o adendo exige.
