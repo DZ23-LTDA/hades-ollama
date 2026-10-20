@@ -113,7 +113,14 @@ func (a *agentAPI) appendMemoriaNoVault(c *gin.Context) {
 		return
 	}
 
-	servico := agent.ServicoDeAppendGovernado{Raiz: raiz}
+	politica, erroDePolitica := agent.ParsearPoliticaDeAcesso(os.Getenv("HADES_VAULT_ACL"))
+	if erroDePolitica != nil {
+		// Configuracao ilegivel NAO vira "sem concessoes": seria esconder o defeito atras de uma
+		// negacao que parece politica. O endpoint recusa-se a funcionar e diz porque.
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "vault_acl_invalid"})
+		return
+	}
+	servico := agent.ServicoDeAppendGovernado{Raiz: raiz, Politica: politica}
 	escreveu, err := servico.Anexar(agent.PedidoDeAppendGovernado{
 		Identidade:     identidade,
 		Tenant:         tenant,
