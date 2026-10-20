@@ -6460,3 +6460,11 @@ para Computer Use (C2), **conversa->goal com motivo** (B8; `/goal` existe), e as
 bloqueadas por proibicao (C1; o `SigningProvider` mede a inaptidao do certificado A1 antes de
 assinar). E **o CI deu a verificacao prioritária**: `test (windows-latest)` = **success** (21:28:47Z
 em `fc148d435`), o job onde vive o `TestCaminhoAutorizadoRecusaTravessia`.
+
+**Actualizacao de retomada (E-1489):** **fatia de produto** -- `RecomendarParaVRAM` em
+`internal/agent/recomendacao_de_hardware.go` fecha a lacuna B2 no plano da FUNCAO: quantizacao,
+contexto, camadas na GPU, contabilidade e **motivo com numeros**; **5 testes PASS** (fail-closed sem
+VRAM, positivo, monotonicidade 4->48 GB, «nao cabe» explicito, determinismo); `go build` 0 e
+`golangci-lint` **0 achados**. **Nao exposta** (sem rota, sem UI) por decisao de escopo; `CamadasNaGPU`
+so' devolve 0 ou 100 (offload parcial nao implementado); coeficientes bytes/parametro sao
+aproximacoes declaradas.

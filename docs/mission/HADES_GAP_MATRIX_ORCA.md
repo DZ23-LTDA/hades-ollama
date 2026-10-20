@@ -159,7 +159,7 @@ E-1487). O estado `MEDIDO` quer dizer *lido no codigo e verificado por comando*,
 
 | linha | o que a medicao diz |
 | --- | --- |
-| **B2** | deteccao de VRAM e agendamento por VRAM **existem** (herdados); **recomendacao** de quantizacao/contexto/offload a partir da VRAM **nao existe**; `doctor` nao expoe VRAM |
+| **B2** | deteccao de VRAM e agendamento **existem** (herdados); a **recomendacao** existe agora como funcao testada (`RecomendarParaVRAM`, `E-1489`) mas **nao esta' exposta** em `doctor` nem em rota; `doctor` continua sem VRAM |
 | **B8** | `/goal` e comando real (UI + endpoint de goals); a **conversao conversa->goal com motivo explicado NAO existe** |
 | **C1** | build e instalacao reais; `SigningProvider` **nao assina (proibido)** e implementa `AvaliarCertificado`; o certificado A1 da DZ23 **nao tem o EKU de Code Signing**; publicacao nao existe |
 | **C2** | `ComputerUse` e componente instalavel, nao perfil de autonomia; **sem** botao de emergencia; allowlist e revogacao existem noutros objectos (OAuth, persona) e estao testadas |
