@@ -180,3 +180,44 @@ func TestAutorNaoViraAprovador(t *testing.T) {
 		t.Fatalf("o autor da nota virou aprovador da decisao: %q", volta.Aprovador)
 	}
 }
+
+// O hash gravado tem de bater com o corpo lido. Se nao batesse (por causa do "\n" final), toda a leitura
+// pareceria uma edicao humana -- um alarme que toca sempre nao avisa de nada.
+func TestIntegridadeDaNotaAceitaLeituraLimpa(t *testing.T) {
+	dados, err := MontarNota(metaDeTeste(EscopoProject), fatoDeTeste())
+	if err != nil {
+		t.Fatalf("MontarNota: %v", err)
+	}
+	meta, m, err := LerNota(dados)
+	if err != nil {
+		t.Fatalf("LerNota: %v", err)
+	}
+	if err := IntegridadeDaNota(meta, m); err != nil {
+		t.Fatalf("leitura limpa acusada de adulteracao: %v", err)
+	}
+}
+
+// Edicao humana no corpo tem de ser DETETADA -- e nao apagada.
+func TestIntegridadeDaNotaDetectaEdicaoHumana(t *testing.T) {
+	dados, err := MontarNota(metaDeTeste(EscopoProject), fatoDeTeste())
+	if err != nil {
+		t.Fatalf("MontarNota: %v", err)
+	}
+	meta, m, err := LerNota(dados)
+	if err != nil {
+		t.Fatalf("LerNota: %v", err)
+	}
+	m.Conteudo = m.Conteudo + "linha acrescentada a mao no Obsidian\n"
+	if err := IntegridadeDaNota(meta, m); !errors.Is(err, ErrConteudoAlterado) {
+		t.Fatalf("esperava ErrConteudoAlterado, veio %v", err)
+	}
+}
+
+// Nota sem content_hash nao pode passar por integra: ausencia de prova nao e' prova.
+func TestIntegridadeDaNotaRecusaSemHash(t *testing.T) {
+	meta := metaDeTeste(EscopoProject)
+	meta.ContentHash = ""
+	if err := IntegridadeDaNota(meta, fatoDeTeste()); !errors.Is(err, ErrConteudoAlterado) {
+		t.Fatalf("esperava ErrConteudoAlterado, veio %v", err)
+	}
+}

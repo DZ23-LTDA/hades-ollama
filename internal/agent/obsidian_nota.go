@@ -48,6 +48,9 @@ var (
 	ErrNotaSemFrontmatter = errors.New("memory note without frontmatter")
 	// ErrNotaSemID: nota sem `memory_id`.
 	ErrNotaSemID = errors.New("memory note without memory_id")
+	// ErrConteudoAlterado: o corpo nao corresponde ao `content_hash` gravado. Alguem editou a nota (ou ela foi
+	// truncada) -- nao se reconcilia em silencio, avisa-se.
+	ErrConteudoAlterado = errors.New("memory note content does not match its content_hash")
 )
 
 // MetaDaNota: o frontmatter. So' os campos que a fatia usa; `supersedes` fica declarado para nao ser inventado
@@ -80,8 +83,11 @@ func escopoConhecido(e EscopoDeMemoria) bool {
 }
 
 // HashDoConteudo: identificador do corpo. Serve para detectar edicao humana e para recusar reescrita silenciosa.
+//
+// Normaliza as quebras de linha FINAIS: `MontarNota` garante que o corpo termina em "\n", e sem normalizar o hash
+// gravado nunca bateria com o corpo lido -- e uma edicao humana seria indistinguivel de uma ida ao disco.
 func HashDoConteudo(conteudo string) string {
-	s := sha256.Sum256([]byte(conteudo))
+	s := sha256.Sum256([]byte(strings.TrimRight(conteudo, "\n")))
 	return hex.EncodeToString(s[:])
 }
 
@@ -248,6 +254,20 @@ func AnexarNotaIdempotente(existente []byte, meta MetaDaNota, m Memoria) ([]byte
 	}
 	saida = append(saida, nota...)
 	return saida, true, nil
+}
+
+// IntegridadeDaNota diz se o corpo lido ainda corresponde ao `content_hash` gravado no frontmatter.
+//
+// Devolve erro de proposito em vez de um bool: quem le precisa de saber QUE a nota divergiu, e nao apenas que
+// "algo esta' diferente". Nao reescreve nada -- detetar uma edicao humana nao autoriza apaga-la.
+func IntegridadeDaNota(meta MetaDaNota, m Memoria) error {
+	if strings.TrimSpace(meta.ContentHash) == "" {
+		return fmt.Errorf("%w: nota sem content_hash gravado", ErrConteudoAlterado)
+	}
+	if HashDoConteudo(m.Conteudo) != meta.ContentHash {
+		return fmt.Errorf("%w: memory_id %q", ErrConteudoAlterado, meta.MemoryID)
+	}
+	return nil
 }
 
 func idJaPresente(existente []byte, id string) bool {
