@@ -149,3 +149,55 @@ func TestAnexarGovernadoComConcessaoEscreveDentroDaRaiz(t *testing.T) {
 		t.Fatal("a travessia criou ficheiro fora da raiz")
 	}
 }
+
+// NEGATIVO: anexar sobre uma nota editada FORA do adaptador tem de recusar (o hash diverge),
+// em vez de escrever por cima de trabalho humano sem notar.
+func TestAnexarGovernadoRecusaNotaEditadaAMao(t *testing.T) {
+	raiz := t.TempDir()
+	servico := ServicoDeAppendGovernado{
+		Raiz:     raiz,
+		Politica: politicaDeTeste("user-1", EscopoTenant, PermissaoLer|PermissaoEscrever),
+	}
+	if _, err := servico.Anexar(pedidoDeTeste("user-1", "org-1", "notas/humana.md")); err != nil {
+		t.Fatalf("criacao devia passar: %v", err)
+	}
+	alvo := filepath.Join(raiz, "notas", "humana.md")
+	dados, err := os.ReadFile(alvo)
+	if err != nil {
+		t.Fatalf("ler: %v", err)
+	}
+	if err := os.WriteFile(alvo, append(dados, []byte("\nlinha humana\n")...), 0o600); err != nil {
+		t.Fatalf("editar a mao: %v", err)
+	}
+
+	_, err = servico.Anexar(pedidoDeTeste("user-1", "org-1", "notas/humana.md"))
+	if !errors.Is(err, ErrConteudoAlterado) {
+		t.Fatalf("esperava ErrConteudoAlterado ao anexar sobre nota editada, veio %v", err)
+	}
+	final, err := os.ReadFile(alvo)
+	if err != nil {
+		t.Fatalf("reler: %v", err)
+	}
+	if !strings.Contains(string(final), "linha humana") {
+		t.Fatal("a edicao humana foi perdida")
+	}
+	if strings.Contains(string(final), "medicao de teste\\nmedicao de teste") {
+		t.Fatal("o adaptador anexou por cima da edicao humana")
+	}
+}
+
+// NEGATIVO: anexar num caminho que ja' e' de OUTRO tenant nao pode escrever nele.
+func TestAnexarGovernadoRecusaCaminhoDeOutroTenant(t *testing.T) {
+	raiz := t.TempDir()
+	gravadorAlheio := ServicoDeAppendGovernado{
+		Raiz:     raiz,
+		Politica: politicaDeTeste("user-1", EscopoTenant, PermissaoLer|PermissaoEscrever),
+	}
+	if _, err := gravadorAlheio.Anexar(pedidoDeTeste("user-1", "org-DONA", "notas/comum.md")); err != nil {
+		t.Fatalf("preparacao: %v", err)
+	}
+	_, err := gravadorAlheio.Anexar(pedidoDeTeste("user-1", "org-1", "notas/comum.md"))
+	if !errors.Is(err, ErrAcessoNegado) {
+		t.Fatalf("esperava ErrAcessoNegado ao escrever em nota de outro tenant, veio %v", err)
+	}
+}

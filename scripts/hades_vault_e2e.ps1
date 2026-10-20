@@ -201,14 +201,31 @@ $linhasLivro = @(Get-Content $livro -ErrorAction SilentlyContinue)
 Exigir ($linhasLivro.Count -eq 1) ('o livro tem exactamente 1 linha (tem ' + $linhasLivro.Count + ')')
 Exigir (($linhasLivro[0] -match 'remocao') -and ($linhasLivro[0] -match 'notas/quarentena.md')) 'a linha registra a remocao e o alvo'
 Exigir (-not ($linhasLivro[0] -match 'ignore all previous instructions')) 'a auditoria NAO guarda o conteudo apagado'
+# --- fase 7: edicao humana reconciliada, sem sobrescrita automatica ------------
+$c0 = Pedido 'Post' "$base/memory/vault/append" $tokA '{"relativo":"notas/humana.md","conteudo":"versao do adaptador","rotulo":"FACT_VERIFIED","fonte":"chat-A","versao_esperada":0}'
+Exigir ($c0.Codigo -eq 201) ('criacao da nota humana -> 201 (veio ' + $c0.Codigo + ')')
+
+# Edicao feita FORA do adaptador (como um humano no Obsidian).
+$ficheiroHumano = Join-Path $vault 'notas\humana.md'
+Add-Content -Path $ficheiroHumano -Value "`nlinha escrita a mao pelo proprietario"
+
+$lerHumano = Pedido 'Get' "$base/memory/vault/read?relativo=notas/humana.md" $tokA $null
+Exigir ($lerHumano.Codigo -eq 409) ('leitura de nota editada a mao -> 409 (veio ' + $lerHumano.Codigo + ')')
+
+$escreverSobreHumano = Pedido 'Post' "$base/memory/vault/append" $tokA '{"relativo":"notas/humana.md","conteudo":"escrita do adaptador por cima","rotulo":"FACT_VERIFIED","fonte":"chat-A","versao_esperada":1}'
+Exigir ($escreverSobreHumano.Codigo -eq 409) ('anexar sobre nota editada a mao -> 409, sem sobrescrever (veio ' + $escreverSobreHumano.Codigo + ')')
+
+$corpoActual = Get-Content $ficheiroHumano -Raw
+Exigir ($corpoActual -match 'linha escrita a mao pelo proprietario') 'a edicao humana CONTINUA no ficheiro'
+Exigir (-not ($corpoActual -match 'escrita do adaptador por cima')) 'o adaptador NAO escreveu por cima'
 $locks = @(Get-ChildItem $vault -Recurse -Filter '*.lock' -ErrorAction SilentlyContinue)
 Exigir ($locks.Count -eq 0) ('sem ficheiros .lock residuais (ha ' + $locks.Count + ')')
 $temps = @(Get-ChildItem $vault -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '*.tmp*' -or ($_.Name.StartsWith('.') -and $_.Name -ne '.hades-auditoria.log') })
 Exigir ($temps.Count -eq 0) ('sem temporarios residuais (ha ' + $temps.Count + ')')
 $restaurado = @(Get-ChildItem $vault -Recurse -File -ErrorAction SilentlyContinue).Count
-Exigir ($restaurado -eq 3) ('3 ficheiros: 2 notas + o livro de auditoria (ha ' + $restaurado + ')')
+Exigir ($restaurado -eq 4) ('4 ficheiros: 3 notas + o livro de auditoria (ha ' + $restaurado + ')')
 $ficheiros = @(Get-ChildItem $vault -Recurse -File -ErrorAction SilentlyContinue)
-Exigir ($ficheiros.Count -eq 3) ('o vault tem 3 ficheiros: decisao.md, versao.md e o livro de auditoria (tem ' + $ficheiros.Count + ')')
+Exigir ($ficheiros.Count -eq 4) ('o vault tem 4 ficheiros: decisao.md, versao.md, humana.md e o livro (tem ' + $ficheiros.Count + ')')
 
 Parar
 Write-Host ('== fim: ' + $falhas + ' falha(s) ==')

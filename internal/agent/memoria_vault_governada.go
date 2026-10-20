@@ -2,6 +2,8 @@ package agent
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"strings"
 )
 
@@ -64,5 +66,44 @@ func (s ServicoDeAppendGovernado) Anexar(p PedidoDeAppendGovernado) (bool, error
 	if strings.TrimSpace(memoria.ID) == "" {
 		memoria.ID = meta.MemoryID
 	}
+	// ANTES de anexar: se o ficheiro ja' existe, o adaptador tem de saber com o que esta' a lidar.
+	// Duas verificacoes, ambas fail-closed:
+	//   1. integridade -- uma nota editada a mao (fora do adaptador) tem o hash divergente; anexar
+	//      sobre ela seria escrever por cima de trabalho humano SEM notar;
+	//   2. tenant -- o ficheiro pode pertencer a outra organizacao; escrever nele seria violar o
+	//      isolamento por um caminho que a leitura ja' recusa.
+	if err := s.verificarEstadoExistente(p.Relativo, tenant, identidade, meta.Escopo); err != nil {
+		return false, err
+	}
 	return AnexarAutorizado(s.Raiz, p.Relativo, s.Politica, identidade, meta, memoria, p.VersaoEsperada)
+}
+
+// verificarEstadoExistente recusa anexar sobre uma nota que o adaptador nao reconhece como intacta
+// e sua. Ficheiro inexistente e' o caso normal de criacao e passa.
+func (s ServicoDeAppendGovernado) verificarEstadoExistente(relativo, tenant, identidade string, escopo EscopoDeMemoria) error {
+	caminho, err := CaminhoAutorizado(s.Raiz, relativo)
+	if err != nil {
+		return err
+	}
+	dados, err := os.ReadFile(caminho)
+	if err != nil {
+		return nil // nao existe: criacao
+	}
+	if len(dados) == 0 {
+		return nil
+	}
+	metaExistente, memoriaExistente, errLer := LerNota(dados)
+	if errLer != nil {
+		// Existe mas nao e' legivel como nota: nao se escreve sobre o que nao se compreende.
+		return fmt.Errorf("%w: nota existente ilegivel: %v", ErrConteudoAlterado, errLer)
+	}
+	if strings.TrimSpace(metaExistente.Tenant) != tenant {
+		return ErrAcessoNegado
+	}
+	if errIntegridade := IntegridadeDaNota(metaExistente, memoriaExistente); errIntegridade != nil {
+		return errIntegridade
+	}
+	_ = identidade
+	_ = escopo
+	return nil
 }
