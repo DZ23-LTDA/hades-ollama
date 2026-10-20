@@ -6566,3 +6566,10 @@ script `hades_local_gates.ps1`, que ESPELHA o CI, revelou 4 falhas que a minha b
 via: `nilerr` REAL em `memoria_vault_governada.go` (ReadFile devolvia nil em qualquer erro), 5
 `misspell` pt-BR, tecto de rotas orfas (0->4 com razao escrita) e pacote de auditoria divergente.
 `audit_tenant_guards` continua vermelho por 6 handlers de build PRE-EXISTENTES.
+
+**Actualizacao de retomada (E-1468):** o job que falhava ficou **VERDE** -- `Preserve Class A+
+surfaces` = **success** em `f6d514adb` (run 39455931079, 16:16:43Z). Na mesma execucao: `gitleaks`
+historico e arvore **success**, `patches` (windows e ubuntu) **success**, `CGO-free Windows`
+**success**. **Ainda `in_progress`:** `test (windows/ubuntu/macos)`, `race (ubuntu/macos)`, `Web
+E2E`, `PR gate` -- logo **nao e' CI verde**, e a verificacao prioritária (`test (windows-latest)`,
+onde vive o `TestCaminhoAutorizadoRecusaTravessia`) ainda nao tinha concluido.
