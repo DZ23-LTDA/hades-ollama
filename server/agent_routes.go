@@ -934,6 +934,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/build/pare", a.estadoDoPare)
 	// CALCULO, nao medicao: o servidor NAO mede a VRAM do cliente -- quem a mede passa-a.
 	group.GET("/systems/recomendacao", a.recomendacaoPorVRAM)
+	// PROPOE, nao cria: o corpo traz a conversa, a identidade vem da sessao.
+	group.POST("/goals/proposta", a.propostaDeGoal)
 	group.POST("/build/verify", a.verificarBuild)
 	group.POST("/build/smoke", a.executarSmoke)
 	// FASE 28.7 do adendo V3: o estado do build. O E-1306 recusou-se a inventar estas rotas
