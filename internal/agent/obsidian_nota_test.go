@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -331,8 +333,8 @@ func TestCaminhoAutorizadoRecusaTravessia(t *testing.T) {
 	if err != nil {
 		t.Fatalf("caminho legitimo recusado: %v", err)
 	}
-	if !strings.HasPrefix(ok, raiz) {
-		t.Fatalf("caminho resolvido fora da raiz: %q", ok)
+	if rel, rerr := filepath.Rel(raiz, ok); rerr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		t.Fatalf("caminho resolvido fora da raiz pedida: %q (raiz %q)", ok, raiz)
 	}
 }
 
@@ -569,5 +571,53 @@ func TestAnexarAutorizadoComConcessaoEscreve(t *testing.T) {
 	// Outra identidade continua negada no MESMO ficheiro ja' existente.
 	if _, err := AnexarAutorizado(raiz, "memoria.md", pol, "intruso", meta, fatoDeTeste(), 0); !errors.Is(err, ErrAcessoNegado) {
 		t.Fatalf("outra identidade devia ser negada, veio %v", err)
+	}
+}
+
+// Ligacao de directorio: juncao no Windows (nao exige privilegio), symlink nos restantes.
+func criarLigacaoDeDirectorio(t *testing.T, alvo, ligacao string) {
+	t.Helper()
+	var err error
+	if runtime.GOOS == "windows" {
+		err = exec.Command("cmd", "/c", "mklink", "/J", ligacao, alvo).Run()
+	} else {
+		err = os.Symlink(alvo, ligacao)
+	}
+	if err != nil {
+		t.Fatalf("nao consegui criar a ligacao %q -> %q: %v", ligacao, alvo, err)
+	}
+}
+
+// O caminho devolvido tem de estar sob a raiz PEDIDA, mesmo quando essa raiz resolve para outro caminho.
+//
+// Era assim que falhava em CI: a raiz vinha de `t.TempDir()` e, no Windows do runner, `EvalSymlinks` expandia
+// `RUNNER~1` para `runneradmin`. Com o caminho montado sobre a raiz RESOLVIDA, o chamador recebia um caminho que
+// nao estava sob a raiz que tinha dado -- e o teste via "fora da raiz" num caminho autorizado.
+func TestCaminhoAutorizadoSobRaizQueResolveParaOutroCaminho(t *testing.T) {
+	base := t.TempDir()
+	real := filepath.Join(base, "real")
+	if err := os.MkdirAll(filepath.Join(real, "sub"), 0o700); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	alias := filepath.Join(base, "alias")
+	criarLigacaoDeDirectorio(t, real, alias)
+
+	ok, err := CaminhoAutorizado(alias, "sub/nota.md")
+	if err != nil {
+		t.Fatalf("raiz legitima recusada: %v", err)
+	}
+
+	// O discriminante: o devolvido e' o caminho pedido, nao o resolvido.
+	if ok != filepath.Join(alias, "sub", "nota.md") {
+		t.Fatalf("devolveu %q; o contrato e' %q (devolver o caminho resolvido %q quebra o chamador)",
+			ok, filepath.Join(alias, "sub", "nota.md"), filepath.Join(real, "sub", "nota.md"))
+	}
+	if rel, rerr := filepath.Rel(alias, ok); rerr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		t.Fatalf("caminho devolvido %q nao esta' sob a raiz pedida %q (rel=%q)", ok, alias, rel)
+	}
+
+	// A proteccao contra travessia continua activa quando a raiz resolve para outro caminho.
+	if _, err := CaminhoAutorizado(alias, "../fora.md"); !errors.Is(err, ErrForaDaRaiz) {
+		t.Fatalf("travessia devia continuar recusada, veio %v", err)
 	}
 }

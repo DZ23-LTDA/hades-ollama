@@ -38,26 +38,35 @@ func CaminhoAutorizado(raiz, relativo string) (string, error) {
 		return "", fmt.Errorf("%w: %q e' enraizado/absoluto", ErrForaDaRaiz, relativo)
 	}
 
-	raizAbs, err := filepath.Abs(raiz)
+	// Duas raizes, e a distincao e' o que estava a falhar em CI:
+	//   raizPedida -- o que o chamador passou; e' SOB ELA que o caminho devolvido tem de estar.
+	//   raizReal   -- o que `EvalSymlinks` resolve; serve apenas para VALIDAR a travessia.
+	// Devolver o caminho montado sobre `raizReal` fazia o resultado deixar de estar sob a raiz pedida sempre que a
+	// raiz e' uma juncao/symlink -- no Windows de CI, `RUNNER~1` expande para `runneradmin` --, e o chamador via um
+	// caminho "fora da raiz" que era, afinal, o caminho autorizado. PATHFIX E-1444.
+	raizPedida, err := filepath.Abs(raiz)
 	if err != nil {
 		return "", err
 	}
-	if resolvida, err := filepath.EvalSymlinks(raizAbs); err == nil {
-		raizAbs = resolvida
+	raizReal := raizPedida
+	if resolvida, err := filepath.EvalSymlinks(raizPedida); err == nil {
+		raizReal = resolvida
 	}
 
-	alvo := filepath.Join(raizAbs, filepath.Clean(relativo))
-	rel, err := filepath.Rel(raizAbs, alvo)
-	if err != nil {
+	limpo := filepath.Clean(relativo)
+
+	// Validacao sobre a raiz REAL: e' aqui que uma travessia escondida por symlink e' apanhada.
+	if rel, err := filepath.Rel(raizReal, filepath.Join(raizReal, limpo)); err != nil {
 		return "", fmt.Errorf("%w: %q", ErrForaDaRaiz, relativo)
-	}
-	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+	} else if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("%w: %q resolve para %q", ErrForaDaRaiz, relativo, rel)
 	}
-	if rel == "." {
+	if limpo == "." || limpo == string(filepath.Separator) {
 		return "", fmt.Errorf("%w: %q aponta para a propria raiz", ErrForaDaRaiz, relativo)
 	}
-	return alvo, nil
+
+	// Devolucao sobre a raiz PEDIDA: o contrato com o chamador e' "dentro da raiz que eu dei".
+	return filepath.Join(raizPedida, limpo), nil
 }
 
 // AnexarEmArquivo e' o append governado num ficheiro de notas dentro da raiz autorizada.
