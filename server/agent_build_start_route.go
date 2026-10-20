@@ -122,6 +122,10 @@ func avisoDaFronteiraDoInicioDeBuild() string {
 
 // iniciarBuild atende `POST /build/start`.
 func (a *agentAPI) iniciarBuild(c *gin.Context) {
+	organizacao, ok := requireOrganizacaoDaSessao(c)
+	if !ok {
+		return
+	}
 	var pedido pedidoDeInicioDeBuild
 	if err := c.ShouldBindJSON(&pedido); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -210,7 +214,7 @@ func (a *agentAPI) iniciarBuild(c *gin.Context) {
 	// havia como perguntar "como vai?", "o que disse?" ou "o que produziu?" -- e a resposta honesta
 	// era "nao existe registo de builds". Agora existe.
 	store := a.storeDeBuilds()
-	buildID, errRegisto := store.Registar(alvo, raiz, strings.TrimSpace(pedido.Destino))
+	buildID, errRegisto := store.RegistarDoTenant(alvo, raiz, strings.TrimSpace(pedido.Destino), organizacao)
 	if errRegisto != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": "nao foi possivel registar o build: " + errRegisto.Error()})
 		return

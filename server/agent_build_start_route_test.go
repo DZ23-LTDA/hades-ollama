@@ -34,6 +34,7 @@ func montarRotaDeInicioDeBuild(t *testing.T) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
+	router.Use(sessaoDeBuild("org-teste"))
 	router.POST(rotaDoInicioDeBuild, (&agentAPI{}).iniciarBuild)
 	return router
 }
@@ -144,6 +145,7 @@ func TestInicioDeBuildRecusaTimeoutNegativo(t *testing.T) {
 func TestInicioDeBuildRecusaCorpoInvalido(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
+	router.Use(sessaoDeBuild("org-teste"))
 	router.POST(rotaDoInicioDeBuild, (&agentAPI{}).iniciarBuild)
 
 	pedido := httptest.NewRequest(http.MethodPost, rotaDoInicioDeBuild, bytes.NewReader([]byte("nao e' json")))

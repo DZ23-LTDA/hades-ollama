@@ -80,10 +80,15 @@ var (
 // RegistoDeBuild e' o que o store guarda por build. E' uma copia segura: o store devolve copias e
 // nunca o ponteiro interno.
 type RegistoDeBuild struct {
-	ID             string            `json:"id"`
-	Alvo           string            `json:"alvo"`
-	Raiz           string            `json:"raiz"`
-	Destino        string            `json:"destino"`
+	ID      string `json:"id"`
+	Alvo    string `json:"alvo"`
+	Raiz    string `json:"raiz"`
+	Destino string `json:"destino"`
+	// Tenant e' o dono do build. Existe porque o registo era acessivel SO' por ID: qualquer
+	// utilizador autenticado que adivinhasse um id lia estado, saida e artefactos de um build de
+	// OUTRA organizacao. *Um registo sem dono nao e' um registo partilhado: e' um registo sem
+	// fronteira.* Vazio = build anterior a esta fatia, e nenhuma sessao o ve'.
+	Tenant         string            `json:"tenant,omitempty"`
 	Estado         EstadoDeBuild     `json:"estado"`
 	IniciadoEm     time.Time         `json:"iniciado_em"`
 	TerminadoEm    *time.Time        `json:"terminado_em,omitempty"`
@@ -144,8 +149,17 @@ func novoID() string {
 	return hex.EncodeToString(b[:])
 }
 
-// Registar cria um registo NA_FILA e devolve o ID. Devolve erro se o ID nao puder ser gerado.
+// Registar cria um registo SEM dono. Mantido para os testes pre-existentes; o caminho de produto
+// usa RegistarDoTenant.
 func (s *BuildStore) Registar(alvo, raiz, destino string) (string, error) {
+	return s.RegistarDoTenant(alvo, raiz, destino, "")
+}
+
+// RegistarDoTenant cria um registo NA_FILA com dono e devolve o ID.
+//
+// A FRONTEIRA VIVE NO REGISTO, NAO NO HANDLER. Se o dono so' existisse na verificacao do handler, um
+// caminho novo esqueceria a verificacao -- e' o que ja' aconteceu com os cinco handlers de build.
+func (s *BuildStore) RegistarDoTenant(alvo, raiz, destino, tenant string) (string, error) {
 	id := novoID()
 	if id == "" {
 		return "", errors.New("nao foi possivel gerar identificador de build")
@@ -157,6 +171,7 @@ func (s *BuildStore) Registar(alvo, raiz, destino string) (string, error) {
 		Alvo:          alvo,
 		Raiz:          raiz,
 		Destino:       destino,
+		Tenant:        strings.TrimSpace(tenant),
 		Estado:        BuildNaFila,
 		IniciadoEm:    s.agora().UTC(),
 		Cancelavel:    true,
@@ -430,6 +445,51 @@ func (s *BuildStore) Listar() []RegistoDeBuild {
 		return saida[i].IniciadoEm.After(saida[j].IniciadoEm)
 	})
 	return saida
+}
+
+// ObterDoTenant devolve o registo SO' se pertencer ao tenant. Registo de outro tenant responde
+// ErrBuildDesconhecido, exactamente como um id que nao existe: *quem nao tem direito nao deve
+// conseguir distinguir "nao existe" de "nao e' teu".*
+func (s *BuildStore) ObterDoTenant(id, tenant string) (RegistoDeBuild, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	r, ok := s.registos[id]
+	if !ok || r.Tenant != strings.TrimSpace(tenant) {
+		return RegistoDeBuild{}, ErrBuildDesconhecido
+	}
+	return *r, nil
+}
+
+// ListarDoTenant devolve os registos do tenant, mais recentes primeiro.
+func (s *BuildStore) ListarDoTenant(tenant string) []RegistoDeBuild {
+	alvo := strings.TrimSpace(tenant)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	saida := make([]RegistoDeBuild, 0, len(s.registos))
+	for _, r := range s.registos {
+		if r.Tenant == alvo {
+			saida = append(saida, *r)
+		}
+	}
+	sort.Slice(saida, func(i, j int) bool {
+		if saida[i].IniciadoEm.Equal(saida[j].IniciadoEm) {
+			return saida[i].ID < saida[j].ID
+		}
+		return saida[i].IniciadoEm.After(saida[j].IniciadoEm)
+	})
+	return saida
+}
+
+// CancelarDoTenant pede o cancelamento SO' de um build do tenant.
+func (s *BuildStore) CancelarDoTenant(id, tenant string) error {
+	s.mu.Lock()
+	r, ok := s.registos[id]
+	if !ok || r.Tenant != strings.TrimSpace(tenant) {
+		s.mu.Unlock()
+		return ErrBuildDesconhecido
+	}
+	s.mu.Unlock()
+	return s.Cancelar(id)
 }
 
 // persistir escreve o registo em disco, se houver directorio. Deve ser chamado com o lock tomado.

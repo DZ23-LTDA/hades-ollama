@@ -84,12 +84,16 @@ func avisoDaFronteiraDoEstadoDeBuild() string {
 
 // estadoDeBuild GET /api/agent/v1/build/status/:id
 func (a *agentAPI) estadoDeBuild(c *gin.Context) {
+	organizacao, ok := requireOrganizacaoDaSessao(c)
+	if !ok {
+		return
+	}
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": "`id` obrigatorio"})
 		return
 	}
-	r, err := a.storeDeBuilds().Obter(id)
+	r, err := a.storeDeBuilds().ObterDoTenant(id, organizacao)
 	if err != nil {
 		if errors.Is(err, agent.ErrBuildDesconhecido) {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -116,7 +120,11 @@ func (a *agentAPI) estadoDeBuild(c *gin.Context) {
 // Uma lista vazia e' uma lista vazia -- nao e' um erro e nao e' "desconhecido". Distinguir os dois
 // e' o que permite a um painel mostrar "ainda nao construiste nada" em vez de "falhou".
 func (a *agentAPI) registosDeBuild(c *gin.Context) {
-	registos := a.storeDeBuilds().Listar()
+	organizacao, ok := requireOrganizacaoDaSessao(c)
+	if !ok {
+		return
+	}
+	registos := a.storeDeBuilds().ListarDoTenant(organizacao)
 	c.JSON(http.StatusOK, gin.H{
 		"total":              len(registos),
 		"builds":             registos,
@@ -128,12 +136,16 @@ func (a *agentAPI) registosDeBuild(c *gin.Context) {
 
 // saidaDoBuild GET /api/agent/v1/build/logs/:id
 func (a *agentAPI) saidaDoBuild(c *gin.Context) {
+	organizacao, ok := requireOrganizacaoDaSessao(c)
+	if !ok {
+		return
+	}
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": "`id` obrigatorio"})
 		return
 	}
-	r, err := a.storeDeBuilds().Obter(id)
+	r, err := a.storeDeBuilds().ObterDoTenant(id, organizacao)
 	if err != nil {
 		if errors.Is(err, agent.ErrBuildDesconhecido) {
 			c.JSON(http.StatusNotFound, gin.H{"erro": "build desconhecido", "id": id})
@@ -157,12 +169,16 @@ func (a *agentAPI) saidaDoBuild(c *gin.Context) {
 // Devolve APENAS o que o provider mediu. Se o build falhou antes de produzir artefactos, a lista vem
 // vazia e `produziu` e' falso -- nao ha' aqui uma lista de artefactos "esperados".
 func (a *agentAPI) artefactosDoBuild(c *gin.Context) {
+	organizacao, ok := requireOrganizacaoDaSessao(c)
+	if !ok {
+		return
+	}
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": "`id` obrigatorio"})
 		return
 	}
-	r, err := a.storeDeBuilds().Obter(id)
+	r, err := a.storeDeBuilds().ObterDoTenant(id, organizacao)
 	if err != nil {
 		if errors.Is(err, agent.ErrBuildDesconhecido) {
 			c.JSON(http.StatusNotFound, gin.H{"erro": "build desconhecido", "id": id})
@@ -194,15 +210,19 @@ func (a *agentAPI) artefactosDoBuild(c *gin.Context) {
 // 409 sobre um build terminado: o pedido nao "funciona" sobre o que ja' acabou. 200 sobre um build a
 // correr, e o contexto e' cancelado -- nao basta mudar o estado no store e deixar o processo vivo.
 func (a *agentAPI) cancelarBuild(c *gin.Context) {
+	organizacao, ok := requireOrganizacaoDaSessao(c)
+	if !ok {
+		return
+	}
 	id := c.Param("id")
 	if id == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": "`id` obrigatorio"})
 		return
 	}
-	err := a.storeDeBuilds().Cancelar(id)
+	err := a.storeDeBuilds().CancelarDoTenant(id, organizacao)
 	switch {
 	case err == nil:
-		r, _ := a.storeDeBuilds().Obter(id)
+		r, _ := a.storeDeBuilds().ObterDoTenant(id, organizacao)
 		c.JSON(http.StatusOK, gin.H{
 			"id":                 r.ID,
 			"estado":             r.Estado,
@@ -212,7 +232,7 @@ func (a *agentAPI) cancelarBuild(c *gin.Context) {
 	case errors.Is(err, agent.ErrBuildDesconhecido):
 		c.JSON(http.StatusNotFound, gin.H{"erro": "build desconhecido", "id": id})
 	case errors.Is(err, agent.ErrBuildJaTerminou):
-		r, _ := a.storeDeBuilds().Obter(id)
+		r, _ := a.storeDeBuilds().ObterDoTenant(id, organizacao)
 		c.JSON(http.StatusConflict, gin.H{
 			"erro":      "build ja' terminou",
 			"id":        id,

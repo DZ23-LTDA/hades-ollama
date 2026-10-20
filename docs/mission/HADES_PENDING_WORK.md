@@ -6384,3 +6384,11 @@ adendo, onde vive o `TestCaminhoAutorizadoRecusaTravessia`) e **`race (macos-lat
 durante ~50 rondas escrevi `race (macos)` como `BLOCKED_EXTERNAL`; o que e' impossivel e' eu correr
 Darwin LOCALMENTE -- o CI corre e **passa**. E o veredito no **SHA de merge** continua impossivel
 (merge proibido), portanto **nao** declaro CI verde no sentido que o adendo exige.
+
+**Actualizacao de retomada (E-1470):** **builds nao tinham dono** -- 5 handlers liam o registo so'
+por id e o `RegistoDeBuild` nao tinha campo de organizacao, pelo que qualquer sessao autenticada
+lia estado, saida e artefactos de builds de OUTRA organizacao. Fechado com fronteira no REGISTO
+(`Tenant` + `RegistarDoTenant`/`ObterDoTenant`/`ListarDoTenant`/`CancelarDoTenant`) e guarda
+`requireOrganizacaoDaSessao` nos 6 handlers; negacao **identica** ao id inexistente (sem oraculo).
+`audit_tenant_guards` -> exit 0; `hades_security_check_test` -> exit 0; **`hades_local_gates.ps1` ->
+exit 0** (81 passos). Nota de processo: o `golangci-lint` tem de estar no PATH no gate local.

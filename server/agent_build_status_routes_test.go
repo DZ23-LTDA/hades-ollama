@@ -27,6 +27,7 @@ import (
 func newBuildStatusRouter(api *agentAPI) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
+	r.Use(sessaoDeBuild("org-teste"))
 	g := r.Group("/api/agent/v1")
 	g.GET("/build/status/:id", api.estadoDeBuild)
 	g.GET("/build/logs/:id", api.saidaDoBuild)
@@ -64,7 +65,7 @@ func TestStatusDeBuildDesconhecido404(t *testing.T) {
 // TestStatusDeBuildExistenteDizAFronteira prova que a fronteira vai na resposta.
 func TestStatusDeBuildExistenteDizAFronteira(t *testing.T) {
 	api := &agentAPI{}
-	id, err := api.storeDeBuilds().Registar("windows", "/r", "/d")
+	id, err := api.storeDeBuilds().RegistarDoTenant("windows", "/r", "/d", "org-teste")
 	if err != nil {
 		t.Fatalf("registar: %v", err)
 	}
@@ -90,7 +91,7 @@ func TestStatusDeBuildExistenteDizAFronteira(t *testing.T) {
 //	utilizador so' descobre quando pergunta pelo resultado.*
 func TestCancelarBuildTerminado409(t *testing.T) {
 	api := &agentAPI{}
-	id, _ := api.storeDeBuilds().Registar("windows", "/r", "/d")
+	id, _ := api.storeDeBuilds().RegistarDoTenant("windows", "/r", "/d", "org-teste")
 	_, _ = api.storeDeBuilds().Iniciar(id)
 	resultado := resultadoVazioParaTeste()
 	if err := api.storeDeBuilds().Terminar(id, &resultado, nil, "ok"); err != nil {
@@ -114,7 +115,7 @@ func TestCancelarBuildTerminado409(t *testing.T) {
 // TestCancelarBuildEmCurso200 prova o caminho positivo.
 func TestCancelarBuildEmCurso200(t *testing.T) {
 	api := &agentAPI{}
-	id, _ := api.storeDeBuilds().Registar("windows", "/r", "/d")
+	id, _ := api.storeDeBuilds().RegistarDoTenant("windows", "/r", "/d", "org-teste")
 	_, _ = api.storeDeBuilds().Iniciar(id)
 	r := newBuildStatusRouter(api)
 	w := fazerPedido(t, r, "POST", "/api/agent/v1/build/cancel/"+id)
@@ -166,7 +167,7 @@ func TestRegistosDeBuildListaVaziaNaoEhErro(t *testing.T) {
 // TestArtefactosSemResultadoListaVazia prova que nao se inventam artefactos "esperados".
 func TestArtefactosSemResultadoListaVazia(t *testing.T) {
 	api := &agentAPI{}
-	id, _ := api.storeDeBuilds().Registar("windows", "/r", "/d")
+	id, _ := api.storeDeBuilds().RegistarDoTenant("windows", "/r", "/d", "org-teste")
 	r := newBuildStatusRouter(api)
 	w := fazerPedido(t, r, "GET", "/api/agent/v1/build/artifacts/"+id)
 	if w.Code != http.StatusOK {
@@ -201,7 +202,7 @@ func TestLogsDeBuildDesconhecido404(t *testing.T) {
 //	*Um corte silencioso esconde exactamente o resto que se procurava.*
 func TestLogsDeBuildDizSeTruncou(t *testing.T) {
 	api := &agentAPI{}
-	id, _ := api.storeDeBuilds().Registar("windows", "/r", "/d")
+	id, _ := api.storeDeBuilds().RegistarDoTenant("windows", "/r", "/d", "org-teste")
 	_, _ = api.storeDeBuilds().Iniciar(id)
 	_ = api.storeDeBuilds().Terminar(id, nil, nil, "linha curta")
 	r := newBuildStatusRouter(api)
@@ -277,6 +278,10 @@ func TestEstadoDeBuildPrecisaDeID(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Params = gin.Params{}
+	// A guarda de tenant vem PRIMEIRO (auth antes de validar): sem sessao este contexto recebia
+	// 401, e o teste pediria 400 ao contrato antigo -- o contrato antigo era o defeito.
+	c.Set("agent.user", agent.User{ID: "usr_teste"})
+	c.Set("agent.organization", agent.Organization{ID: "org-teste"})
 	api.estadoDeBuild(c)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("sem id devia dar 400, deu %d", w.Code)
