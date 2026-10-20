@@ -133,3 +133,41 @@ func TestConstruirAlvosRecusaComPareAcionado(t *testing.T) {
 		t.Fatalf("o destino NAO pode ter sido criado (stat: %v)", errStat)
 	}
 }
+
+// O STAGING tambem respeita o pare, e a recusa vem antes de qualquer validacao.
+func TestStagingRecusaComPareAcionado(t *testing.T) {
+	servico, err := NewBuilderService(t.TempDir())
+	if err != nil {
+		t.Fatalf("criar servico: %v", err)
+	}
+	pare := NovoPareDeEmergencia()
+	if err := pare.Acionar("paragem do staging", "operador"); err != nil {
+		t.Fatalf("acionar: %v", err)
+	}
+	servico.ComPareDeEmergencia(pare)
+
+	// Sem projecto, sem senha e sem versao publicada -- a recusa tem de ser a do PARE, nao uma
+	// validacao qualquer: se fosse a validacao, o travao nao estaria a ser consultado.
+	_, errStage := servico.StageFullstack(t.Context(), "projecto-inexistente", "")
+	if !errors.Is(errStage, ErrExecucaoParada) {
+		t.Fatalf("esperava ErrExecucaoParada (e nao uma validacao), veio %v", errStage)
+	}
+	if !strings.Contains(errStage.Error(), "paragem do staging") {
+		t.Fatalf("a recusa tem de citar o motivo: %q", errStage.Error())
+	}
+}
+
+// E sem pare ligado o servico continua a validar como antes (compatibilidade).
+func TestStagingSemPareContinuaAValidar(t *testing.T) {
+	servico, err := NewBuilderService(t.TempDir())
+	if err != nil {
+		t.Fatalf("criar servico: %v", err)
+	}
+	_, errStage := servico.StageFullstack(t.Context(), "projecto-inexistente", "")
+	if errStage == nil {
+		t.Fatal("sem pare e sem projecto, o staging tem de falhar por validacao")
+	}
+	if errors.Is(errStage, ErrExecucaoParada) {
+		t.Fatalf("nao pode ser recusa do pare: %v", errStage)
+	}
+}

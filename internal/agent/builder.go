@@ -97,6 +97,20 @@ type BuilderService struct {
 	mu       sync.Mutex
 	root     string
 	projects map[string]BuilderProject
+	// pare e' o travao consultado antes de arrancar um ambiente de staging. Nil = sem travao (o
+	// comportamento anterior), para nao partir chamadores existentes.
+	pare *PareDeEmergencia
+}
+
+// ComPareDeEmergencia liga o travao de mao a este servico. Devolve o proprio servico para encadear.
+//
+// Sem isto, `StageFullstack` arrancava um ambiente -- e o staging corre um binario gerado -- mesmo com
+// o pare acionado.
+func (b *BuilderService) ComPareDeEmergencia(p *PareDeEmergencia) *BuilderService {
+	if b != nil {
+		b.pare = p
+	}
+	return b
 }
 
 func NewBuilderService(root string) (*BuilderService, error) {

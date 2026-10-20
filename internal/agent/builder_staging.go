@@ -57,6 +57,14 @@ type BuilderStage struct {
 // StageFullstack compila e sobe o app publicado da versao ativa. A senha vem do chamador: nao existe credencial
 // padrao, e o app gerado se recusa a subir sem ela.
 func (b *BuilderService) StageFullstack(ctx context.Context, id, adminPassword string) (*BuilderStage, error) {
+	// O TRAVAO VEM PRIMEIRO.
+	//
+	// Arrancar um staging com o pare acionado seria executar mesmo depois de alguem ter dito "para".
+	// A pergunta e' feita antes das validacoes: um sistema parado nao precisa de saber se a senha e'
+	// valida.
+	if err := b.pare.AutorizarExecucao("staging"); err != nil {
+		return nil, err
+	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
