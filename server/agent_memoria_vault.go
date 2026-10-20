@@ -226,3 +226,55 @@ func (a *agentAPI) lerMemoriaDoVault(c *gin.Context) {
 		c.JSON(http.StatusOK, memoria)
 	}
 }
+
+// ApagarDoVaultGovernado trata DELETE /memory/vault/note?relativo=...
+//
+// Mesma autoridade: identidade e organizacao do contexto do middleware; permissao de ESCRITA no
+// escopo do tenant (apagar e' escrita). A remocao deixa uma linha no livro de auditoria do vault,
+// sem guardar o conteudo apagado.
+func (a *agentAPI) apagarDoVaultGovernado(c *gin.Context) {
+	raiz := strings.TrimSpace(os.Getenv("HADES_VAULT_ROOT"))
+	if raiz == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "vault_memory_disabled"})
+		return
+	}
+	identidade, ok := IdentidadeDaSessao(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "session identity required"})
+		return
+	}
+	tenant, ok := OrganizacaoDaSessao(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "session organization required"})
+		return
+	}
+	politica, erroDePolitica := agent.ParsearPoliticaDeAcesso(os.Getenv("HADES_VAULT_ACL"))
+	if erroDePolitica != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "vault_acl_invalid"})
+		return
+	}
+	relativo := strings.TrimSpace(c.Query("relativo"))
+	if relativo == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "relativo is required"})
+		return
+	}
+
+	remocao := agent.RemocaoGovernada{Raiz: raiz, Politica: politica}
+	apagou, err := remocao.Apagar(agent.PedidoDeRemocao{Identidade: identidade, Tenant: tenant, Relativo: relativo})
+	switch {
+	case errors.Is(err, agent.ErrAcessoNegado):
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+	case errors.Is(err, agent.ErrForaDaRaiz):
+		c.JSON(http.StatusBadRequest, gin.H{"error": "path outside the vault root"})
+	case errors.Is(err, agent.ErrIdentidadeDeSessaoAusente), errors.Is(err, agent.ErrTenantDaSessaoAusente):
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "session scope required"})
+	case errors.Is(err, agent.ErrRaizDoVaultAusente):
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "vault_memory_disabled"})
+	case errors.Is(err, agent.ErrNotaNaoApagada):
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "note was not removed"})
+	case err != nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "vault delete failed"})
+	default:
+		c.JSON(http.StatusOK, gin.H{"ok": true, "apagou": apagou})
+	}
+}

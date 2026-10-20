@@ -183,14 +183,32 @@ Exigir (-not ($rParcial.Corpo -match 'decisao tomada no chat A')) 'o conteudo tr
 $rIntacto = Pedido 'Get' "$base/memory/vault/read?relativo=notas/quarentena.md" $tokA $null
 Exigir ($rIntacto.Codigo -eq 200) 'o servidor continua a servir as outras notas'
 
+# --- fase 6: apagar com auditoria (direito de esquecer) -------------------------
+$del = Pedido 'Delete' "$base/memory/vault/note?relativo=notas/quarentena.md" $tokA $null
+Exigir ($del.Codigo -eq 200) ('apagar com A -> 200 (veio ' + $del.Codigo + ')')
+Exigir (-not (Test-Path (Join-Path $vault 'notas\quarentena.md'))) 'a nota apagada desapareceu do disco'
+
+$aposApagar = Pedido 'Get' "$base/memory/vault/read?relativo=notas/quarentena.md" $tokA $null
+Exigir ($aposApagar.Codigo -eq 403) ('ler depois de apagar -> 403 (veio ' + $aposApagar.Codigo + ')')
+
+$delOutroTenant = Pedido 'Delete' "$base/memory/vault/note?relativo=notas/versao.md" $tokB $null
+Exigir ($delOutroTenant.Codigo -eq 403) ('apagar com B (so leitura) -> 403 (veio ' + $delOutroTenant.Codigo + ')')
+Exigir (Test-Path (Join-Path $vault 'notas\versao.md')) 'a nota que B nao podia apagar continua la'
+
+$livro = Join-Path $vault '.hades-auditoria.log'
+Exigir (Test-Path $livro) 'o livro de auditoria foi criado'
+$linhasLivro = @(Get-Content $livro -ErrorAction SilentlyContinue)
+Exigir ($linhasLivro.Count -eq 1) ('o livro tem exactamente 1 linha (tem ' + $linhasLivro.Count + ')')
+Exigir (($linhasLivro[0] -match 'remocao') -and ($linhasLivro[0] -match 'notas/quarentena.md')) 'a linha registra a remocao e o alvo'
+Exigir (-not ($linhasLivro[0] -match 'ignore all previous instructions')) 'a auditoria NAO guarda o conteudo apagado'
 $locks = @(Get-ChildItem $vault -Recurse -Filter '*.lock' -ErrorAction SilentlyContinue)
 Exigir ($locks.Count -eq 0) ('sem ficheiros .lock residuais (ha ' + $locks.Count + ')')
-$temps = @(Get-ChildItem $vault -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '*.tmp*' -or $_.Name.StartsWith('.') })
+$temps = @(Get-ChildItem $vault -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '*.tmp*' -or ($_.Name.StartsWith('.') -and $_.Name -ne '.hades-auditoria.log') })
 Exigir ($temps.Count -eq 0) ('sem temporarios residuais (ha ' + $temps.Count + ')')
 $restaurado = @(Get-ChildItem $vault -Recurse -File -ErrorAction SilentlyContinue).Count
-Exigir ($restaurado -eq 3) ('as 3 notas continuam no disco depois do reinicio (ha ' + $restaurado + ')')
+Exigir ($restaurado -eq 3) ('3 ficheiros: 2 notas + o livro de auditoria (ha ' + $restaurado + ')')
 $ficheiros = @(Get-ChildItem $vault -Recurse -File -ErrorAction SilentlyContinue)
-Exigir ($ficheiros.Count -eq 3) ('o vault tem exactamente 3 ficheiros: decisao.md, versao.md e quarentena.md (tem ' + $ficheiros.Count + ')')
+Exigir ($ficheiros.Count -eq 3) ('o vault tem 3 ficheiros: decisao.md, versao.md e o livro de auditoria (tem ' + $ficheiros.Count + ')')
 
 Parar
 Write-Host ('== fim: ' + $falhas + ' falha(s) ==')

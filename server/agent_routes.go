@@ -635,6 +635,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// nunca do corpo. Sem `HADES_VAULT_ROOT` a rota fica desligada (503).
 	group.POST("/memory/vault/append", a.appendMemoriaNoVault)
 	group.GET("/memory/vault/read", a.lerMemoriaDoVault)
+	group.DELETE("/memory/vault/note", a.apagarDoVaultGovernado)
 	group.GET("/grok/status", a.grokStatus)
 	group.GET("/config/safe", a.safeConfig)
 	group.GET("/diagnostics", a.diagnostics)
