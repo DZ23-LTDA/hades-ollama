@@ -5516,3 +5516,10 @@ obrigatorio** (`ErrPareSemMotivo`, tentativa recusada nao altera estado), **prim
 (tentativas contadas), **rearme exige justificacao** e o motivo original sobrevive. **7 testes PASS**
 (incluindo 50 goroutines). Limite declarado: **e' a primitiva, nao o botao** -- nao esta' ligada a
 nenhum executor, logo hoje protege **zero** chamadas.
+
+**Actualizacao de retomada (E-1497):** **o pare deixou de ser promessa** -- `OpcoesDeBuild.Pare` e a
+checagem em `ProviderDeBuildGo.Construir` **antes de qualquer `os.*`**: com o pare acionado a build
+recusa (`ErrExecucaoParada`, com o motivo) **e o destino NAO e' criado** (`os.Stat` -> `IsNotExist`);
+desarmado segue; nil segue como antes; rearme devolve a capacidade. **4 testes PASS**, `go test -run
+'Build|Pare'` ok, `golangci-lint` 0 achados. Limite: cobre **um executor** (build) e a rota HTTP ainda
+nao cria um `Pare`, logo em producao continua inerte ate' alguem o ligar.

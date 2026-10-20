@@ -105,6 +105,9 @@ type OpcoesDeBuild struct {
 	DryRun bool
 	// Timeout limita a build. Zero usa o limite por omissao.
 	Timeout time.Duration
+	// Pare e' o travao de mao consultado ANTES de tocar no filesystem. Nil = sem travao (o
+	// comportamento anterior, para nao partir chamadores que nao o passam).
+	Pare *PareDeEmergencia
 }
 
 // TimeoutPorOmissaoDeBuild limita uma build quando o chamador nao define um.
@@ -148,6 +151,13 @@ func (p ProviderDeBuildGo) Construir(
 	//
 	// A garantia nao enfraquece: se o `go` estiver `PRESENT_COMPATIBLE_UNVERIFIED` e nao funcionar,
 	// o `go build` falha e o erro e' real, medido, do processo -- nao uma previsao.
+	// PARAR ANTES DE TOCAR NO FILESYSTEM.
+	//
+	// A pergunta e' feita aqui, e nao depois de criar pastas: uma recusa que ja' escreveu e' uma
+	// recusa que nao protegeu nada.
+	if err := opcoes.Pare.AutorizarExecucao("build"); err != nil {
+		return ResultadoDeBuild{}, err
+	}
 	if len(plano.Blockers) != 0 {
 		return ResultadoDeBuild{}, fmt.Errorf("%w: %s",
 			ErrPlanoIncompleto, strings.Join(plano.MotivosDeNaoPronto(), "; "))
