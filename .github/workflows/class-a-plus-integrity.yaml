@@ -189,6 +189,16 @@ jobs:
         run: |
           python3 scripts/hades_rotas_orfas_test.py
           python3 scripts/hades_rotas_orfas.py
+      # PORQUE ESTE PASSO ENTROU (E-1508)
+      #
+      # `audit_tenant_guards.py` verifica que nenhum handler fica sem guarda de organizacao reconhecida.
+      # Ele **so' corria na bateria local** -- e foi ele que apontou 21 handlers sem guarda nesta serie,
+      # que eu depois fechei. Um instrumento que so' o autor executa audita o autor, nao o codigo:
+      # os defeitos de ontem ficam invisiveis a quem revisa o PR de hoje.
+      #
+      # E' puro Python (le os .go e procura a guarda): nao precisa de rede nem de ferramentas.
+      - name: Verify tenant guards on every handler (no unguarded handler)
+        run: python3 scripts/audit_tenant_guards.py
       # E-661: o gate anterior era `test -z "$(gofmt -l ...)"` - e um arquivo que NAO PARSEIA faz o gofmt
       # escrever o erro em STDERR e sair com STDOUT VAZIO => `test -z ""` PASSAVA. Verde por construcao:
       # foi assim que um `internal/agent/adaptive_router.go` com um `}` faltando atravessou o CI verde.
