@@ -6550,3 +6550,11 @@ server gates`**, **`Go agentic Windows portability`**, **`CGO-free and Windows b
 `race` de macOS (antes `BLOCKED_EXTERNAL`, agora **medido e verde**). **NAO e' homologacao**: e' veredito
 de SHA de branch; o SHA de merge e' inobtenivel (merge proibido) e `release_state` continua
 `NOT_RELEASE_READY`.
+
+**Actualizacao de retomada (E-1502):** **o estado do pare passou a ser observavel** -- `GET
+/build/pare`, leitura apenas, identidade por `requireOrganizacaoDaSessao` (**nunca do corpo nem da
+query**). **3 testes PASS**: sem sessao -> **401 e a resposta nao traz o estado**; com sessao -> 200
+(`acionado=false`); acionado -> 200 com `acionado=true`, motivo presente e **sem** senha/token/secret no
+corpo. Lint 0, build 0, `audit_tenant_guards` exit 0. **Nao ha' rota para ACIONAR nem REARMAR**, por
+decisao (quem pode parar tudo, com que credencial, com que registo). O estado e' global, nao por tenant
+-- deliberado.
