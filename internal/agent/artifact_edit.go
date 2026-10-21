@@ -30,6 +30,11 @@ func caminhoDoArtefactoNoWorkspace(raiz, caminhoRelativo string) (string, error)
 	if rel == "" {
 		return "", ErrCaminhoForaDoWorkspace
 	}
+	// `\etc\x` nao e absoluto no Windows (nao tem drive), mas e enraizado no drive actual:
+	// aceitar isso seria ambiguo. Recusar separador inicial cobre os dois sistemas.
+	if strings.HasPrefix(rel, "/") || strings.HasPrefix(rel, string(os.PathSeparator)) {
+		return "", ErrCaminhoForaDoWorkspace
+	}
 	if filepath.IsAbs(rel) {
 		return "", ErrCaminhoForaDoWorkspace
 	}

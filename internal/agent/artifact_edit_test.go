@@ -33,7 +33,17 @@ func TestCaminhoDoArtefactoNoWorkspace(t *testing.T) {
 	}
 
 	// NEGATIVO: caminho absoluto e' recusado (nao se cola ao join).
-	if _, err := caminhoDoArtefactoNoWorkspace(raiz, filepath.Join(string(filepath.Separator), "etc", "passwd")); !errors.Is(err, ErrCaminhoForaDoWorkspace) {
+	// Absoluto de verdade: derivado do directorio actual, para valer nos dois sistemas.
+	absoluto, errAbs := filepath.Abs(filepath.Join("..", "fora.txt"))
+	if errAbs != nil {
+		t.Fatalf("preparar caminho absoluto: %v", errAbs)
+	}
+	if _, err := caminhoDoArtefactoNoWorkspace(raiz, absoluto); !errors.Is(err, ErrCaminhoForaDoWorkspace) {
+		t.Fatalf("caminho absoluto devia ser recusado, veio %v", err)
+	}
+	// Enraizado sem drive (o caso que falhou no Windows: \\etc\\passwd nao e IsAbs).
+	enraizado := string(filepath.Separator) + "etc" + string(filepath.Separator) + "passwd"
+	if _, err := caminhoDoArtefactoNoWorkspace(raiz, enraizado); !errors.Is(err, ErrCaminhoForaDoWorkspace) {
 		t.Fatalf("caminho absoluto devia ser recusado, veio %v", err)
 	}
 
