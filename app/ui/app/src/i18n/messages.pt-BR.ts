@@ -1084,6 +1084,12 @@ export const ptBRMessages: Record<string, string> = {
     "Simples mostra só o essencial. Avançado também mostra MCP, diagnósticos e detalhes técnicos.",
   "settings.interfaceMode.simple": "Simples",
   "settings.interfaceMode.advanced": "Avançado",
+  // Idioma da interface (controlo em SettingsLanguage.tsx)
+  "settings.language.title": "Idioma da interface",
+  "settings.language.description":
+    "Escolhe o idioma dos textos da interface. A escolha fica guardada neste dispositivo.",
+  "settings.language.pt-BR": "Português (Brasil)",
+  "settings.language.en": "English",
   "settings.discardDrafts.message":
     "Descartar as alterações de modelos dos apps que ainda não foram aplicadas?",
   "settings.discardDrafts.confirm": "Descartar",

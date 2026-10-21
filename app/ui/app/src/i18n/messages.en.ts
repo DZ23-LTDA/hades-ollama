@@ -1068,6 +1068,12 @@ export const enMessages: Record<string, string> = {
     "Simple shows only the essentials. Advanced also shows MCP, diagnostics and technical details.",
   "settings.interfaceMode.simple": "Simple",
   "settings.interfaceMode.advanced": "Advanced",
+  // Interface language (control in SettingsLanguage.tsx)
+  "settings.language.title": "Interface language",
+  "settings.language.description":
+    "Choose the language of the interface text. The choice is saved on this device.",
+  "settings.language.pt-BR": "Português (Brasil)",
+  "settings.language.en": "English",
   "settings.discardDrafts.message":
     "Discard the model changes for apps that have not been applied yet?",
   "settings.discardDrafts.confirm": "Discard",

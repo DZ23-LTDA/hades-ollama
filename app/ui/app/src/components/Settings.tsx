@@ -48,6 +48,7 @@ import {
 import { applySettingsDefaults } from "./settingsUtils";
 import { getStoredInterfaceMode, persistInterfaceMode, type InterfaceMode } from "@/lib/interfaceMode";
 import { useT } from "@/i18n";
+import { SettingsLanguageControl } from "./SettingsLanguage";
 
 function AnimatedDots() {
   return (
@@ -464,6 +465,7 @@ export default function Settings() {
           <div className="mx-auto max-w-4xl space-y-4">
             <HealthCenter />
             <InterfaceModeControl mode={interfaceMode} onChange={changeInterfaceMode} />
+            <SettingsLanguageControl />
             {interfaceMode === "advanced" && <AgenticControlCenter />}
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
               <div className="font-medium">
@@ -491,6 +493,7 @@ export default function Settings() {
         >
           <HealthCenter />
           <InterfaceModeControl mode={interfaceMode} onChange={changeInterfaceMode} />
+          <SettingsLanguageControl />
           {interfaceMode === "advanced" && <AgenticControlCenter />}
           {/* Connect Ollama Account */}
           <div className="overflow-hidden rounded-xl bg-white dark:bg-neutral-800">
