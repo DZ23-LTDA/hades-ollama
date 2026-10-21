@@ -983,6 +983,9 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/missions/:id/artifacts/:artifact_id/versions", a.artifactVersions)
 	group.POST("/missions/:id/artifacts/:artifact_id/restore", a.artifactRestore)
 	group.PUT("/missions/:id/artifacts/:artifact_id", a.artifactEdit)
+	// FATIA 1: publicar devolve um URL servido por esta API (mesma sessao do chamador).
+	group.POST("/missions/:id/artifacts/:artifact_id/publish", a.publishArtifact)
+	group.GET("/published/:chave/:nome", a.publishedFile)
 	group.POST("/missions/:id/run", a.runMission)
 	group.POST("/missions/:id/cancel", a.cancelMission)
 	group.DELETE("/missions/:id", a.deleteMission)
