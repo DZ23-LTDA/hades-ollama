@@ -464,3 +464,56 @@ instalacao, tambem bloqueia -- o que aponta para algo anterior a interface.
 continuam `EXTERNO`; continua a nao haver prova de instalacao. O que muda e' que a **explicacao** fica
 como «nao medido -- inicia e bloqueia, causa desconhecida», em vez de uma causa inventada que soava
 plausivel.
+## B1 — O INSTALADOR INSTALOU DE FACTO (e a causa do falhanco anterior foi encontrada)
+
+**Medido em 2026-10-21, no PC do dono do produto.**
+
+### A causa: bloqueio POR CAMINHO, nao defeito do artefacto
+
+Experiencia decisiva: compilado um instalador Inno **minimo** (hello-world, `Successful compile (3,609 sec)`)
+e executado a partir de dois sitios, com a MESMA invocacao:
+
+| origem | resultado |
+| --- | --- |
+| `...\hades-ollama\_tmp\` (pasta do projecto) | **exit=1 em 1,96 s** — nao instala nada |
+| `%USERPROFILE%\Downloads` | **exit=0** em 1,65 s — instala |
+| `%TEMP%` | **exit=0** em 1,28 s — instala |
+| `C:\ProgramData` | **exit=0** em 1,45 s — instala |
+
+Ou seja: **a pasta do projecto recusa a execucao de instaladores**; o artefacto do Hades estava bom o
+tempo todo. As tentativas anteriores (`exit=1`, sem `/LOG`, sem evento) estavam a medir o ambiente, nao
+o produto. `Smart App Control` esta **off** (`VerifiedAndReputablePolicyState = 0`) e nao ha regras em
+`Safer\CodeIdentifiers` — a politica concreta que faz o bloqueio **nao foi identificada**.
+
+### O que aconteceu quando correu do sitio certo
+
+```
+HadesSetup-79f16519c.exe (copiado para Downloads; sha256 identico ao build)
+  exit=0 em 7 s
+  %LOCALAPPDATA%\Programs\Hades -> 49 ficheiros · 152,6 MB
+  registo: "Hades version 0.2.0.541"
+  atalho: Iniciar > Hades  (target: Programs\Hades\ollama app.exe)
+  PATH do utilizador: inclui Hades
+```
+
+### Prova de que FUNCIONA (execucao real, nao «deve funcionar»)
+
+```
+GET  /api/version   -> 200 {"version":"0.0.0"}
+GET  /api/tags      -> 7 modelos (qwen2.5:7b, llama3.1:8b, deepseek-r1:8b, llava:7b, qwen2.5-coder:7b, ...)
+POST /api/generate  -> prompt "Responda apenas: HADES OK"
+                       resposta "HADES OK" · 9,7 s · eval_count=4 · modelo qwen2.5:7b
+GET  /api/ps        -> 1 modelo carregado
+UI servida pela app -> http://127.0.0.1:64935 · titulo "Hades" · lang="pt-BR"
+                       sem aviso de backend offline
+```
+
+**Limite declarado:** a app corre mas **nao apresentou janela visivel** (pid vivo, sem titulo) — e' uma
+app de bandeja; a janela nao foi confirmada por mim. E abrir a UI num navegador externo da **403** em
+`/api/v1/*` porque o servidor da app exige o token de sessao que so' a janela injecta — nao e' defeito.
+
+**O que isto muda no B1:** o criterio pede instalacao «numa maquina/perfil **sem o ambiente de dev**».
+Este host TEM o ambiente de dev, logo **B1 continua nao cumprido** — mas deixou de ser «nao medido»:
+ha agora uma instalacao real executada, com ficheiros, registo, PATH e inferencia. E **B7 (atualizacao e
+rollback) e B8 (desinstalacao limpa) passaram a ser testaveis pela primeira vez**, porque o produto
+esta' instalado.
