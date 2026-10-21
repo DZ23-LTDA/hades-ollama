@@ -10,7 +10,9 @@ import { defineConfig, devices } from "@playwright/test";
 // `vite.config.ts` faz proxy de `/api` para `OLLAMA_PROXY_TARGET`, basta apontar
 // o proxy do preview para esse backend: nenhuma mudança em `src/`, nenhum
 // segundo `vite build` e nenhuma interceptação de rede no navegador.
-const PORT = 4173;
+// `HADES_E2E_PORT` permite correr o E2E quando a 4173 esta' ocupada por outro processo
+// (aconteceu: outro projeto servia 500 nessa porta e o `--strictPort` fazia o webServer falhar).
+const PORT = Number(process.env.HADES_E2E_PORT ?? 4173);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const BACKEND_PORT = 43117;
 // Backend real opcional: quando `HADES_E2E_BACKEND_URL` esta' definido, o proxy
