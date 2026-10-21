@@ -29,7 +29,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-RAIZ = Path(r"C:\Users\DZ23\Documents\deepseek-harness\default-workspace\hades-ollama")
+# E-1519: a raiz vem do FICHEIRO, nao de um caminho absoluto da maquina de quem o escreveu.
+RAIZ = Path(__file__).resolve().parents[1]
 INSTALADOR = RAIZ / "scripts" / "hades_native_host_install.ps1"
 POWERSHELL = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]
 

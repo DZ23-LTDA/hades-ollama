@@ -25,7 +25,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-RAIZ = Path(r"C:\Users\DZ23\Documents\deepseek-harness\default-workspace\hades-ollama")
+# E-1519: a raiz vem do FICHEIRO, nao de um caminho absoluto da maquina de quem o escreveu.
+RAIZ = Path(__file__).resolve().parents[1]
 APP = RAIZ / "app" / "ui" / "app"
 DOM = "e2e-extension-dom.mjs"
 TAKEOVER = "e2e-extension-takeover.mjs"

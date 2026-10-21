@@ -22,7 +22,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-RAIZ = Path(r"C:\Users\DZ23\Documents\deepseek-harness\default-workspace\hades-ollama")
+# E-1519: a raiz vem do FICHEIRO, nao de um caminho absoluto da maquina de quem o escreveu.
+RAIZ = Path(__file__).resolve().parents[1]
 BIN = RAIZ / "_tmp" / "hades-linux-amd64"
 DEST = RAIZ / "dist" / "hades-linux-amd64"
 STAGE = DEST / "hades-linux-amd64-UNSIGNED"

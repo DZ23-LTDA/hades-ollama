@@ -29,7 +29,8 @@ import sys
 import time
 from pathlib import Path
 
-RAIZ = Path(r"C:\Users\DZ23\Documents\deepseek-harness\default-workspace\hades-ollama")
+# E-1519: a raiz vem do FICHEIRO, nao de um caminho absoluto da maquina de quem o escreveu.
+RAIZ = Path(__file__).resolve().parents[1]
 WEB_EXT = RAIZ / "_tmp" / "appdata" / "npm" / "web-ext.cmd"
 STAGE = RAIZ / "dist" / "browser-bridge-firefox" / "hades-browser-bridge-firefox-UNSIGNED"
 LOG = RAIZ / "_tmp" / "web-ext-run.log"

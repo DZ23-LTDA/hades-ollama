@@ -34,7 +34,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-RAIZ = Path(r"C:\Users\DZ23\Documents\deepseek-harness\default-workspace\hades-ollama")
+# E-1519: a raiz vem do FICHEIRO, nao de um caminho absoluto da maquina de quem o escreveu.
+RAIZ = Path(__file__).resolve().parents[1]
 EXT = RAIZ / "apps" / "hades-browser-bridge"
 DEST = RAIZ / "dist" / "browser-bridge-firefox"
 STAGE = DEST / "hades-browser-bridge-firefox-UNSIGNED"
