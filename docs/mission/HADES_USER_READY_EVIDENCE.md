@@ -16,7 +16,7 @@
 | B6 | Artefactos assinados | **EXTERNO** | certificado de assinatura |
 | B7 | Atualização e rollback | **EXTERNO** | depende do instalador (B1/B6) |
 | B8 | Desinstalação limpa | **EXTERNO** | depende do instalador (B1/B6) |
-| B9 | Dados e privacidade (sem segredos em texto, telemetria desligável) | **INTERNO** | parcial (ver nota B9) |
+| B9 | Dados e privacidade | **INTERNO** | **PARCIAL** (telemetria provada; falta verificação ponta-a-ponta de segredos em texto) |
 | B10 | Documentação de utilizador final | **INTERNO** | **PROVADO** (ver abaixo) |
 | B11 | Acessibilidade e i18n mínimos | **INTERNO** | **PARCIAL**: acessibilidade PROVADA, **i18n não existe** |
 | B12 | Performance medida | **INTERNO** | **PROVADO** (ver abaixo) |
@@ -92,10 +92,23 @@ trabalho interno por fazer, não um bloqueio externo.
 
 ## B9 — dados e privacidade (PARCIAL, INTERNO)
 
-O que está provado: os testes do pare verificam que o estado **não** expõe
-`senha|password|token|secret|api_key` (asserção em `TestEstadoDoPareAcionadoMostraMotivo`), e o
-`gitleaks` corre no CI em árvore **e** histórico (pass). O que **não** está provado: «telemetria
-desligável» verificado ponta-a-ponta nesta medição.
+**Telemetria: MEDIDA, e é tracing, não analítica.** A «telemetria» do Hades é **OpenTelemetry
+(tracing)**. Medição no código:
+
+    telemetry.go / metricas.go ....... OTel tracing (`NewTelemetry(ctx, endpoint)`)
+    `NewTelemetry(ctx, "")` .......... devolve **noop** -- sem endpoint configurado nada é exportado
+    TestTelemetryNoopStartsSpan ...... passa (o noop existe e e' testado)
+
+Ou seja: **desligada por omissão**. Só exporta se alguém configurar explicitamente um endpoint OTLP.
+Isto é o oposto de «telemetria ligada por omissão com opt-out» -- e é o que o requisito pede.
+
+**Segredos em texto:** `gitleaks` corre no CI em árvore de trabalho **e** histórico (4 execuções, todas
+pass) e os testes do pare verificam que o estado não expõe `senha|password|token|secret|api_key`
+(`TestEstadoDoPareAcionadoMostraMotivo`).
+
+**O que NÃO está provado:** uma verificação ponta-a-ponta de que nenhum segredo é escrito em texto
+pelos fluxos de execução (logs, store do agente). `gitleaks` cobre o **repositório**, não os ficheiros
+que o programa escreve em runtime. Lacuna declarada.
 
 ## B10 — documentação de utilizador final (INTERNO, PROVADO)
 
