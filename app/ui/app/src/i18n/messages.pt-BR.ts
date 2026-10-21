@@ -2026,4 +2026,21 @@ export const ptBRMessages: Record<string, string> = {
   "health.subsystem.sandbox": "Isolamento",
   "route.home.title": "Início",
   "backend.offline.message": "O backend local ainda não respondeu. Ele pode estar iniciando — aguarde alguns segundos e tente novamente.",
+
+  // Nova tarefa (NewTaskPage)
+  "newTask.title": "Nova tarefa",
+  "newTask.back": "Voltar para Tarefas",
+  "newTask.eyebrow": "Missão agentic",
+  "newTask.description":
+    "A tarefa é criada no runtime local com leitura do workspace e sem execução automática. Você acompanha plano, approvals e artifacts em Tarefas.",
+  "newTask.objective.label": "Objetivo da tarefa",
+  "newTask.objective.placeholder":
+    "Ex.: Revisar o README e listar o que falta para rodar o projeto localmente",
+  "newTask.objective.hint": "{count}/{max} caracteres · Ctrl+Enter para criar",
+  "newTask.validation.empty": "Descreva o objetivo da tarefa antes de criar.",
+  "newTask.error.title": "A tarefa não foi criada.",
+  "newTask.error.create": "Não foi possível criar a tarefa.",
+  "newTask.submit": "Criar tarefa",
+  "newTask.submit.pending": "Criando tarefa…",
+  "common.cancel": "Cancelar",
 };

@@ -2004,4 +2004,21 @@ export const enMessages: Record<string, string> = {
   "health.subsystem.sandbox": "Isolation",
   "route.home.title": "Home",
   "backend.offline.message": "The local backend has not responded yet. It may be starting — wait a few seconds and try again.",
+
+  // New task (NewTaskPage)
+  "newTask.title": "New task",
+  "newTask.back": "Back to Tasks",
+  "newTask.eyebrow": "Agentic mission",
+  "newTask.description":
+    "The task is created in the local runtime with workspace read access and no automatic execution. You follow the plan, approvals and artifacts under Tasks.",
+  "newTask.objective.label": "Task objective",
+  "newTask.objective.placeholder":
+    "E.g.: Review the README and list what is missing to run the project locally",
+  "newTask.objective.hint": "{count}/{max} characters · Ctrl+Enter to create",
+  "newTask.validation.empty": "Describe the task objective before creating it.",
+  "newTask.error.title": "The task was not created.",
+  "newTask.error.create": "Could not create the task.",
+  "newTask.submit": "Create task",
+  "newTask.submit.pending": "Creating task…",
+  "common.cancel": "Cancel",
 };
