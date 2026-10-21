@@ -2003,4 +2003,5 @@ export const enMessages: Record<string, string> = {
   "health.subsystem.queue": "Execution queue",
   "health.subsystem.sandbox": "Isolation",
   "route.home.title": "Home",
+  "backend.offline.message": "The local backend has not responded yet. It may be starting — wait a few seconds and try again.",
 };

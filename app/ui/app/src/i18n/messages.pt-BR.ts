@@ -2025,4 +2025,5 @@ export const ptBRMessages: Record<string, string> = {
   "health.subsystem.queue": "Fila de execução",
   "health.subsystem.sandbox": "Isolamento",
   "route.home.title": "Início",
+  "backend.offline.message": "O backend local ainda não respondeu. Ele pode estar iniciando — aguarde alguns segundos e tente novamente.",
 };
