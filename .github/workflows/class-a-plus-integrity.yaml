@@ -228,6 +228,24 @@ jobs:
         run: python3 scripts/hades_agents_check.py
       - name: Verify the audit inventory
         run: python3 scripts/hades_audit_inventory_check.py
+      # E-1513: sete medidos antes de entrar -- todos exit 0, SO' LEITURA (conferi `git status` antes e
+      # depois de cada um) e <= 0.2 s. `hades_go_test_check.py` ficou DE FORA: mediu `exit=2`, exige
+      # argumento -- ligar um instrumento que precisa de parametros sem os dar seria um passo que falha
+      # por construcao.
+      - name: Verify the approval hook ratchet
+        run: python3 scripts/hades_approval_hook_ratchet.py
+      - name: Verify the bridge opt-in ratchet
+        run: python3 scripts/hades_bridge_optin_ratchet.py
+      - name: Verify CI timeouts are declared
+        run: python3 scripts/hades_ci_timeout_check.py
+      - name: Verify the companion documents
+        run: python3 scripts/hades_companion_doc_check.py
+      - name: Verify the scope classifier itself (self-test)
+        run: python3 scripts/hades_scope_classifier_autoteste.py
+      - name: Verify the MCP surface
+        run: python3 scripts/hades_mcp_check.py
+      - name: Verify the plugins surface
+        run: python3 scripts/hades_plugins_check.py
       # E-661: o gate anterior era `test -z "$(gofmt -l ...)"` - e um arquivo que NAO PARSEIA faz o gofmt
       # escrever o erro em STDERR e sair com STDOUT VAZIO => `test -z ""` PASSAVA. Verde por construcao:
       # foi assim que um `internal/agent/adaptive_router.go` com um `}` faltando atravessou o CI verde.
