@@ -2061,4 +2061,10 @@ export const ptBRMessages: Record<string, string> = {
   "search.results": "Resultados",
   "search.chat.untitled": "Conversa sem título",
   "search.chat.hint": "Conversa",
+  // Abas de Configuracoes
+  "settings.tabs.aria": "Seções de configurações",
+  "settings.tab.general": "Geral",
+  "settings.tab.endpoint": "Computadores & API",
+  "settings.tab.connectors": "Conectores e Plugins",
+  "settings.tab.apps": "Harnesses & Codex",
 };

@@ -2039,4 +2039,10 @@ export const enMessages: Record<string, string> = {
   "search.results": "Results",
   "search.chat.untitled": "Untitled chat",
   "search.chat.hint": "Chat",
+  // Settings tabs
+  "settings.tabs.aria": "Settings sections",
+  "settings.tab.general": "General",
+  "settings.tab.endpoint": "Computers & API",
+  "settings.tab.connectors": "Connectors & Plugins",
+  "settings.tab.apps": "Harnesses & Codex",
 };
