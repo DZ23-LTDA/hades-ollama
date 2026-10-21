@@ -247,10 +247,16 @@ jobs:
       - name: Verify the plugins surface
         run: python3 scripts/hades_plugins_check.py
       # E-1514: mais sete medidos (exit 0, so' leitura, <= 2.5 s). Ficam DE FORA, com razao:
-      #   hades_native_host.py ......... mediu exit=1 isolado -- um passo que falha por construcao
-      #                                  ensina a ignorar o gate; precisa de diagnostico primeiro
       #   hades_extension_engines_check.py (49.7 s) e hades_firefox_package.py (28.7 s)
       #                                  entram sozinhos, com o tempo declarado
+      #
+      # E-1515, correcao de uma conclusao MINHA: `hades_native_host.py` foi excluido por "medir exit=1
+      # isolado". O diagnostico mostrou que **nao e' defeito: e' contrato de CLI** -- sem argumentos ele
+      # verifica o host INSTALADO (e falha, corretamente, numa maquina sem host); a bateria usa
+      # `--check-repo`, que verifica o template do repositorio. Medido com a flag certa: exit 0 em 0.1 s.
+      # *Diagnosticar antes de excluir; excluir por medicao errada e' a mesma doenca do gate que mente.*
+      - name: Verify the native host template in the repo
+        run: python3 scripts/hades_native_host.py --check-repo
       - name: Verify the browser bridge package
         run: python3 scripts/hades_browser_bridge_package.py
       - name: Verify the extension surface
