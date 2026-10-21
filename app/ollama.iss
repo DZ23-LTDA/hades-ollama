@@ -128,7 +128,11 @@ Source: "..\scripts\dz23-configure.ps1"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"
-Name: "{app}\lib\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"
+; O nome TEM de ser Ollama.lnk: app/cmd/app/app_windows.go:createLoginShortcut() copia
+; exatamente "{app}\lib\Ollama.lnk" para a pasta de arranque. Com {#MyAppName} (Hades) o
+; ficheiro saia como Hades.lnk, o Stat falhava com "no such file" e o motor NUNCA arrancava
+; com o Windows -- era por isso que outras aplicacoes deixavam de encontrar o endpoint.
+Name: "{app}\lib\Ollama"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"
 Name: "{userprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"
 ; A configuração de provedores fica dentro do app (Configurações -> Provedores);
 ; um atalho separado no menu Iniciar parecia um segundo "Hades" para o usuário.
@@ -175,6 +179,10 @@ Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "OLLAMA_DZ23_
 Root: HKCU; Subkey: "Software\Classes\ollama-dz23"; ValueType: string; ValueName: ""; ValueData: "URL:Ollama DZ23 Protocol"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\ollama-dz23"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\ollama-dz23\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Flags: uninsdeletekey
+; A chave Run herdada apontava para "{localappdata}\Programs\Ollama\ollama app.exe", caminho que
+; deixou de existir quando o Ollama antigo foi desinstalado. O Windows tentava arrancar um
+; executavel inexistente e outras aplicacoes ficavam sem endpoint. Passa a apontar para esta app.
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Ollama"; ValueData: """{app}\{#MyAppExeName}"" --hide"; Flags: uninsdeletevalue
 
 [Code]
 
