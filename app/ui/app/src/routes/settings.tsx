@@ -5,15 +5,17 @@ import Settings from "@/components/Settings";
 import { SettingsTabs } from "@/components/SettingsTabs";
 import { ModelsPanel } from "@/components/ModelsPanel";
 import { DataToolsPanel } from "@/components/DataToolsPanel";
+import { useT } from "@/i18n";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsRoute,
 });
 
 function SettingsRoute() {
+  const { t } = useT();
   return (
     <SidebarLayout
-      title="Configurações"
+      title={t("appSidebar.nav.settings")}
       sidebar={<AppSidebar current="settings" />}
     >
       <SettingsTabs current="general" />

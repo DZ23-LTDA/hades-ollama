@@ -2008,4 +2008,21 @@ export const ptBRMessages: Record<string, string> = {
 
   // Comum (rótulo de confirmação partilhado)
   "common.restart": "Reiniciar",
+  // Saude do sistema (HealthCenter) + titulo da rota inicial
+  "health.title": "Saúde do sistema",
+  "health.loading": "Verificando os serviços…",
+  "health.error": "Não foi possível consultar o diagnóstico do backend.",
+  "health.retry": "Tentar novamente",
+  "health.checkedAt": "Diagnóstico recebido do backend em {at}.",
+  "health.now": "agora",
+  "health.details": "Detalhes",
+  "health.detailSuffix": ". A ação corretiva depende da configuração exibida e não é executada automaticamente.",
+  "health.status.ok": "Operacional",
+  "health.status.attention": "Atenção",
+  "health.status.unavailable": "Indisponível",
+  "health.subsystem.agent": "Motor de missões",
+  "health.subsystem.store": "Persistência",
+  "health.subsystem.queue": "Fila de execução",
+  "health.subsystem.sandbox": "Isolamento",
+  "route.home.title": "Início",
 };

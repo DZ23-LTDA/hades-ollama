@@ -1986,4 +1986,21 @@ export const enMessages: Record<string, string> = {
 
   // Common (shared confirmation label)
   "common.restart": "Restart",
+  // System health (HealthCenter) + home route title
+  "health.title": "System health",
+  "health.loading": "Checking services…",
+  "health.error": "Could not read the backend diagnostics.",
+  "health.retry": "Try again",
+  "health.checkedAt": "Diagnostics received from the backend at {at}.",
+  "health.now": "now",
+  "health.details": "Details",
+  "health.detailSuffix": ". The corrective action depends on the displayed configuration and is not run automatically.",
+  "health.status.ok": "Operational",
+  "health.status.attention": "Attention",
+  "health.status.unavailable": "Unavailable",
+  "health.subsystem.agent": "Mission engine",
+  "health.subsystem.store": "Persistence",
+  "health.subsystem.queue": "Execution queue",
+  "health.subsystem.sandbox": "Isolation",
+  "route.home.title": "Home",
 };
