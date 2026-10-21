@@ -199,6 +199,34 @@ antivírus desta máquina. A autoridade para o Go é o CI, que corre `setup-go` 
 
 Não alterei a política de antivírus: é uma decisão de segurança do dono da máquina, não minha.
 
+## B11-i18n — DIMENSIONADO (medido, não estimado)
+
+O requisito pede «pt-BR **e** en verificados na UI». Medição no código (`app/ui/app/src`):
+
+```
+ficheiros de UI (ts/tsx, sem testes) ........ 322
+ficheiros com texto pt-BR no código ......... 172
+ocorrências de texto pt-BR visível .......... 1161
+
+top 5 (por nº de strings):
+  ProductWorkspacePage.tsx ...... 49
+  AutomationsPage.tsx ........... 30
+  StudioCanvasPage.tsx .......... 28
+  CodexDesktopRow.tsx ........... 27
+  connectorCatalog.ts ........... 27
+```
+
+**Não existe camada de tradução.** Os textos estão em pt-BR no próprio código (ex.:
+`modelPickerUtils.ts` devolve rótulos pt-BR; `commerceClient.ts` usa `toLocaleString("pt-BR")`).
+
+**Consequência para o gate:** B11-i18n é **trabalho interno por fazer**, com dimensão conhecida:
+criar o módulo `t()` primeiro, migrar os 172 ficheiros, e correr `npm test` a cada migração — há specs
+que comparam **rótulos em pt-BR** (`ModelPicker.test.ts`), logo a migração pode quebrá-las de forma
+legítima e cada quebra tem de ser decidida, não silenciada.
+
+Ordem sugerida: `t()` + `ProductWorkspacePage.tsx` (o maior) como prova de conceito, e só depois o
+lote.
+
 ## Limitações deste documento
 
 - Os E2E correm contra **fixtures** (`UI_FIXTURE`) e um backend de fixture, não contra o binário
