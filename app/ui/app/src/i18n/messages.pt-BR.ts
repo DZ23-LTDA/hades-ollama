@@ -2099,4 +2099,8 @@ export const ptBRMessages: Record<string, string> = {
   "whatsapp.evolution.qrLinked": "Instancia ligada.",
   "whatsapp.evolution.qrError": "Nao foi possivel obter o QR",
   "whatsapp.evolution.qrScanHint": "Abra o WhatsApp > Dispositivos ligados > Ligar dispositivo e leia este codigo.",
+  "missionPermissions.summary.readOnly": "So leitura",
+  "missionPermissions.summary.withElevated": "Leitura + {count} escopo(s) elevado(s)",
+  "missionPermissions.summary.risk": "risco",
+  "missionPermissions.summary.approval": "exige aprovacao humana",
 };

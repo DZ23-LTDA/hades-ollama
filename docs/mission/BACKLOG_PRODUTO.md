@@ -54,7 +54,9 @@ allowlist, config). O QR é gerado pelo servidor Evolution do utilizador.
 
 ---
 
-## I0c — Barra de permissões por missão
+## I0c — Barra de permissões por missão — **DONE** (ver commit)
+
+**Causa-raiz medida:** o MissionCapabilityPicker existia mas vivia dentro de um <details> FECHADO — na prática o nível de acesso não aparecia.
 
 **Aceite:**
 

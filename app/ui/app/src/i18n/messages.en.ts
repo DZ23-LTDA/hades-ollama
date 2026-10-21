@@ -2077,4 +2077,8 @@ export const enMessages: Record<string, string> = {
   "whatsapp.evolution.qrLinked": "Instance is connected.",
   "whatsapp.evolution.qrError": "Could not get the QR",
   "whatsapp.evolution.qrScanHint": "Open WhatsApp > Linked devices > Link a device and scan this code.",
+  "missionPermissions.summary.readOnly": "Read only",
+  "missionPermissions.summary.withElevated": "Read + {count} elevated scope(s)",
+  "missionPermissions.summary.risk": "risk",
+  "missionPermissions.summary.approval": "requires human approval",
 };
