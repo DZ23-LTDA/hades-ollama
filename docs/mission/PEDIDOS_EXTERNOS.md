@@ -192,3 +192,32 @@ scripts/hades_installer_windows.ps1 -Versao 0.2.0.541 -Iscc <ISCC>
 não é instalar. E o próprio script classificou o artefacto como **COMPOSICAO** (3 de 3 alvos em
 `dist\` são de 16–18/10, anteriores ao HEAD), logo **não** é um build reproduzível desta fonte — o que
 reforça o pedido 3b: quem testar deve saber que está a testar uma composição declarada como tal.
+---
+
+## 4. Fila de runners do GitHub Actions (infraestrutura)
+
+**Estado:** o job `Web and mobile quality` (`.github/workflows/dz23-agentic-quality.yaml`) falhou no SHA
+`c4b93e006` com uma causa **medida e não relacionada com código**:
+
+```
+failed to load config from .../app/ui/app/vitest.config.ts
+Error: Cannot find module '../lightningcss.linux-x64-gnu.node'
+##[error]Process completed with exit code 1.
+```
+
+**O que já foi descartado (medido):**
+- o lockfile **está completo**: `lightningcss-linux-x64-gnu | v=1.32.0 | resolved=true | integrity=true | optional=true | os=linux` (lido com `node`, não com PowerShell);
+- o workflow instala com `npm ci --no-audit --no-fund`, **sem** `--omit=optional`.
+
+**Hipótese declarada:** instalação incompleta no runner (cache npm / fetch do binário por plataforma).
+
+**Tentativa de fechar:** `gh run rerun 39618635386 --failed` (job `119291858912`). Ele foi **criado e
+iniciado às 14:50:15Z** e permanece `queued` — a fila de runners não o pegou.
+
+**Pedido externo (ou acção de infra):** destravar a fila de runners (ou dar capacidade) para que este job
+volte a correr. Se ele **falhar de novo**, o passo seguinte dentro do repositório é forçar os opcionais
+(`--include=optional`) **citando no workflow as linhas de falha acima** — nunca desligar o gate.
+
+**Excepção de processo registada:** com o gate vermelho e a fila travada, o trabalho de código retoma
+(I1b) com esta excepção **escrita** — para não confundir «bloqueado por infra» com «parado por opção».
+O verde continua a ser exigido para marcar qualquer item como DONE.
