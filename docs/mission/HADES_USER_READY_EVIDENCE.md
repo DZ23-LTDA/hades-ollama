@@ -517,3 +517,25 @@ Este host TEM o ambiente de dev, logo **B1 continua nao cumprido** — mas deixo
 ha agora uma instalacao real executada, com ficheiros, registo, PATH e inferencia. E **B7 (atualizacao e
 rollback) e B8 (desinstalacao limpa) passaram a ser testaveis pela primeira vez**, porque o produto
 esta' instalado.
+## B12 — PERFORMANCE MEDIDA NO PRODUTO INSTALADO (numeros, com metodo)
+
+Medido em 2026-10-21, no PC do dono, usando o binario **instalado** (`%LOCALAPPDATA%\Programs\Hades\ollama.exe`).
+
+**Metodo** (re-executavel): uma SEGUNDA instancia do motor arranca em `OLLAMA_HOST=127.0.0.1:11500`
+(nao toca na instancia principal em 11434), com `Stopwatch` a volta do `Process.Start` e sondagem a
+`GET /api/version` a cada 500 ms ate responder.
+
+| metrica | numero medido |
+| --- | --- |
+| Arranque do motor ate` /api/version` responder | **0,54 s** |
+| 1.a inferencia (inclui carga do modelo do disco) | **7,1 s** (`qwen2.5:7b`, 4 tokens) |
+| 2.a inferencia (modelo ja' carregado) | **0,28 s** (registo GIN: 279,97 ms) |
+| Inferencia no motor principal (sessao anterior) | 9,7 s, `eval_count=4` |
+| Modelos disponiveis | 7 |
+
+**O que isto NAO e':** nao e' medicao num perfil limpo (o host tem ambiente de dev), nao e' media de
+varias execucoes (1 amostra por metrica, com `num_predict=4`), e nao mede arranque a frio do sistema
+operativo. E' o primeiro numero **do produto instalado**, onde antes so' havia o relatorio de baseline
+do repositorio.
+
+**Limpeza:** a instancia de 11500 foi encerrada; a principal (11434) continuou de pe' e respondeu 200.
