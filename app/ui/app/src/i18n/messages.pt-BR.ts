@@ -609,4 +609,379 @@ export const ptBRMessages: Record<string, string> = {
   "automations.delete.confirm":
     "Tem certeza que deseja excluir esta automação?",
   "automations.delete.confirmLabel": "Excluir",
+
+  // Empresa — página / cabeçalho
+  "companyWorkspace.page.title": "Empresa",
+  "companyWorkspace.eyebrow": "Sistema da Empresa",
+  "companyWorkspace.title": "Crie e opere sua empresa",
+  "companyWorkspace.description":
+    "Estratégia, produto, engenharia, marketing, vendas, suporte e operações em um tenant com ciclos autônomos, métricas, approvals e pausa segura.",
+  "companyWorkspace.refresh": "Atualizar",
+  "companyWorkspace.loadError":
+    "Não foi possível carregar o Sistema da Empresa.",
+  "companyWorkspace.actionFailed": "A operação falhou.",
+  "companyWorkspace.loading": "Carregando o Sistema da Empresa…",
+  "companyWorkspace.created": "Empresa criada como tenant local.",
+  "companyWorkspace.tenant": "tenant {id}",
+
+  // Empresa — criação
+  "companyWorkspace.start.title": "Comece com uma empresa",
+  "companyWorkspace.start.namePlaceholder": "Nome da empresa",
+  "companyWorkspace.start.missionPlaceholder":
+    "Missão e resultado que a empresa entrega",
+  "companyWorkspace.start.positioningPlaceholder":
+    "Posicionamento e diferencial",
+  "companyWorkspace.start.audiencePlaceholder": "Público-alvo",
+  "companyWorkspace.start.offerPlaceholder": "Oferta principal",
+  "companyWorkspace.start.offerLabel": "Oferta",
+  "companyWorkspace.start.budgetPlaceholder": "Limite mensal em BRL",
+  "companyWorkspace.start.budgetLabel": "Limite mensal",
+  "companyWorkspace.start.create": "Criar empresa e tenant",
+  "companyWorkspace.field.mission": "Missão",
+  "companyWorkspace.field.positioning": "Posicionamento",
+  "companyWorkspace.field.businessModel": "Modelo de negócio",
+  "companyWorkspace.field.name": "Nome",
+
+  // Empresa — Tel-Agent
+  "companyWorkspace.telAgent.title": "Tel-Agent — canal textual operacional",
+  "companyWorkspace.telAgent.description":
+    "Comande esta empresa por texto e receba o retorno persistido no tenant. As operações são allowlisted e locais; telefonia, WhatsApp e mensagens externas permanecem não configurados até uma conexão homologada.",
+  "companyWorkspace.telAgent.operationLabel": "Operação Tel-Agent",
+  "companyWorkspace.telAgent.operationReport": "Ler relatório operacional",
+  "companyWorkspace.telAgent.operationBacklog": "Criar item no backlog",
+  "companyWorkspace.telAgent.operationCampaign": "Criar rascunho de campanha",
+  "companyWorkspace.telAgent.operationTitlePlaceholder": "Título da operação",
+  "companyWorkspace.telAgent.priorityPlaceholder": "Prioridade",
+  "companyWorkspace.telAgent.priorityLabel": "Prioridade Tel-Agent",
+  "companyWorkspace.telAgent.descriptionPlaceholder":
+    "Objetivo do rascunho (não publica)",
+  "companyWorkspace.telAgent.descriptionLabel": "Objetivo da campanha",
+  "companyWorkspace.telAgent.messagePlaceholder":
+    "Ex.: crie uma tarefa para revisar o onboarding",
+  "companyWorkspace.telAgent.messageLabel": "Mensagem Tel-Agent",
+  "companyWorkspace.telAgent.history":
+    "Histórico limitado às últimas 100 trocas; entradas são redigidas antes da persistência.",
+  "companyWorkspace.telAgent.run": "Executar operação",
+  "companyWorkspace.telAgent.approvalPending":
+    "Tel-Agent criou um rascunho local; approval continua obrigatório.",
+  "companyWorkspace.telAgent.completed":
+    "Tel-Agent concluiu a operação local.",
+  "companyWorkspace.telAgent.failed":
+    "Tel-Agent não conseguiu concluir a operação.",
+
+  // Empresa — indicadores
+  "companyWorkspace.stats.status": "Estado",
+  "companyWorkspace.stats.backlog": "Backlog aberto",
+  "companyWorkspace.stats.goalsOnTrack": "Metas em dia",
+  "companyWorkspace.stats.activeCycles": "Ciclos ativos",
+  "companyWorkspace.stats.budgetUsed": "Orçamento usado",
+  "companyWorkspace.stats.anomalies": "Anomalias",
+  "companyWorkspace.status.paused": "pausada",
+  "companyWorkspace.status.active": "ativa",
+  "companyWorkspace.status.none": "sem empresa",
+  "companyWorkspace.cycleState.enabled": "ativo",
+  "companyWorkspace.cycleState.paused": "pausado",
+
+  // Empresa — identidade
+  "companyWorkspace.identity.title": "Identidade, posicionamento e modelo",
+  "companyWorkspace.identity.nameUpdated": "Nome atualizado.",
+  "companyWorkspace.identity.missionUpdated": "Missão atualizada.",
+  "companyWorkspace.identity.positioningUpdated":
+    "Posicionamento atualizado.",
+  "companyWorkspace.identity.businessModelUpdated":
+    "Modelo de negócio atualizado.",
+  "companyWorkspace.departments.title": "Departamentos virtuais",
+
+  // Empresa — roadmap
+  "companyWorkspace.roadmap.title": "Roadmap estratégico",
+  "companyWorkspace.roadmap.placeholder": "Próximo resultado estratégico",
+  "companyWorkspace.roadmap.itemLabel": "Item de roadmap",
+  "companyWorkspace.roadmap.added": "Item adicionado ao roadmap.",
+  "companyWorkspace.roadmap.empty": "Nenhum marco definido.",
+  "companyWorkspace.add": "Adicionar",
+
+  // Empresa — metas
+  "companyWorkspace.goals.title": "Metas e KPIs",
+  "companyWorkspace.goals.titlePlaceholder": "Meta",
+  "companyWorkspace.goals.titleLabel": "Título da meta",
+  "companyWorkspace.goals.metricPlaceholder": "KPI: leads, receita, clientes",
+  "companyWorkspace.goals.metricLabel": "Métrica",
+  "companyWorkspace.goals.targetLabel": "Alvo",
+  "companyWorkspace.goals.created": "Meta criada.",
+  "companyWorkspace.goals.empty": "Os KPIs da empresa aparecerão aqui.",
+  "companyWorkspace.create": "Criar",
+
+  // Empresa — backlog
+  "companyWorkspace.backlog.title": "Backlog priorizado",
+  "companyWorkspace.backlog.placeholder": "Tarefa ou experimento",
+  "companyWorkspace.backlog.itemLabel": "Item de backlog",
+  "companyWorkspace.backlog.priorityLabel": "Prioridade",
+  "companyWorkspace.backlog.added": "Item adicionado e priorizado.",
+  "companyWorkspace.backlog.empty": "Backlog vazio.",
+
+  // Empresa — ciclos
+  "companyWorkspace.cycles.title": "Ciclos autônomos",
+  "companyWorkspace.cycles.nameLabel": "Nome do ciclo",
+  "companyWorkspace.cycles.objectiveLabel": "Objetivo do ciclo",
+  "companyWorkspace.cycles.frequencyLabel": "Frequência",
+  "companyWorkspace.cycles.frequencyDaily": "Diário",
+  "companyWorkspace.cycles.frequencyWeekly": "Semanal",
+  "companyWorkspace.cycles.create": "Criar ciclo",
+  "companyWorkspace.cycles.created": "Ciclo criado e ligado ao scheduler.",
+  "companyWorkspace.cycles.defaultName": "Ciclo diário",
+  "companyWorkspace.cycles.defaultObjective":
+    "Revisar métricas, roadmap e executar a próxima tarefa priorizada",
+
+  // Empresa — segurança e gastos
+  "companyWorkspace.security.title": "Segurança, budget e pausa",
+  "companyWorkspace.security.approvalsNotice":
+    "Ações de gasto, anúncio, contrato e mensagem exigem approval.",
+  "companyWorkspace.security.amountPlaceholder": "Valor em centavos",
+  "companyWorkspace.security.amountLabel": "Valor de gasto",
+  "companyWorkspace.security.categoryLabel": "Categoria",
+  "companyWorkspace.security.categoryAds": "Anúncios",
+  "companyWorkspace.security.categoryContract": "Contrato",
+  "companyWorkspace.security.categoryInfrastructure": "Infraestrutura",
+  "companyWorkspace.security.categorySales": "Vendas",
+  "companyWorkspace.security.recordSpend": "Registrar gasto",
+  "companyWorkspace.security.spendRequested":
+    "Gasto solicitado; decision pendente antes de atualizar o budget.",
+  "companyWorkspace.security.resumed": "Empresa retomada.",
+  "companyWorkspace.security.paused": "Empresa pausada com segurança.",
+  "companyWorkspace.security.resume": "Retomar",
+  "companyWorkspace.security.pause": "Pausar",
+  "companyWorkspace.signal.title": "Sinal operacional",
+  "companyWorkspace.signal.monthlyBudget": "Orçamento mensal",
+  "companyWorkspace.signal.consumed": "Consumido",
+  "companyWorkspace.signal.persistence":
+    "Persistência local, tenant e auditoria server-side.",
+
+  // Endpoint — página e cabeçalho
+  "endpoint.title": "Computadores & Endpoint",
+  "endpoint.heading": "Computadores",
+  "endpoint.description":
+    "Gerencie seus computadores locais e na nuvem para execução segura de missões e Computer Use.",
+  "endpoint.cloud.create": "Criar computador na nuvem",
+  "endpoint.cloud.prerequisiteStrong": "Pré-requisito:",
+  "endpoint.cloud.prerequisiteText":
+    "computadores na nuvem exigem um provedor de infraestrutura configurado (credenciais e região). Este build local-first não inclui um provedor de nuvem, portanto a criação ainda não está disponível. Enquanto isso, use o seu computador local, que já aparece conectado abaixo.",
+
+  // Endpoint — host local
+  "endpoint.host.thisComputer": "Este computador",
+  "endpoint.host.osLocal": "Local",
+  "endpoint.host.statusOnline": "Host Ativo",
+  "endpoint.host.statusOffline": "Host Offline",
+  "endpoint.host.statusChecking": "Verificando host",
+  "endpoint.host.osLine": "• {os} / Local {version}",
+  "endpoint.host.portLabel": "Porta da API:",
+  "endpoint.host.osLabel": "Sistema:",
+  "endpoint.host.versionLabel": "Versão do servidor:",
+  "endpoint.remote.button": "Acesso remoto",
+  "endpoint.remote.before":
+    "Por padrão este host responde apenas localmente. Para acesso remoto é preciso ativar",
+  "endpoint.remote.strong": "“Expor o Hades na rede”",
+  "endpoint.remote.afterStart": "em Configurações e proteger a porta",
+  "endpoint.remote.afterPort":
+    "com TLS/autenticação (por exemplo, um proxy reverso). Enquanto isso não for feito, o acesso remoto permanece desligado por segurança.",
+  "endpoint.settings": "Configurações",
+  "endpoint.tasks": "Tarefas",
+
+  // Endpoint — conectar dispositivo
+  "endpoint.connect.title": "Conectar outro dispositivo",
+  "endpoint.connect.description":
+    "Adicione nós remotos, instâncias na nuvem ou conecte seu smartphone para controlar tarefas em andamento.",
+  "endpoint.connect.computer": "Conectar meu computador",
+  "endpoint.connect.computerHintBefore":
+    "Para conectar outro computador como nó remoto é preciso que ele rode o Hades e seja alcançável pela rede (host e porta",
+  "endpoint.connect.computerHintAfter":
+    "expostos com TLS). Não há, neste build local-first, um provedor que faça esse provisionamento automaticamente.",
+  "endpoint.pairing.generating": "Gerando código…",
+  "endpoint.pairing.button": "Parear o seu telefone",
+  "endpoint.pairing.startFailed":
+    "Não foi possível iniciar o pareamento agora.",
+  "endpoint.pairing.codeLabel": "Código de pareamento:",
+  "endpoint.pairing.instructions":
+    "Abra o app complementar do Hades no seu celular e informe este código para concluir o pareamento.",
+  "endpoint.pairing.expiresAt": "O código expira às {time}.",
+  "endpoint.pairing.onlyPhone":
+    "O pareamento só se conclui a partir do app no telefone; nada é enviado para fora deste computador.",
+
+  // Endpoint — endereços da API
+  "endpoint.api.title": "Endereços da API & Conexão",
+  "endpoint.api.description":
+    "Use os endpoints abaixo para conectar Claude Code, Codex, Cursor e SDKs locais.",
+  "endpoint.api.secure": "Seguro",
+  "endpoint.api.native": "Ollama Nativo",
+  "endpoint.api.openai": "Compatível com OpenAI",
+  "endpoint.api.openaiLabel": "compatível com OpenAI",
+  "endpoint.api.anthropic": "Compatível com Anthropic (Claude Code)",
+  "endpoint.api.anthropicLabel": "compatível com Anthropic",
+  "endpoint.copy.aria": "Copiar {label}",
+
+  // Endpoint — gateway
+  "endpoint.gateway.title": "Configurar inferência de terceiros",
+  "endpoint.gateway.description":
+    "Um único endereço para os modelos locais e para as APIs de terceiros. Se um provedor recusar a chamada, o gateway tenta o próximo candidato sem trocar a configuração do Claude ou do Codex.",
+  "endpoint.gateway.rotationDefault": "Rotação padrão · 3 tentativas",
+  "endpoint.gateway.baseUrl": "URL base do gateway",
+  "endpoint.gateway.apiKey": "Chave de API do gateway",
+  "endpoint.gateway.keyStored":
+    "Guardada fora do arquivo de configuração, na variável",
+  "endpoint.gateway.copyKey": "chave do gateway",
+  "endpoint.gateway.hide": "Ocultar",
+  "endpoint.gateway.show": "Mostrar",
+  "endpoint.gateway.noKey":
+    "Nenhuma chave ativa. Sem chave, o gateway aceita apenas pedidos deste computador — é o que mantém a inferência local privada.",
+  "endpoint.gateway.generating": "Gerando…",
+  "endpoint.gateway.rotate": "Gerar nova chave",
+  "endpoint.gateway.generate": "Gerar chave do gateway",
+  "endpoint.gateway.rotateFailed":
+    "Não foi possível gerar a chave do gateway agora.",
+  "endpoint.gateway.loopbackBefore": "O gateway está no modo",
+  "endpoint.gateway.loopbackStrong": "somente este computador",
+  "endpoint.gateway.loopbackAfter":
+    ": clientes remotos recebem 401 até existir uma chave. Gere a chave acima antes de apontar outro dispositivo para este endereço.",
+  "endpoint.gateway.aliases": "Apelidos aceitos no campo model:",
+  "endpoint.gateway.providersOne": "{count} provedor declarado em",
+  "endpoint.gateway.providersMany": "{count} provedores declarados em",
+
+  // Endpoint — integração rápida
+  "endpoint.integration.heading": "Comandos de Integração Rápida",
+  "endpoint.integration.activeModel": "Modelo ativo:",
+  "endpoint.integration.commandAria": "Comando de integração {title}",
+  "endpoint.claude.description":
+    "Execução com modelos locais através da rota compatível.",
+  "endpoint.claude.aria": "Comando de integração Claude",
+  "endpoint.codex.description":
+    "Ollama configura e abre o Codex com o modelo escolhido.",
+  "endpoint.codex.aria": "Comando de integração Codex",
+
+  // Onboarding — comum
+  "onboarding.signIn": "Entrar",
+  "onboarding.continue": "Continuar",
+  "onboarding.retry": "Tentar de novo",
+
+  // Onboarding — introdução
+  "onboarding.intro.alt": "Hades dando boas-vindas",
+  "onboarding.intro.title": "Bem-vindo ao Hades!",
+  "onboarding.intro.tagline":
+    "Rode modelos abertos com seus agentes de código para gastar menos mantendo seus dados privados.",
+  "onboarding.features.connectApps.title": "Conecte seus apps",
+  "onboarding.features.connectApps.description":
+    "Turbine seus apps de código com modelos abertos",
+  "onboarding.features.switchModel.title": "Troque de modelo facilmente",
+  "onboarding.features.switchModel.description":
+    "Alterne entre modelos de ponta em um clique.",
+  "onboarding.features.yourData.title": "Seus dados continuam seus",
+  "onboarding.features.yourData.description":
+    "Modelos locais processam seus pedidos neste computador. Modelos de nuvem só recebem pedidos quando você escolhe usá-los.",
+
+  // Onboarding — conta
+  "onboarding.welcome.title": "Crie uma conta",
+  "onboarding.welcome.subtitle":
+    "Crie sua conta para acessar modelos abertos maiores e mais rápidos.",
+  "onboarding.welcome.privacy":
+    "Modelos locais processam seus pedidos neste computador. Se você ativar os modelos de nuvem, os pedidos são enviados ao provedor escolhido quando você os usa.",
+  "onboarding.welcome.openingApps": "Abrindo os apps…",
+  "onboarding.welcome.finishInBrowser": "Conclua no seu navegador…",
+  "onboarding.welcome.createAccount": "Criar conta",
+  "onboarding.welcome.cloudOptIn":
+    "Ativar modelos de nuvem grátis da minha conta",
+  "onboarding.welcome.useLocal": "Não, obrigado — vou usar os modelos locais",
+  "onboarding.welcome.saveCloudFailed":
+    "Não foi possível salvar sua escolha de modelos de nuvem. A ativação não foi confirmada; tente novamente.",
+
+  // Onboarding — primeiro modelo
+  "onboarding.run.title": "Baixe seu primeiro modelo",
+  "onboarding.run.description":
+    "Escolha um modelo local para começar. O Hades baixa e roda o modelo no seu computador — sem precisar de terminal.",
+  "onboarding.run.modelLabel": "Modelo local",
+  "onboarding.run.modelPlaceholder": "ex.: {model}",
+  "onboarding.run.preparing": "Preparando download…",
+  "onboarding.run.downloading": "Baixando…",
+  "onboarding.run.download": "Baixar",
+  "onboarding.run.fileNote":
+    "O arquivo pode ser grande; mantenha o Ollama em execução durante o processo.",
+  "onboarding.run.modelReady": "Modelo {model} pronto para uso local.",
+  "onboarding.run.downloadFailed":
+    "Não foi possível baixar o modelo neste computador.",
+
+  // Onboarding — Claude conectado
+  "onboarding.claudeIntro.alt":
+    "Exemplo de mapeamento de modelos do Claude nas configurações do Hades",
+  "onboarding.claudeIntro.title": "Acesse os modelos do Hades no seu Claude",
+  "onboarding.claudeIntro.description":
+    "O Hades roteia os modelos do Claude automaticamente. Abra as configurações do Hades para escolher quais modelos o Claude Desktop usa.",
+
+  // Onboarding — apps
+  "onboarding.apps.recommended": "Recomendados",
+  "onboarding.apps.titleApps": "Apps",
+  "onboarding.apps.titleOthers": "Outros apps",
+  "onboarding.apps.empty": "Nenhum app encontrado.",
+  "onboarding.apps.loadFailed": "Não foi possível carregar as integrações.",
+  "onboarding.apps.checking": "Verificando integrações…",
+  "onboarding.apps.copyAria": "Copiar comando do {name}",
+  "onboarding.apps.copiedAria": "Comando do {name} copiado",
+  "onboarding.apps.copyFailedTitle":
+    "Não foi possível copiar o comando do {name}",
+  "onboarding.apps.copiedTitle": "Comando de inicialização copiado.",
+  "onboarding.apps.pasteHint": "Cole no seu terminal",
+  "onboarding.apps.selectHint":
+    "Selecione e copie o comando abaixo e cole no seu terminal.",
+  "onboarding.chatgpt.description": "Use os modelos do Hades no ChatGPT",
+
+  // Onboarding — conexão com o Claude
+  "onboarding.claude.readStatusFailed":
+    "O Hades não conseguiu ler o status da conexão com o Claude.",
+  "onboarding.claude.openFailed":
+    "O Hades conectou o Claude, mas não conseguiu abrir o app.",
+  "onboarding.claude.connectFailed":
+    "O Hades não conseguiu conectar ao Claude.",
+  "onboarding.claude.disconnectFailed":
+    "O Hades não conseguiu desconectar do Claude.",
+  "onboarding.claude.timeoutOpen":
+    "O Claude está demorando demais para abrir. Verifique o Claude e tente de novo.",
+  "onboarding.claude.timeoutConnect":
+    "O Claude está demorando demais para conectar. Verifique o Claude e tente de novo.",
+  "onboarding.claude.timeoutAction":
+    "O Claude está demorando demais para {action}. Tente de novo.",
+  "onboarding.claude.actionConnect": "conectar",
+  "onboarding.claude.actionDisconnect": "desconectar",
+  "onboarding.claude.completeFailed":
+    "O Hades não conseguiu concluir a conexão com o Claude.",
+  "onboarding.claude.installNotDetected":
+    "A instalação do Claude não foi detectada. Tente novamente.",
+  "onboarding.claude.installedRestart":
+    "O Claude está instalado. Ative o Conectar para reiniciá-lo com o Hades.",
+  "onboarding.claude.installerFailed":
+    "O Hades não conseguiu abrir o instalador do Claude.",
+  "onboarding.claude.macosOnly":
+    "A conexão com o Claude está disponível no app do Hades para macOS.",
+  "onboarding.claude.restartToUse":
+    "Reiniciar Claude Desktop para usar Ollama? Qualquer tarefa em execução será interrompida.",
+  "onboarding.claude.restartToRemove":
+    "Reiniciar Claude Desktop para remover Ollama? Qualquer tarefa em execução será interrompida.",
+  "onboarding.claude.restartLabel": "Reiniciar",
+  "onboarding.claude.connected": "Conectado ao Hades · {count}",
+  "onboarding.claude.installing":
+    "O Hades está baixando o instalador do Claude…",
+  "onboarding.claude.waitingInstall":
+    "Conclua a instalação do Claude. O Hades vai conectá-lo automaticamente.",
+  "onboarding.claude.connectingDetail": "Conectando o Claude ao Hades…",
+  "onboarding.claude.launchingDetail": "Abrindo o Claude…",
+  "onboarding.claude.disconnectingDetail":
+    "Restaurando a conexão normal do Claude…",
+  "onboarding.claude.notInstalled":
+    "Vamos baixar o Claude e conectá-lo ao Hades.",
+  "onboarding.claude.ready": "Use os modelos do Hades no seu Claude Code.",
+  "onboarding.claude.disconnect": "Desconectar Claude",
+  "onboarding.claude.connecting": "Conectando Claude",
+  "onboarding.claude.connect": "Conectar Claude",
+  "onboarding.claude.disconnectTitle": "Desconectar",
+  "onboarding.claude.connectTitle": "Conectar",
+  "onboarding.claude.statusDownloading": "Baixando…",
+  "onboarding.claude.statusFinishingInstall": "Conclua a instalação…",
+  "onboarding.claude.statusConnecting": "Conectando…",
+  "onboarding.claude.statusLaunching": "Abrindo…",
+  "onboarding.claude.statusDisconnecting": "Desconectando…",
 };
