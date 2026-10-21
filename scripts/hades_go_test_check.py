@@ -23,12 +23,17 @@ import subprocess
 import sys
 from pathlib import Path
 
-# O toolchain local acompanha o `go.mod`: usa o mais recente disponivel em _tmp.
+# Escolhe o `_tmp/goroot*` de MAIOR versao: um literal fixo expira em silencio (ja' aconteceu).
 def _versao_do_goroot(raiz):
-    for nome in ("goroot12610", "goroot1269"):
-        p = raiz / "_tmp" / nome / "go"
-        if (p / "bin" / "go.exe").exists() or (p / "bin" / "go").exists():
-            return nome
+    candidatos = []
+    base = raiz / "_tmp"
+    if base.is_dir():
+        for d in base.iterdir():
+            if d.is_dir() and d.name.startswith("goroot") and d.name[6:].isdigit():
+                if (d / "go" / "bin" / "go.exe").exists() or (d / "go" / "bin" / "go").exists():
+                    candidatos.append((int(d.name[6:]), d.name))
+    if candidatos:
+        return sorted(candidatos, reverse=True)[0][1]
     return "goroot1269"
 
 RAIZ = Path(__file__).resolve().parent.parent

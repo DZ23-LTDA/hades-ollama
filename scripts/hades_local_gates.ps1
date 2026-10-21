@@ -34,12 +34,16 @@ $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 Set-Location $repo
 
 # Toolchain fixada DENTRO do repositorio (o `go` nao esta no PATH deste host).
-# O toolchain local acompanha o `go.mod`: tenta o mais recente e so' cai para o antigo.
+# Escolhe o `_tmp/goroot*` de MAIOR versao disponivel -- e nao um literal: um numero de versao
+# fixo num script expira em silencio, e ao expirar reprova o produto por culpa do instrumento
+# (aconteceu: `goroot1269` ficou para tras quando o `go.mod` subiu para 1.26.10).
 $goroot = @(
-    (Join-Path $repo '_tmp\goroot12610\go'),
-    (Join-Path $repo '_tmp\goroot1269\go')
-) | Where-Object { Test-Path (Join-Path $_ 'bin\go.exe') } | Select-Object -First 1
-if (-not $goroot) { $goroot = Join-Path $repo '_tmp\goroot1269\go' }
+    Get-ChildItem (Join-Path $repo '_tmp') -Directory -Filter 'goroot*' -ErrorAction SilentlyContinue |
+        Where-Object { Test-Path (Join-Path $_.FullName 'go\bin\go.exe') } |
+        Sort-Object { [int]($_.Name -replace '^goroot', '') } -Descending |
+        ForEach-Object { Join-Path $_.FullName 'go' }
+) | Select-Object -First 1
+if (-not $goroot) { Write-Output 'FALHA: nenhum toolchain em _tmp/goroot*'; exit 1 }
 if (Test-Path (Join-Path $goroot 'bin\go.exe')) { $env:GOROOT = $goroot; $env:PATH = "$goroot\bin;$env:PATH" }
 $env:GOTOOLCHAIN = 'local'
 $env:GOFLAGS = '-mod=mod'
