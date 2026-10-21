@@ -5646,3 +5646,9 @@ Falha medida no runner: `o binario nao existe em .../_tmp/hades-linux-amd64` -- 
 construido/browser**, nao o checkout. O mesmo run provou **#13 bookkeeping SUCCESS** (fantasma fechado) e
 41 passos verdes antes do #42. Regra: *um gate do job de integridade so' pode medir o que o `git checkout`
 contem.* Verificacoes no job: **43**.
+
+**Actualizacao de retomada (E-1522):** **Class A+ VERDE** em `f02889fb3` (run 39520790494, success,
+00:24:51Z, **43 verificacoes**). No mesmo dia: `go test ./internal/agent` no Windows = **ok, 0 falhas,
+421 s**, com `TestCaminhoAutorizadoRecusaTravessia` **PASS** -- a falha prioritaria da REGRA 1 **ja estava
+corrigida** por `b144d8c08` (`E-1444`, raiz PEDIDA em vez de resolvida). **Verde neste job nao e' CI verde
+da PR**: os outros checks tem runs proprios e nao foram lidos; merge e' proibido.
