@@ -982,6 +982,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// Leitura sem CAS; escrita (`restore`) passa pelo `missionVersionMatches`, como todas.
 	group.GET("/missions/:id/artifacts/:artifact_id/versions", a.artifactVersions)
 	group.POST("/missions/:id/artifacts/:artifact_id/restore", a.artifactRestore)
+	group.PUT("/missions/:id/artifacts/:artifact_id", a.artifactEdit)
 	group.POST("/missions/:id/run", a.runMission)
 	group.POST("/missions/:id/cancel", a.cancelMission)
 	group.DELETE("/missions/:id", a.deleteMission)
