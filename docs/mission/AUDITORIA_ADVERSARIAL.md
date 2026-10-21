@@ -122,6 +122,8 @@ final — bom ou mau.
 | A3 | i18n (B11) não existe na UI | aberto — trabalho interno, não externo |
 | A4 | B9 (telemetria desligável) não verificado ponta-a-ponta | aberto |
 | A5 | nenhum E-ID novo registado nesta fatia | decisão consciente, declarada |
+| A6 | **antivírus do host quarentena o `go.exe` do Go 1.26.10** | `BLOCKED_BY_EXTERNAL_DEPENDENCY` local: reintroduzido do zip e apagado durante a extração (`Test-Path` = False). O CI usa `setup-go` e provou `go test ./internal/agent` e `./server` verdes com 1.26.10 (job 119011713115, passos #11/#12) — o código não está em causa |
+| A7 | **o gate de rotas órfãs apanhou 2 rotas minhas** | fechado: `/build/pare*` declarado como controlo de OPERADOR em `CONSUMIDOR_EXTERNO`, **e o teto baixou de 7 para 6** (`VERDE: 6, exactamente no teto`) |
 
 ## Conclusão da auto-auditoria
 

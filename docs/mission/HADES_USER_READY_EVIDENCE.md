@@ -154,6 +154,26 @@ min=9,3 ms  p50=10,2 ms  p95=11,3 ms  max=11,4 ms
   `39,4 s` para as jornadas), que incluem build da UI e arranque de browsers e **não** são
   latência do produto.
 
+## Estado da bateria local de gates (81 passos) neste host
+
+Medida em 2026-10-21 sobre `764fd1fbd`/`7e38f4717`:
+
+```
+GATES LOCAIS: 2 falha(s)
+  - hades_rotas_orfas.py (exit 1)   -> CORRIGIDO: teto 7 -> 6 com as rotas do pare classificadas
+  - hades_go_test_check.py (exit 1) -> BLOCKED_BY_EXTERNAL_DEPENDENCY (antivirus do host)
+TESTES GO: 4 de 4 FALHARAM
+     causa real: "Falha na execução do programa 'go.exe': ... o arquivo contém um vírus ou software
+     possivelmente indesejado" -- o antivirus QUARENTENA o binario do Go 1.26.10 neste host.
+     Reintroduzido a partir de _tmp/go1.26.10.zip e apagado durante a extraccao (Test-Path = False).
+```
+
+**Classificação honesta:** as falhas de Go **não** são do produto nem do código — são da política de
+antivírus desta máquina. A autoridade para o Go é o CI, que corre `setup-go` e provou
+`go test ./internal/agent` e `./server` **verdes com 1.26.10** (job `119011713115`, passos `#11`/`#12`).
+
+Não alterei a política de antivírus: é uma decisão de segurança do dono da máquina, não minha.
+
 ## Limitações deste documento
 
 - Os E2E correm contra **fixtures** (`UI_FIXTURE`) e um backend de fixture, não contra o binário
