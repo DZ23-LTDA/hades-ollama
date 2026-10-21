@@ -1911,9 +1911,24 @@ export const configureWhatsAppEvolution = (
       active_backend: active_backend ?? "evolution_api",
     }),
   });
+export const configureWhatsAppCloud = (
+  cloud_api: {
+    phone_number_id: string;
+    access_token: string;
+    verify_token: string;
+    app_secret: string;
+  },
+  active_backend?: "evolution_api" | "cloud_api",
+) =>
+  agentFetch<WhatsAppStatusSummary>("/api/agent/v1/whatsapp/config", {
+    method: "POST",
+    body: JSON.stringify({
+      cloud_api,
+      active_backend: active_backend ?? "cloud_api",
+    }),
+  });
 export const getWhatsAppDLQ = () =>
   agentFetch<{ count: number; items: unknown[] }>("/api/agent/v1/whatsapp/dlq");
-
 export type SupervisorStatus = {
   enabled: boolean;
   running: boolean;

@@ -15,6 +15,7 @@ import {
   removeWhatsAppContactPolicy,
   setWhatsAppActiveBackend,
   configureWhatsAppEvolution,
+  configureWhatsAppCloud,
   type WhatsAppStatusSummary,
   type WhatsAppContactPolicy,
 } from "@/lib/agenticClient";
@@ -60,6 +61,35 @@ export function WhatsAppGatewayPanel() {
   const [evoWebhookSecret, setEvoWebhookSecret] = useState("");
   const [evoSaving, setEvoSaving] = useState(false);
   const [evoSaved, setEvoSaved] = useState(false);
+
+  // Credenciais do WhatsApp Business Cloud API (Meta). Mesmo contrato: o servidor
+  // guarda com 0600 e devolve apenas o resumo mascarado, por isso os campos nascem vazios.
+  const [cloudPhoneNumberID, setCloudPhoneNumberID] = useState("");
+  const [cloudAccessToken, setCloudAccessToken] = useState("");
+  const [cloudVerifyToken, setCloudVerifyToken] = useState("");
+  const [cloudAppSecret, setCloudAppSecret] = useState("");
+  const [cloudSaving, setCloudSaving] = useState(false);
+  const [cloudSaved, setCloudSaved] = useState(false);
+
+  const handleSaveCloud = async () => {
+    setCloudSaving(true);
+    setCloudSaved(false);
+    setError(null);
+    try {
+      const updated = await configureWhatsAppCloud({
+        phone_number_id: cloudPhoneNumberID.trim(),
+        access_token: cloudAccessToken.trim(),
+        verify_token: cloudVerifyToken.trim(),
+        app_secret: cloudAppSecret.trim(),
+      });
+      setStatus(updated);
+      setCloudSaved(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCloudSaving(false);
+    }
+  };
 
   const handleSaveEvolution = async () => {
     setEvoSaving(true);
@@ -265,6 +295,8 @@ export function WhatsAppGatewayPanel() {
           </button>
         </div>
 
+        {status?.active_backend === "evolution_api" ? (
+        <div>
         {/* Configuração do Evolution API (credenciais) */}
         <div className="mt-6 rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <h3 className="text-xs font-bold text-neutral-900 dark:text-white">
@@ -298,9 +330,47 @@ export function WhatsAppGatewayPanel() {
             {evoSaved && <span className="text-[11px] text-emerald-600">{t("whatsapp.evolution.saved")}</span>}
           </div>
           <p className="mt-2 text-[10px] text-neutral-400">
-            {t("whatsapp.evolution.hint")}
+            {t("whatsapp.evolution.hint")} {t("whatsapp.evolution.qrHint")}
           </p>
         </div>
+
+        </div>
+        ) : null}
+
+        {/* WhatsApp Business Cloud API (Meta): credenciais proprias, campos diferentes do
+            Evolution. Antes o formulario do Evolution aparecia mesmo com a Meta activa, o que
+            levava o utilizador a preencher o formulario errado. */}
+        {status?.active_backend === "cloud_api" ? (
+          <div className="mt-6 rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+            <h3 className="text-xs font-bold text-neutral-900 dark:text-white">{t("whatsapp.cloud.title")}</h3>
+            <p className="mt-1 text-[11px] text-neutral-500">{t("whatsapp.cloud.intro")}</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-[11px] text-neutral-500">
+                {t("whatsapp.cloud.phoneNumberID")}
+                <input type="text" value={cloudPhoneNumberID} onChange={(e) => setCloudPhoneNumberID(e.target.value)} placeholder={t("whatsapp.cloud.phoneNumberIDPlaceholder")} className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
+              </label>
+              <label className="flex flex-col gap-1 text-[11px] text-neutral-500">
+                {t("whatsapp.cloud.accessToken")}
+                <input type="password" value={cloudAccessToken} onChange={(e) => setCloudAccessToken(e.target.value)} autoComplete="off" placeholder={t("whatsapp.cloud.accessTokenPlaceholder")} className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
+              </label>
+              <label className="flex flex-col gap-1 text-[11px] text-neutral-500">
+                {t("whatsapp.cloud.verifyToken")}
+                <input type="password" value={cloudVerifyToken} onChange={(e) => setCloudVerifyToken(e.target.value)} autoComplete="off" placeholder={t("whatsapp.cloud.verifyTokenPlaceholder")} className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
+              </label>
+              <label className="flex flex-col gap-1 text-[11px] text-neutral-500">
+                {t("whatsapp.cloud.appSecret")}
+                <input type="password" value={cloudAppSecret} onChange={(e) => setCloudAppSecret(e.target.value)} autoComplete="off" placeholder={t("whatsapp.cloud.appSecretPlaceholder")} className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
+              </label>
+            </div>
+            <div className="mt-3 flex items-center gap-3">
+              <button type="button" onClick={() => void handleSaveCloud()} disabled={cloudSaving || !cloudPhoneNumberID.trim() || !cloudAccessToken.trim()} className="h-9 rounded-lg bg-emerald-600 px-4 text-xs font-medium text-white disabled:opacity-40 hover:bg-emerald-700">
+                {cloudSaving ? t("whatsapp.cloud.saving") : t("whatsapp.cloud.save")}
+              </button>
+              {cloudSaved ? <span className="text-[11px] text-emerald-600">{t("whatsapp.cloud.saved")}</span> : null}
+            </div>
+            <p className="mt-2 text-[10px] text-neutral-400">{t("whatsapp.cloud.hint")}</p>
+          </div>
+        ) : null}
 
         {/* Command Bridge & Security Badges — só quando o gateway está
             configurado; caso contrário seria um selo falso de recursos ativos. */}
