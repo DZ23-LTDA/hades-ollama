@@ -34,7 +34,12 @@ $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 Set-Location $repo
 
 # Toolchain fixada DENTRO do repositorio (o `go` nao esta no PATH deste host).
-$goroot = Join-Path $repo '_tmp\goroot1269\go'
+# O toolchain local acompanha o `go.mod`: tenta o mais recente e so' cai para o antigo.
+$goroot = @(
+    (Join-Path $repo '_tmp\goroot12610\go'),
+    (Join-Path $repo '_tmp\goroot1269\go')
+) | Where-Object { Test-Path (Join-Path $_ 'bin\go.exe') } | Select-Object -First 1
+if (-not $goroot) { $goroot = Join-Path $repo '_tmp\goroot1269\go' }
 if (Test-Path (Join-Path $goroot 'bin\go.exe')) { $env:GOROOT = $goroot; $env:PATH = "$goroot\bin;$env:PATH" }
 $env:GOTOOLCHAIN = 'local'
 $env:GOFLAGS = '-mod=mod'

@@ -26,7 +26,12 @@ if (-not $Raiz) { $Raiz = (Get-Location).Path }
 $raiz = (Resolve-Path $Raiz).Path
 Set-Location $raiz
 
-if (-not $Go) { $Go = Join-Path $raiz "_tmp\goroot1269\go\bin\go.exe" }
+if (-not $Go) {
+    $Go = @(
+        (Join-Path $raiz "_tmp\goroot12610\go\bin\go.exe"),
+        (Join-Path $raiz "_tmp\goroot1269\go\bin\go.exe")
+    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+}
 if (-not (Test-Path $Go)) { Write-Output "ERRO: go nao encontrado em $Go"; exit 1 }
 
 $out = Join-Path $raiz $OutDir

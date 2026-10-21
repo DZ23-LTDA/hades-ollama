@@ -23,6 +23,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+# O toolchain local acompanha o `go.mod`: usa o mais recente disponivel em _tmp.
+def _versao_do_goroot(raiz):
+    for nome in ("goroot12610", "goroot1269"):
+        p = raiz / "_tmp" / nome / "go"
+        if (p / "bin" / "go.exe").exists() or (p / "bin" / "go").exists():
+            return nome
+    return "goroot1269"
+
 RAIZ = Path(__file__).resolve().parent.parent
 
 # 🚨 E-488 (CONTRA-PROVADO): a versão anterior verificava o `LOCALAPPDATA` **depois** de o ter sobrescrito ⇒ ***o
@@ -56,7 +64,7 @@ for chave, relativo in REDIRECIONADOS.items():
     ambiente[chave] = str(destino)
 
 # O GOROOT: o toolchain local vive sob `_tmp`. *Sem ele, o `go` pode nao existir.*
-goroot = RAIZ / "_tmp" / "goroot1269" / "go"
+goroot = RAIZ / "_tmp" / _versao_do_goroot(RAIZ) / "go"
 go = str(goroot / "bin" / "go.exe") if (goroot / "bin" / "go.exe").exists() else shutil.which("go")
 
 print("  === CHECKER DOS TESTES GO (E-488) ===")

@@ -25,7 +25,12 @@ $ErrorActionPreference = 'Continue'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 Set-Location $repo
 
-$goroot = Join-Path $repo '_tmp\goroot1269\go'
+# O toolchain local acompanha o `go.mod`: tenta o mais recente e so' cai para o antigo.
+$goroot = @(
+    (Join-Path $repo '_tmp\goroot12610\go'),
+    (Join-Path $repo '_tmp\goroot1269\go')
+) | Where-Object { Test-Path (Join-Path $_ 'bin\go.exe') } | Select-Object -First 1
+if (-not $goroot) { $goroot = Join-Path $repo '_tmp\goroot1269\go' }
 if (-not (Test-Path (Join-Path $goroot 'bin\go.exe'))) {
   Write-Host "GOROOT pinado nao encontrado em $goroot - nao vou usar um Go de fora do repositorio." -ForegroundColor Red
   exit 2

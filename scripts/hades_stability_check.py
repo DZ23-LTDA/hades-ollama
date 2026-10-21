@@ -31,6 +31,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+# O toolchain local acompanha o `go.mod`: usa o mais recente disponivel em _tmp.
+def _versao_do_goroot(raiz):
+    for nome in ("goroot12610", "goroot1269"):
+        p = raiz / "_tmp" / nome / "go"
+        if (p / "bin" / "go.exe").exists() or (p / "bin" / "go").exists():
+            return nome
+    return "goroot1269"
+
 RAIZ = Path(__file__).resolve().parent.parent
 SCRIPTS = RAIZ / "scripts"
 
@@ -138,7 +146,7 @@ def main() -> int:
 
 def _server_passa() -> bool:
     """Corre o comando do CI no `./server` (o pacote que o `E-197` viu falhar)."""
-    go = RAIZ / "_tmp" / "goroot1269" / "go" / "bin" / "go.exe"
+    go = RAIZ / "_tmp" / _versao_do_goroot(RAIZ) / "go" / "bin" / "go.exe"
     if not go.is_file():
         go = Path("go")
     # ***O `env` TEM DE SER O AMBIENTE INTEIRO, NAO UM DICIONARIO NOVO.*** *Medido: passar um `env` so' com
@@ -147,7 +155,7 @@ def _server_passa() -> bool:
     import os as _os
     env = dict(_os.environ)
     env.update({
-        "GOROOT": str(RAIZ / "_tmp" / "goroot1269" / "go"),
+        "GOROOT": str(RAIZ / "_tmp" / _versao_do_goroot(RAIZ) / "go"),
         "GOPATH": str(RAIZ / "_tmp" / "gopath"),
         "GOCACHE": str(RAIZ / "_tmp" / "gocache"),
         "GOTMPDIR": str(RAIZ / "_tmp" / "gotmp"),

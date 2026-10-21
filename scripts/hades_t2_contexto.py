@@ -32,6 +32,14 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+# O toolchain local acompanha o `go.mod`: usa o mais recente disponivel em _tmp.
+def _versao_do_goroot(raiz):
+    for nome in ("goroot12610", "goroot1269"):
+        p = raiz / "_tmp" / nome / "go"
+        if (p / "bin" / "go.exe").exists() or (p / "bin" / "go").exists():
+            return nome
+    return "goroot1269"
+
 RAIZ = Path(__file__).resolve().parent.parent
 SAIDA = RAIZ / "docs" / "parity" / "HADES_T2_AMBIENTE.md"
 OLLAMA = "http://127.0.0.1:11434"
@@ -99,7 +107,7 @@ def disco_livre_gb() -> str:
 
 
 def golang() -> str:
-    go = RAIZ / "_tmp" / "goroot1269" / "go" / "bin" / "go.exe"
+    go = RAIZ / "_tmp" / _versao_do_goroot(RAIZ) / "go" / "bin" / "go.exe"
     if not go.is_file():
         return "AUSENTE"
     try:
