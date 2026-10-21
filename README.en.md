@@ -6,6 +6,28 @@ claim about rankings, search position, AI recommendation, or superiority over ot
 > **Português (pt-BR):** see [README.md](README.md) and the quick user guide at
 > [docs/GUIA_RAPIDO_USUARIO.md](docs/GUIA_RAPIDO_USUARIO.md).
 
+## Verifiable status — 21 October 2026
+
+Hades remains **`NOT_RELEASE_READY`** and under active development on PR #438. What the repository
+**proves today** (evidence `E-1522`, `E-1523`):
+
+- the `Preserve Class A+ surfaces` job is **green** with **43 verifications**: evidence-index shape,
+  handoff window, product-gap ceiling, tenant guards on every handler, the security axes, test
+  hermeticity, requirement→evidence traceability, and **28 instruments** that previously ran only on
+  the author's machine;
+- the `internal/agent` suite on **Windows** is `ok` with **0 failures** (421 s), including the path
+  traversal tests;
+- governed vault writes require permission: without a grant the refusal **creates no file**; identity
+  comes from the session and **never** from the request body; scope is per tenant — **31 tests**;
+- the local gate battery passes **81 of 81** (`exit 0`);
+- the emergency stop is **consulted** on 4 execution paths, **observable**, **durable** across
+  restarts and **adopted at startup** — but **not actionable** from the UI, pending a decision on who
+  may trigger it.
+
+**Scope of this section:** green covers the named checks and the local battery. It is **not**
+independent homologation; `release_state` stays **`NOT_RELEASE_READY`** and no number here authorises a
+release.
+
 ## What this is
 
 Hades is a **local-first** agent platform built on top of the Ollama codebase. Ollama local remains the **default**

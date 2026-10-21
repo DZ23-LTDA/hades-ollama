@@ -7,9 +7,19 @@
 
 Este é o fork público mantido por [DZ23-LTDA](https://github.com/DZ23-LTDA), baseado no Ollama e preservando a licença MIT e os avisos de atribuição upstream. O projeto adiciona superfícies agentic próprias; não é o instalador, serviço hospedado ou distribuição oficial do Ollama. O manual completo, os contratos, a configuração e a política de atualização estão em [`docs/CLASS_A_PLUS_GUIDE.md`](docs/CLASS_A_PLUS_GUIDE.md).
 
-## Estado verificável — 18 de outubro de 2026
+## Estado verificável — 21 de outubro de 2026
 
-O Hades está em desenvolvimento ativo no PR #438 e continua **`NOT_RELEASE_READY`**. O motor padrão é Ollama local; provedores externos, publicação, contas e credenciais são opcionais e exigem configuração explícita. A fonte de verdade para estágio, evidência, bloqueios e limites é [`docs/mission/HADES_RELEASE_REPORT.md`](docs/mission/HADES_RELEASE_REPORT.md), não esta página de apresentação.
+O Hades está em desenvolvimento ativo no PR #438 e continua **`NOT_RELEASE_READY`**.
+
+**O que está provado, no CI e localmente** — evidências [`E-1522`](docs/mission/HADES_EVIDENCE_INDEX.md) e [`E-1523`](docs/mission/HADES_EVIDENCE_INDEX.md):
+
+- job `Preserve Class A+ surfaces` **verde** com **43 verificações**: índice de evidências, janela de retomada, teto de lacunas de produto, guards de tenant em todos os handlers, eixos de segurança, hermeticidade dos testes, rastreabilidade requisito→evidência, e **28 instrumentos** que antes só corriam na máquina do autor;
+- suíte `internal/agent` no **Windows**: `ok`, **0 falhas**, 421 s — inclui os testes de travessia de caminho (`TestCaminhoAutorizadoRecusaTravessia`);
+- escrita no **vault governado**: exige permissão; sem concessão a recusa **não cria ficheiro**; a identidade vem da sessão e **nunca** do corpo do pedido; o escopo é por tenant — **31 testes**;
+- bateria local de gates: **81 de 81**, `exit 0`;
+- **pare de emergência** (parada global de execução): consultado em 4 caminhos, observável por `GET /build/pare`, durável ao reinício e adotado no arranque — **não acionável** por interface, por decisão pendente sobre quem pode acioná-lo.
+
+**Limite desta secção:** o verde cobre os checks nomeados e a bateria local. **Não** é homologação independente; `release_state` continua **`NOT_RELEASE_READY`** e nenhum número aqui autoriza release. O motor padrão é Ollama local; provedores externos, publicação, contas e credenciais são opcionais e exigem configuração explícita. A fonte de verdade para estágio, evidência, bloqueios e limites é [`docs/mission/HADES_RELEASE_REPORT.md`](docs/mission/HADES_RELEASE_REPORT.md), não esta página de apresentação.
 
 | Superfície | O que a implementação local demonstra | Limite atual importante |
 | --- | --- | --- |
