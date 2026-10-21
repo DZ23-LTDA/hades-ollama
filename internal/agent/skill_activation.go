@@ -94,6 +94,20 @@ type SkillSelection struct {
 	BudgetDefined bool          `json:"budget_defined"`
 }
 
+// MarshalJSON garante o contrato na SAIDA, nao em cada construtor: `selected` sai sempre como
+// lista, mesmo vazia. Um slice nil serializa como `null` e o painel faz `.map()` sobre ele --
+// foi o `TypeError: Cannot read properties of null (reading 'map')` que quebrou a pagina /skills
+// em 2026-10-21. Garantir no tipo cobre todos os caminhos de producao, incluindo os que ainda
+// nao existem.
+func (s SkillSelection) MarshalJSON() ([]byte, error) {
+	type semMetodos SkillSelection
+	copia := semMetodos(s)
+	if copia.Selected == nil {
+		copia.Selected = []ActiveSkill{}
+	}
+	return json.Marshal(copia)
+}
+
 // SkillSkip registra por que uma skill ativa ficou de fora.
 type SkillSkip struct {
 	ID     string `json:"id"`
@@ -184,7 +198,10 @@ func (s *ContextStore) SelectSkillsForMission(organizationID string, context Ski
 	if organizationID == "" {
 		return SkillSelection{}, fmt.Errorf("%w: organization is required", ErrSkillActivationInvalid)
 	}
-	selection := SkillSelection{TokenBudget: tokenBudget, BudgetDefined: tokenBudget > 0}
+	// `Selected` nasce VAZIO, nao nil: slice nil serializa como `null` em JSON e o cliente
+	// faz `.map()` sobre ele (era o `TypeError: Cannot read properties of null (reading 'map')`
+	// na pagina /skills). Um contrato com listas devolve listas, mesmo vazias.
+	selection := SkillSelection{Selected: []ActiveSkill{}, TokenBudget: tokenBudget, BudgetDefined: tokenBudget > 0}
 
 	type candidate struct {
 		manifest   SkillManifest

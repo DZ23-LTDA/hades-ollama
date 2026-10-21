@@ -33,27 +33,27 @@ O Hades está em desenvolvimento ativo no PR #438 e continua **`NOT_RELEASE_READ
 
 As capturas abaixo são do cliente real em ambiente local/sandbox e mostram as superfícies que existem no código. Elas não representam release, conta conectada, credencial válida, dispositivo físico, publicação, loja ou serviço externo homologado.
 
-![Home Hades: tarefa, modo automático/manual, ações rápidas e atalhos de contexto](docs/images/screens/class-a-plus-home.png?v=4)
+![Home Hades: tarefa, modo automático/manual, ações rápidas e atalhos de contexto](docs/images/screens/class-a-plus-home.png?v=5)
 
 *Home local-first — tarefa em linguagem natural, modo de execução explícito, comandos e entradas para construir, criar, abrir um workspace ou conversar com modelo.*
 
-![Mission Console Hades: criação de missão, modelo, projeto, isolamento e permissões de escrita](docs/images/screens/class-a-plus-agentic.png?v=4)
+![Mission Console Hades: criação de missão, modelo, projeto, isolamento e permissões de escrita](docs/images/screens/class-a-plus-agentic.png?v=5)
 
 *Mission Control — plano, orquestração e ferramentas são governados; escrita e cópia isolada precisam ser solicitadas de forma explícita.*
 
-![Registro avançado Hades: conectores, MCP e skills com configuração segura](docs/images/screens/class-a-plus-plugins.png?v=4)
+![Registro avançado Hades: conectores, MCP e skills com configuração segura](docs/images/screens/class-a-plus-plugins.png?v=5)
 
 *Registro avançado — conectores, MCPs e skills são configurados com escopo, aprovação e referências de credencial, sem expor o valor de segredos na interface.*
 
 ### Galeria complementar — checkpoint local de 2026-09-22
 
-![Home atual do shell Hades](docs/images/screens/class-a-plus-home.png?v=3)
+![Home atual do shell Hades](docs/images/screens/class-a-plus-home.png?v=5)
 
-![Agentic Console atual](docs/images/screens/class-a-plus-agentic.png?v=3)
+![Agentic Console atual](docs/images/screens/class-a-plus-agentic.png?v=5)
 
-![Settings e Agentic Control Center atuais](docs/images/screens/class-a-plus-settings.png?v=3)
+![Settings e Agentic Control Center atuais](docs/images/screens/class-a-plus-settings.png?v=5)
 
-![Company OS atual](docs/images/screens/class-a-plus-company.png?v=3)
+![Company OS atual](docs/images/screens/class-a-plus-company.png?v=5)
 
 As imagens da galeria foram recapturadas com Chromium contra o Vite dev e o servidor Ollama local em `127.0.0.1:3001`, sem provider externo. A captura mostra a implementação e dados sandbox locais; não comprova credenciais, contas, dispositivos, deploys ou integrações externas conectadas. A [galeria complementar](docs/CLASS_A_PLUS_GUIDE.md#telas-e-estado-visual) inclui Projetos, Biblioteca, Agendado, Skills, Plugins e Tarefas. Para conhecer a árvore completa, as telas planejadas de builder/mobile e os limites de cada integração, veja a [árvore de produto](docs/agentic/PRODUCT_TREE.md), a [matriz de paridade](docs/agentic/PARITY_MATRIX.md), a [integração HarnessRouter](docs/agentic/HARNESSROUTER.md) e a [documentação Company OS](docs/agentic/COMPANY_OS.md). Mockups conceituais são identificados como conceito dentro da própria imagem; eles não são apresentados como funcionalidades concluídas. A rodada mais recente também reforçou autenticação fail-closed, allowlists MCP, lifecycle de plugins/skills, contenção de symlink, approvals auditáveis e DLP.
 
