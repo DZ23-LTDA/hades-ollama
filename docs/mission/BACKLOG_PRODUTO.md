@@ -164,3 +164,28 @@ reinstalado, e o CLI **instalado** lista 7 modelos.
 `Run\Ollama = ...\Programs\Hades\ollama app.exe --hide`.
 
 **Limite declarado:** a prova do arranque **no login** exige reiniciar a sessão — não executada.
+---
+
+## I1b — Editar o artefacto (caminho versionado)
+
+**Medição feita antes de código (2026-10-21):**
+
+| facto | evidência |
+| --- | --- |
+| O artefacto tem **histórico, comparação e restauro** com rotas | `server/artifact_versions_routes.go:37` (`artifactVersions`) e `:66` (`artifactRestore`); rotas em `agent_routes.go:983-984` |
+| O comentário das rotas declara que o domínio já existia e testado em `internal/agent`, mas não tinha rota | `agent_routes.go:980-982` |
+| A escrita de `restore` passa por CAS (`missionVersionMatches`), como todas as escritas | `agent_routes.go:982` |
+| O runtime expõe **apenas leitura** de artefacto | `internal/agent/runtime.go:2769` (`Runtime.Artifact`) |
+
+**Aceite:**
+
+| # | critério | prova exigida |
+| --- | --- | --- |
+| E1 | Editar cria uma **nova versão** do artefacto; a anterior continua restaurável. | teste positivo (version→N+1, restore→N) |
+| E2 | `GET ...?inline=1` passa a servir o **conteúdo novo** (o preview acompanha a edição). | teste positivo de conteúdo |
+| E3 | Payload inválido é **recusado**: tamanho acima do limite, content-type não suportado, corpo vazio. | teste negativo (3 casos, 400) |
+| E4 | Missão com versão desactualizada é recusada pelo CAS existente (sem sobrescrever trabalho novo). | teste negativo (409) |
+| E5 | Nenhum caminho escreve fora do armazém de artefactos (sem `path` arbitrário no corpo). | revisão + teste |
+
+**Decisão de segurança registada:** a edição **não** aceita caminho de ficheiro. Escreve conteúdo no
+armazém de artefactos versionado, com limite de tamanho e CAS. Nada de `path` vindo do cliente.
