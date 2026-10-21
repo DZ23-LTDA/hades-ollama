@@ -992,6 +992,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/whatsapp/webhook", a.whatsappWebhook)
 	group.GET("/whatsapp/webhook", a.whatsappWebhookVerify)
 	group.GET("/whatsapp/status", a.whatsappStatus)
+	group.GET("/whatsapp/qr", a.whatsappQR)
 	group.POST("/whatsapp/send", a.whatsappSend)
 	group.GET("/whatsapp/dlq", a.whatsappDLQ)
 	group.DELETE("/whatsapp/dlq", a.whatsappClearDLQ)

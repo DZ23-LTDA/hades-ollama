@@ -16,6 +16,7 @@ import {
   setWhatsAppActiveBackend,
   configureWhatsAppEvolution,
   configureWhatsAppCloud,
+  getWhatsAppQR,
   type WhatsAppStatusSummary,
   type WhatsAppContactPolicy,
 } from "@/lib/agenticClient";
@@ -70,6 +71,28 @@ export function WhatsAppGatewayPanel() {
   const [cloudAppSecret, setCloudAppSecret] = useState("");
   const [cloudSaving, setCloudSaving] = useState(false);
   const [cloudSaved, setCloudSaved] = useState(false);
+
+  // I0b: estado do QR de emparelhamento. O QR vem do servidor Evolution do utilizador,
+  // por proxy autenticado -- o painel nunca ve a api key.
+  const [qrImagem, setQrImagem] = useState<string | null>(null);
+  const [qrEstado, setQrEstado] = useState<string | null>(null);
+  const [qrCarregando, setQrCarregando] = useState(false);
+  const [qrErro, setQrErro] = useState<string | null>(null);
+
+  const handleMostrarQR = async () => {
+    setQrCarregando(true);
+    setQrErro(null);
+    try {
+      const resultado = await getWhatsAppQR();
+      setQrEstado(resultado.state);
+      setQrImagem(resultado.qr ?? null);
+    } catch (err) {
+      setQrImagem(null);
+      setQrErro(err instanceof Error ? err.message : String(err));
+    } finally {
+      setQrCarregando(false);
+    }
+  };
 
   const handleSaveCloud = async () => {
     setCloudSaving(true);
@@ -329,6 +352,40 @@ export function WhatsAppGatewayPanel() {
             </button>
             {evoSaved && <span className="text-[11px] text-emerald-600">{t("whatsapp.evolution.saved")}</span>}
           </div>
+          {/* I0b: QR de emparelhamento, obtido do servidor Evolution do utilizador. */}
+          <div className="mt-3 rounded-lg border border-dashed border-neutral-300 p-3 dark:border-neutral-700">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => void handleMostrarQR()}
+                disabled={qrCarregando}
+                className="h-9 rounded-lg border border-neutral-300 px-3 text-xs font-medium text-neutral-800 disabled:opacity-40 dark:border-neutral-700 dark:text-neutral-200"
+              >
+                {qrCarregando ? t("whatsapp.evolution.qrLoading") : t("whatsapp.evolution.showQR")}
+              </button>
+              {qrEstado === "open" ? (
+                <span className="text-[11px] text-emerald-600">{t("whatsapp.evolution.qrLinked")}</span>
+              ) : qrEstado ? (
+                <span className="text-[11px] text-neutral-500">{qrEstado}</span>
+              ) : null}
+            </div>
+            {qrErro ? (
+              <p role="alert" className="mt-2 text-[11px] text-red-600 dark:text-red-400">
+                {t("whatsapp.evolution.qrError")}: {qrErro}
+              </p>
+            ) : null}
+            {qrImagem ? (
+              <div className="mt-3 flex flex-col items-start gap-2">
+                <img
+                  src={qrImagem}
+                  alt={t("whatsapp.evolution.showQR")}
+                  className="h-56 w-56 rounded-lg border border-neutral-200 bg-white p-1 dark:border-neutral-800"
+                />
+                <p className="text-[10px] text-neutral-400">{t("whatsapp.evolution.qrScanHint")}</p>
+              </div>
+            ) : null}
+          </div>
+
           <p className="mt-2 text-[10px] text-neutral-400">
             {t("whatsapp.evolution.hint")} {t("whatsapp.evolution.qrHint")}
           </p>

@@ -942,3 +942,15 @@ func (g *WhatsAppGateway) routeIntent(ctx context.Context, text string, policy W
 
 	return fmt.Sprintf("Comando \"%s\" não reconhecido. Digite *ajuda* para ver os comandos suportados.", text), nil
 }
+
+// EvolutionConnect expoe o estado de emparelhamento da instancia Evolution configurada.
+//
+// I0b: o QR e' gerado pelo servidor Evolution do utilizador. Este metodo e' o unico caminho
+// para o obter, e devolve APENAS {state, qr, pairing_code} -- nunca base_url, api_key ou
+// webhook_secret. A UI nao tem qualquer acesso directo a credenciais.
+func (g *WhatsAppGateway) EvolutionConnect(ctx context.Context) (EvolutionConnectState, error) {
+	g.mu.RLock()
+	cfg := g.evolutionCfg
+	g.mu.RUnlock()
+	return NewEvolutionAdapter(cfg).Connect(ctx)
+}

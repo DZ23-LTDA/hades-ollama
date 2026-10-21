@@ -2094,4 +2094,9 @@ export const ptBRMessages: Record<string, string> = {
   "whatsapp.cloud.saved": "Credenciais guardadas.",
   "whatsapp.cloud.hint": "A verificacao do webhook usa GET /api/agent/v1/whatsapp/webhook com o Verify Token acima.",
   "whatsapp.evolution.qrHint": "O QR code de emparelhamento e' gerado pelo SEU servidor Evolution (painel/instancia), nao pelo Hades -- este projeto nao tem endpoint de QR.",
+  "whatsapp.evolution.showQR": "Mostrar QR para ligar",
+  "whatsapp.evolution.qrLoading": "A pedir o QR...",
+  "whatsapp.evolution.qrLinked": "Instancia ligada.",
+  "whatsapp.evolution.qrError": "Nao foi possivel obter o QR",
+  "whatsapp.evolution.qrScanHint": "Abra o WhatsApp > Dispositivos ligados > Ligar dispositivo e leia este codigo.",
 };

@@ -1927,6 +1927,9 @@ export const configureWhatsAppCloud = (
       active_backend: active_backend ?? "cloud_api",
     }),
   });
+export type WhatsAppQR = { state: string; qr?: string; pairing_code?: string };
+export const getWhatsAppQR = () =>
+  agentFetch<WhatsAppQR>("/api/agent/v1/whatsapp/qr");
 export const getWhatsAppDLQ = () =>
   agentFetch<{ count: number; items: unknown[] }>("/api/agent/v1/whatsapp/dlq");
 export type SupervisorStatus = {
