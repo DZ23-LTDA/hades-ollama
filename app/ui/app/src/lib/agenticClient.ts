@@ -76,6 +76,8 @@ export type AgentArtifact = {
   sha256: string;
   size: number;
   media_type?: string;
+  /** Versao corrente do artefacto: o CAS da edicao exige exatamente este numero. */
+  version?: number;
 };
 export type AgentMission = {
   id: string;
@@ -1928,6 +1930,23 @@ export const configureWhatsAppCloud = (
     }),
   });
 export type WhatsAppQR = { state: string; qr?: string; pairing_code?: string };
+export const editarArtefacto = (
+  missionId: string,
+  artifactId: string,
+  conteudo: string,
+  expectedVersion: number,
+) =>
+  agentFetch<{ mission_id: string; artifact_id: string; version: number; sha256: string; size: number }>(
+    `/api/agent/v1/missions/${encodeURIComponent(missionId)}/artifacts/${encodeURIComponent(artifactId)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        // O servidor NAO aceita caminho: so' conteudo e a versao que o cliente viu (CAS).
+        content_base64: btoa(unescape(encodeURIComponent(conteudo))),
+        expected_version: expectedVersion,
+      }),
+    },
+  );
 export const getWhatsAppQR = () =>
   agentFetch<WhatsAppQR>("/api/agent/v1/whatsapp/qr");
 export const getWhatsAppDLQ = () =>

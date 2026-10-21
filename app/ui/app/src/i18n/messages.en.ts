@@ -2082,4 +2082,8 @@ export const enMessages: Record<string, string> = {
   "missionPermissions.summary.risk": "risk",
   "missionPermissions.summary.approval": "requires human approval",
   "chat.queue.queued": "{count} message(s) queued. They will be sent when the current reply finishes.",
+  "liveBuild.save": "Save and reload",
+  "liveBuild.saving": "Saving...",
+  "liveBuild.saved": "Saved as version {version}.",
+  "liveBuild.editHint": "Editing here creates a NEW VERSION; the previous one stays restorable.",
 };

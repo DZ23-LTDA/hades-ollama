@@ -2104,4 +2104,8 @@ export const ptBRMessages: Record<string, string> = {
   "missionPermissions.summary.risk": "risco",
   "missionPermissions.summary.approval": "exige aprovacao humana",
   "chat.queue.queued": "{count} mensagem(ns) na fila. Serao enviadas quando a resposta atual terminar.",
+  "liveBuild.save": "Salvar e recarregar",
+  "liveBuild.saving": "Salvando...",
+  "liveBuild.saved": "Salvo na versao {version}.",
+  "liveBuild.editHint": "Editar aqui cria uma VERSAO NOVA; a anterior continua restauravel.",
 };

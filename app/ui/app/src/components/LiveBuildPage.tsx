@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/i18n";
 import {
   agentFetchBlob,
+  editarArtefacto,
   getMission,
   listMissionEvents,
   listMissions,
@@ -72,6 +73,11 @@ export function LiveBuildPanel() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTipo, setPreviewTipo] = useState<"html" | "imagem" | "outro" | null>(null);
   const [codigo, setCodigo] = useState<string>("");
+  // I1b parte 4: edicao inline. O codigo editado vai para o PUT (versao nova) e a pre-visualizacao
+  // recarrega -- o objetivo e' "editar e ver a mudanca", nao guardar num sitio que ninguem le.
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
+  const [edicaoSalva, setEdicaoSalva] = useState<string | null>(null);
+  const [recarregar, setRecarregar] = useState(0);
   const feedRef = useRef<HTMLDivElement | null>(null);
 
   const passos = useMemo(() => eventos.map(descreverEvento), [eventos]);
@@ -161,7 +167,27 @@ export function LiveBuildPanel() {
       if (timer) clearInterval(timer);
       if (url) URL.revokeObjectURL(url);
     };
-  }, [missaoId, chaveArtefacto, emExecucao]);
+  }, [missaoId, chaveArtefacto, emExecucao, recarregar]);
+
+  const handleSalvarEdicao = async () => {
+    if (!missaoId || !artefactoAtual) return;
+    if (artefactoAtual.version === undefined) {
+      // Sem a versao corrente nao ha CAS: gravar seria sobrescrever as cegas.
+      setErro(t("liveBuild.error", { error: "versao do artefacto desconhecida" }));
+      return;
+    }
+    setSalvandoEdicao(true);
+    setEdicaoSalva(null);
+    try {
+      const r = await editarArtefacto(missaoId, artefactoAtual.id, codigo, artefactoAtual.version);
+      setEdicaoSalva(t("liveBuild.saved", { version: r.version }));
+      setRecarregar((n) => n + 1);
+    } catch (e) {
+      setErro(String(e));
+    } finally {
+      setSalvandoEdicao(false);
+    }
+  };
 
   useEffect(() => {
     const el = feedRef.current;
@@ -287,7 +313,29 @@ export function LiveBuildPanel() {
               {!previewUrl ? (
                 <p className="p-4 text-xs text-neutral-500 dark:text-neutral-400">{t("liveBuild.previewEmpty")}</p>
               ) : aba === "codigo" ? (
-                <pre className="h-full overflow-auto whitespace-pre-wrap break-words p-3 text-[11px] text-neutral-800 dark:text-neutral-200">{codigo}</pre>
+                <div className="flex h-full flex-col">
+                  <div className="flex items-center justify-between gap-2 border-b border-neutral-200/70 px-3 py-2 dark:border-neutral-800">
+                    <span className="text-[10px] text-neutral-500 dark:text-neutral-400">{t("liveBuild.editHint")}</span>
+                    <button
+                      type="button"
+                      onClick={() => void handleSalvarEdicao()}
+                      disabled={salvandoEdicao || codigo.trim() === ""}
+                      className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-40 hover:bg-emerald-700"
+                    >
+                      {salvandoEdicao ? t("liveBuild.saving") : t("liveBuild.save")}
+                    </button>
+                  </div>
+                  {edicaoSalva ? (
+                    <p className="px-3 pt-2 text-[11px] text-emerald-600" role="status">{edicaoSalva}</p>
+                  ) : null}
+                  <textarea
+                    value={codigo}
+                    onChange={(e) => setCodigo(e.target.value)}
+                    spellCheck={false}
+                    aria-label={t("liveBuild.code")}
+                    className="min-h-0 flex-1 resize-none bg-white p-3 font-mono text-[11px] text-neutral-800 outline-none dark:bg-neutral-950 dark:text-neutral-200"
+                  />
+                </div>
               ) : previewTipo === "imagem" ? (
                 <img src={previewUrl} alt={t("liveBuild.preview")} className="max-h-full max-w-full object-contain p-3" />
               ) : (
