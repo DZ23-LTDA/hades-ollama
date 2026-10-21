@@ -4,6 +4,24 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# --- i18n: o texto visivel da UI passou a viver no dicionario pt-BR -------------
+# O requisito verificado aqui e' «a UI mostra este texto», nao «o literal esta neste
+# ficheiro tsx». A migracao i18n moveu literais para `app/ui/app/src/i18n/messages.pt-BR.ts`,
+# pelo que os `grep -q 'texto' Componente.tsx` passaram a falhar -- e, com `set -e`, o
+# script abortava SEM OUTPUT nenhum.
+# Medido (CI run 39551700500, job 119062137898, SHA 707af8888): o trace `bash -x` para em
+#   + mostra_texto 'Permitir escrita' app/ui/app/src/components/AgenticConsole.tsx
+# porque o literal passou a ser `agenticConsole.allowWrite.label` no dicionario.
+DICIONARIO_PT="app/ui/app/src/i18n/messages.pt-BR.ts"
+
+# mostra_texto <texto> <ficheiro>: verdadeiro se o texto estiver no componente OU no dicionario.
+mostra_texto() {
+  grep -qF "$1" "$2" 2>/dev/null && return 0
+  grep -qF "$1" "$DICIONARIO_PT" 2>/dev/null && return 0
+  echo "  FALTA TEXTO: '$1' nao esta em $2 nem em $DICIONARIO_PT"
+  return 1
+}
+
 required_files=(
   "UPSTREAM_BASE_COMMIT"
 	  "docs/agentic/PRODUCT_TREE.md"
@@ -81,13 +99,13 @@ done
 grep -q '^policy=manual-review-only$' UPSTREAM_BASE_COMMIT
 grep -q 'allow_insecure_loopback' internal/multillm/registry.go
 grep -q 'safeConfig' server/agent_routes.go
-grep -q 'Nova tarefa' app/ui/app/src/components/AppSidebar.tsx
+mostra_texto 'Nova tarefa' app/ui/app/src/components/AppSidebar.tsx
 grep -q 'Agentic Control Center' app/ui/app/src/components/AgenticControlCenter.tsx
 grep -q 'RemoteMCP' internal/agent/runtime.go
 grep -q 'mcp.remote.call' internal/agent/mcp_remote.go
 grep -q 'HeadersEnv' internal/agent/mcp_remote.go
 grep -q 'api.x.ai/v1' examples/dz23-xai.json
-grep -q 'Growth OS' app/ui/app/src/components/CompanyGrowthPanel.tsx
+mostra_texto 'Growth OS' app/ui/app/src/components/CompanyGrowthPanel.tsx
 grep -q 'addCompanyCampaign' server/company_growth_routes.go
 grep -q 'grokResponses' server/grok_routes.go
 grep -q 'SetConnectorEnabled' internal/agent/runtime.go
@@ -296,7 +314,7 @@ grep -q 'TestBuildArtifactManifestRejectsSymlinkOutsideWorkspace' internal/agent
 	grep -q 'ErrUnknownCapability' internal/agent/capability_policy.go
 	grep -q 'ValidateToolDescriptor' internal/agent/capability_policy.go
 	grep -q 'capabilities = \[\]string{"workspace:read"\}' internal/agent/runtime.go
-	grep -q 'Permitir escrita' app/ui/app/src/components/AgenticConsole.tsx
+	mostra_texto 'Permitir escrita' app/ui/app/src/components/AgenticConsole.tsx
 	grep -q 'R44' audit/HARNESS_CAPABILITY_MATRIX.md
 	grep -q 'G13' audit/HARNESS_CAPABILITY_MATRIX.md
 	grep -q 'Evaluation' internal/agent/evaluation.go
