@@ -63,6 +63,16 @@ export default defineConfig(() => ({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          // Os catalogos de i18n sao dados puros e grandes (dois dicionarios completos,
+          // ~194 KB de fonte). No chunk principal empurraram o maior asset para 2.044.042 B,
+          // acima do orcamento de 2.000.000 B: "Bundle budget exceeded by index-*.js"
+          // (medido no CI, job "Web and mobile quality", e localmente com
+          // `node scripts/check-bundle-budget.mjs`).
+          // Nao se sobe o tecto: separa-se o que e' dado. Assim o chunk principal volta
+          // para baixo do limite e os catalogos ficam num ficheiro proprio, cacheavel.
+          // O import continua SINCRONO de proposito: `translate("en", ...)` tem de
+          // responder no mesmo tick (o teste de paridade depende disso).
+          if (/[\\/]src[\\/]i18n[\\/]messages\./.test(id)) return "i18n-catalogs";
           if (!id.includes("node_modules")) return undefined;
           if (/[\\/]react(?:-dom)?[\\/]|[\\/]scheduler[\\/]/.test(id)) return "vendor-react";
           if (id.includes("@tanstack")) return "vendor-router";
