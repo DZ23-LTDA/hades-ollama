@@ -462,9 +462,9 @@ export default function AgenticConsole() {
                 </div>
               </div>
               <div className="rounded-2xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950">
-                <h2 className="font-medium text-neutral-900 dark:text-neutral-100">Aprovações</h2>
+                <h2 className="font-medium text-neutral-900 dark:text-neutral-100">{t("agenticConsole.approvals.title")}</h2>
                 {pendingApprovals.length === 0 ? (
-                  <p className="mt-3 text-sm text-neutral-500">Nenhuma aprovação pendente.</p>
+                  <p className="mt-3 text-sm text-neutral-500">{t("agenticConsole.approvals.empty")}</p>
                 ) : (
                   pendingApprovals.map((approval) => {
                     const reason = approvalReasons[approval.id] ?? "";
@@ -473,12 +473,12 @@ export default function AgenticConsole() {
                       <div key={approval.id} className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/30">
                         <p className="text-xs text-amber-800 dark:text-amber-200">{approval.step_id}</p>
                         <p className="mt-2 text-xs leading-5 text-amber-900 dark:text-amber-100" role="note">{approvalExplanation(t, approval)}</p>
-                        <p className="mt-2 text-[11px] text-amber-800/80 dark:text-amber-200/80">Nada será executado enquanto a decisão não for validada pelo servidor. A aprovação não pode ser feita automaticamente pela missão.</p>
-                        <label className="mt-3 block text-xs font-medium text-amber-900 dark:text-amber-100" htmlFor={`approval-reason-${approval.id}`}>Motivo da decisão</label>
-                        <textarea id={`approval-reason-${approval.id}`} aria-label={`Motivo da decisão para ${approval.step_id}`} maxLength={512} value={reason} onChange={(event) => setApprovalReasons((current) => ({ ...current, [approval.id]: event.target.value }))} placeholder="Explique por que esta ação deve ser aprovada ou rejeitada" className="mt-1 min-h-16 w-full resize-y rounded-lg border border-amber-300 bg-white/70 px-2 py-2 text-xs text-neutral-900 outline-none focus:border-amber-500 dark:border-amber-800 dark:bg-neutral-950/50 dark:text-neutral-100" />
+                        <p className="mt-2 text-[11px] text-amber-800/80 dark:text-amber-200/80">{t("agenticConsole.approvals.note")}</p>
+                        <label className="mt-3 block text-xs font-medium text-amber-900 dark:text-amber-100" htmlFor={`approval-reason-${approval.id}`}>{t("agenticConsole.approvals.reasonLabel")}</label>
+                        <textarea id={`approval-reason-${approval.id}`} aria-label={t("agenticConsole.approvals.reasonAria", { step: approval.step_id })} maxLength={512} value={reason} onChange={(event) => setApprovalReasons((current) => ({ ...current, [approval.id]: event.target.value }))} placeholder={t("agenticConsole.approvals.reasonPlaceholder")} className="mt-1 min-h-16 w-full resize-y rounded-lg border border-amber-300 bg-white/70 px-2 py-2 text-xs text-neutral-900 outline-none focus:border-amber-500 dark:border-amber-800 dark:bg-neutral-950/50 dark:text-neutral-100" />
                         <div className="mt-3 flex gap-2">
-                          <button type="button" disabled={busy || !canDecide} onClick={() => void decide(approval, true)} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-40">Aprovar</button>
-                          <button type="button" disabled={busy || !canDecide} onClick={() => void decide(approval, false)} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-40">Rejeitar</button>
+                          <button type="button" disabled={busy || !canDecide} onClick={() => void decide(approval, true)} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-40">{t("agenticConsole.approvals.approve")}</button>
+                          <button type="button" disabled={busy || !canDecide} onClick={() => void decide(approval, false)} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-40">{t("agenticConsole.approvals.reject")}</button>
                         </div>
                       </div>
                     );
