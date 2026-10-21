@@ -379,6 +379,13 @@ export function AppNavigation({ current }: { current: AppSection }) {
             icon={PencilSquareIcon}
           />
           <TargetLink
+            href="/build"
+            label={t("appSidebar.nav.liveBuild")}
+            current={current}
+            section="studio"
+            icon={BoltIcon}
+          />
+          <TargetLink
             href="/scheduled"
             label={t("appSidebar.nav.automations")}
             current={current}
