@@ -29,8 +29,10 @@ import {
   PauseIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
+import { useT } from "@/i18n";
 
 export function AutomationsPage() {
+  const { t } = useT();
   const [schedules, setSchedules] = useState<AgentSchedule[]>([]);
   const [view, setView] = useState<"list" | "flow">("list");
   const [loading, setLoading] = useState(true);
@@ -59,7 +61,7 @@ export function AutomationsPage() {
       })
       .catch((e) => {
         setSchedules([]);
-        setErrorMsg(humanizeApiError(e, "Não foi possível carregar as automações.").message);
+        setErrorMsg(humanizeApiError(e, t("automations.error.load")).message);
       })
       .finally(() => setLoading(false));
   };
@@ -77,11 +79,11 @@ export function AutomationsPage() {
 
   const handleCreate = async (objective: string, intervalSeconds: number, type = triggerType) => {
     if (!objective.trim()) {
-      setErrorMsg("Informe o objetivo/instrução da automação.");
+      setErrorMsg(t("automations.error.missingObjective"));
       return;
     }
     if (type === "webhook" && !webhookSecretEnv.trim()) {
-      setErrorMsg("Informe a variável de ambiente com o segredo do webhook.");
+      setErrorMsg(t("automations.error.missingSecret"));
       return;
     }
     setErrorMsg(null);
@@ -99,7 +101,7 @@ export function AutomationsPage() {
         payload.next_run_at = WEBHOOK_NEVER_RUN_AT;
       }
       const created = await createSchedule(payload);
-      setSuccessMsg("Automação criada com sucesso!");
+      setSuccessMsg(t("automations.success.created"));
       setTimeout(() => setSuccessMsg(null), 3000);
       setNewObjective("");
       setWebhookSecretEnv("");
@@ -107,7 +109,7 @@ export function AutomationsPage() {
       setWebhookInfo(isWebhook ? { id: created.id, secretEnv } : null);
       loadData();
     } catch (e) {
-      setErrorMsg(humanizeApiError(e, "Não foi possível criar a automação.").message);
+      setErrorMsg(humanizeApiError(e, t("automations.error.create")).message);
     } finally {
       setSaving(false);
     }
@@ -120,11 +122,11 @@ export function AutomationsPage() {
       setSchedules((previous) => previous.map((item) => (item.id === sch.id ? result.schedule : item)));
       setSuccessMsg(
         approved
-          ? `Aprovação registrada em "${stepId}". Use "Reprocessar pendentes" para retomar o fluxo.`
-          : `Recusa registrada em "${stepId}". O fluxo não seguirá por esse caminho.`,
+          ? t("automations.success.approved", { step: stepId })
+          : t("automations.success.rejected", { step: stepId }),
       );
     } catch (e) {
-      setErrorMsg(humanizeApiError(e, "Não foi possível registrar a decisão.").message);
+      setErrorMsg(humanizeApiError(e, t("automations.error.approval")).message);
     }
   };
 
@@ -137,17 +139,17 @@ export function AutomationsPage() {
       setSchedules((previous) => previous.map((item) => (item.id === sch.id ? result.schedule : item)));
       if (!result.succeeded) {
         setSuccessMsg(null);
-        setErrorMsg(`Reprocessamento falhou: ${result.error ?? "erro não informado"}`);
+        setErrorMsg(t("automations.reprocess.failed", { error: result.error ?? t("automations.reprocess.errorUnknown") }));
         return;
       }
       const pending = scheduleRunConcerns(result.report).length;
       setSuccessMsg(
         pending === 0
-          ? `Reprocessamento concluído sem pendências: ${scheduleRunSummary(result.report)}`
-          : `Reprocessamento concluído, ainda com ${pending} passo(s) pendente(s): ${scheduleRunSummary(result.report)}`,
+          ? t("automations.reprocess.clean", { summary: scheduleRunSummary(result.report) })
+          : t("automations.reprocess.pending", { count: pending, summary: scheduleRunSummary(result.report) }),
       );
     } catch (e) {
-      setErrorMsg(humanizeApiError(e, "Não foi possível reprocessar a automação.").message);
+      setErrorMsg(humanizeApiError(e, t("automations.error.reprocess")).message);
     }
   };
 
@@ -163,18 +165,21 @@ export function AutomationsPage() {
         setSuccessMsg(null);
         setTriggeredMission(null);
         setErrorMsg(
-          `Execução da rotina falhou (${scheduleRunVerdictLabel(verdict)}): ${result.error ?? "erro não informado"}`,
+          t("automations.run.failed", {
+            verdict: scheduleRunVerdictLabel(verdict),
+            error: result.error ?? t("automations.reprocess.errorUnknown"),
+          }),
         );
         return;
       }
       if (verdict === "partial") {
-        setSuccessMsg(`Rotina executada parcialmente: ${scheduleRunSummary(result.report)}`);
+        setSuccessMsg(t("automations.run.partial", { summary: scheduleRunSummary(result.report) }));
       } else {
-        setSuccessMsg(`Rotina executada: ${scheduleRunSummary(result.report)}`);
+        setSuccessMsg(t("automations.run.done", { summary: scheduleRunSummary(result.report) }));
       }
       setTriggeredMission({ id: sch.id, objective: sch.objective });
     } catch (e) {
-      setErrorMsg(humanizeApiError(e, "Não foi possível executar a automação.").message);
+      setErrorMsg(humanizeApiError(e, t("automations.error.run")).message);
     }
   };
 
@@ -183,39 +188,39 @@ export function AutomationsPage() {
       await updateSchedule(sch.id, { enabled: !sch.enabled });
       loadData();
     } catch (e) {
-      setErrorMsg(humanizeApiError(e, "Não foi possível alterar o estado da automação.").message);
+      setErrorMsg(humanizeApiError(e, t("automations.error.toggle")).message);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!(await confirmDialog("Tem certeza que deseja excluir esta automação?", { danger: true, confirmLabel: "Excluir" }))) return;
+    if (!(await confirmDialog(t("automations.delete.confirm"), { danger: true, confirmLabel: t("automations.delete.confirmLabel") }))) return;
     try {
       await deleteSchedule(id);
       loadData();
     } catch (e) {
-      setErrorMsg(humanizeApiError(e, "Não foi possível excluir a automação.").message);
+      setErrorMsg(humanizeApiError(e, t("automations.error.delete")).message);
     }
   };
 
   const formatInterval = (sec: number) => {
-    if (sec === 3600) return "A cada 1 hora";
-    if (sec === 86400) return "Diariamente (a cada 24 horas)";
-    if (sec === 604800) return "Semanalmente (a cada 7 dias)";
+    if (sec === 3600) return t("automations.interval.hour1");
+    if (sec === 86400) return t("automations.interval.day24Long");
+    if (sec === 604800) return t("automations.interval.week7Long");
     const h = Math.round(sec / 3600);
-    return `A cada ${h} horas`;
+    return t("automations.interval.everyHours", { hours: h });
   };
 
   return (
-    <SidebarLayout title="Automações" sidebar={<AppSidebar current="scheduled" />}>
+    <SidebarLayout title={t("automations.title")} sidebar={<AppSidebar current="scheduled" />}>
       <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 lg:px-8">
         {/* Cabeçalho */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-white sm:text-3xl">
-              Automações
+              {t("automations.title")}
             </h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-              Automatize fluxos recorrentes, configure gatilhos e deixe o agente trabalhar em segundo plano.
+              {t("automations.description")}
             </p>
           </div>
           {view === "list" && (
@@ -225,7 +230,7 @@ export function AutomationsPage() {
               className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-neutral-900"
             >
               <PlusIcon className="h-4 w-4" />
-              Nova automação
+              {t("automations.new")}
             </button>
           )}
         </div>
@@ -237,28 +242,27 @@ export function AutomationsPage() {
             onClick={() => setView("list")}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium ${view === "list" ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-600 dark:text-neutral-300"}`}
           >
-            Lista
+            {t("automations.view.list")}
           </button>
           <button
             type="button"
             onClick={() => setView("flow")}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium ${view === "flow" ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-600 dark:text-neutral-300"}`}
           >
-            Editor visual (beta)
+            {t("automations.view.flow")}
           </button>
         </div>
 
         {view === "flow" && (
           <section className="space-y-3">
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              Monte o fluxo arrastando nós da paleta, conecte as etapas e valide antes de publicar.
-              O rascunho fica salvo neste navegador.
+              {t("automations.flow.hint")}
             </p>
             <FlowEditor
               onPublished={() => {
                 loadData();
                 setView("list");
-                setSuccessMsg("Fluxo publicado como automação. Veja em Rotinas Ativas.");
+                setSuccessMsg(t("automations.flow.published"));
               }}
             />
           </section>
@@ -279,7 +283,7 @@ export function AutomationsPage() {
                 onClick={() => setTriggeredMission(null)}
                 className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
               >
-                Acompanhar no Console de Missões →
+                {t("automations.followMission")}
               </Link>
             )}
           </div>
@@ -290,25 +294,24 @@ export function AutomationsPage() {
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm dark:border-amber-900/60 dark:bg-amber-950/30">
             <div className="flex items-start justify-between gap-3">
               <h3 className="font-bold text-amber-900 dark:text-amber-200">
-                Gatilho de webhook criado — como acionar
+                {t("automations.webhook.title")}
               </h3>
               <button
                 type="button"
                 onClick={() => setWebhookInfo(null)}
                 className="shrink-0 rounded-lg border border-amber-300 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-200"
               >
-                Fechar
+                {t("automations.webhook.close")}
               </button>
             </div>
             <p className="mt-2 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
-              Este gatilho roda apenas quando o endpoint abaixo recebe uma requisição
-              autenticada (não roda por tempo). Envie um <code className="font-mono">POST</code> com
-              o cabeçalho do segredo e uma chave de idempotência única por evento.
+              {t("automations.webhook.intro")} <code className="font-mono">POST</code>{" "}
+              {t("automations.webhook.introTail")}
             </p>
             <dl className="mt-3 space-y-2">
               <div>
                 <dt className="text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-                  Endpoint (POST)
+                  {t("automations.webhook.endpoint")}
                 </dt>
                 <dd className="mt-0.5 break-all rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 font-mono text-xs text-neutral-800 dark:border-amber-900/60 dark:bg-neutral-950 dark:text-neutral-200">
                   {`${window.location.origin}/api/agent/v1/webhooks/${webhookInfo.id}`}
@@ -316,26 +319,25 @@ export function AutomationsPage() {
               </div>
               <div>
                 <dt className="text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-                  Cabeçalho do segredo
+                  {t("automations.webhook.secretHeader")}
                 </dt>
                 <dd className="mt-0.5 rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 font-mono text-xs text-neutral-800 dark:border-amber-900/60 dark:bg-neutral-950 dark:text-neutral-200">
-                  {`X-Ollama-Agent-Secret: <valor da variável de ambiente ${webhookInfo.secretEnv}>`}
+                  {t("automations.webhook.secretValue", { env: webhookInfo.secretEnv })}
                 </dd>
               </div>
               <div>
                 <dt className="text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-                  Chave de idempotência (obrigatória, única por evento)
+                  {t("automations.webhook.idempotency")}
                 </dt>
                 <dd className="mt-0.5 rounded-lg border border-amber-200 bg-white px-2.5 py-1.5 font-mono text-xs text-neutral-800 dark:border-amber-900/60 dark:bg-neutral-950 dark:text-neutral-200">
-                  {"Idempotency-Key: <id único do evento>"}
+                  {t("automations.webhook.idempotencyExample")}
                 </dd>
               </div>
             </dl>
             <p className="mt-3 text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
-              O valor de <code className="font-mono">X-Ollama-Agent-Secret</code> deve ser igual ao
-              conteúdo da variável de ambiente <code className="font-mono">{webhookInfo.secretEnv}</code>{" "}
-              configurada no servidor. Requisições sem a chave de idempotência ou com segredo inválido
-              são recusadas.
+              {t("automations.webhook.secretExplain")} <code className="font-mono">X-Ollama-Agent-Secret</code>{" "}
+              {t("automations.webhook.secretExplainMid")} <code className="font-mono">{webhookInfo.secretEnv}</code>{" "}
+              {t("automations.webhook.secretExplainTail")}
             </p>
           </div>
         )}
@@ -349,25 +351,25 @@ export function AutomationsPage() {
                 <CalendarDaysIcon className="h-6 w-6" />
               </div>
               <h3 className="mt-4 text-lg font-bold text-neutral-900 dark:text-white">
-                Agendamento
+                {t("automations.card.schedule.title")}
               </h3>
               <p className="mt-2 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-                Automatize trabalhos recorrentes escolhendo quando e com que frequência o Hades deve ser executado.
+                {t("automations.card.schedule.description")}
               </p>
               <div className="mt-4 space-y-2 border-t border-neutral-100 pt-3 dark:border-neutral-800">
                 <button
                   type="button"
-                  onClick={() => handleCreate("Auditar arquivos e gerar relatório de progresso", 86400, "interval")}
+                  onClick={() => handleCreate(t("automations.card.schedule.objectiveProgress"), 86400, "interval")}
                   className="w-full text-left rounded-lg bg-neutral-50 px-2.5 py-1.5 text-[11px] font-medium text-neutral-700 hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
                 >
-                  ⚡ Relatório diário de progresso (24h)
+                  {t("automations.card.schedule.presetProgress")}
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleCreate("Verificar atualizações de dependências e segurança", 604800, "interval")}
+                  onClick={() => handleCreate(t("automations.card.schedule.objectiveSecurity"), 604800, "interval")}
                   className="w-full text-left rounded-lg bg-neutral-50 px-2.5 py-1.5 text-[11px] font-medium text-neutral-700 hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
                 >
-                  ⚡ Varredura semanal de segurança (7d)
+                  {t("automations.card.schedule.presetSecurity")}
                 </button>
               </div>
             </div>
@@ -376,7 +378,7 @@ export function AutomationsPage() {
               onClick={() => { setTriggerType("interval"); setErrorMsg(null); setShowModal(true); }}
               className="mt-6 w-full rounded-xl border border-neutral-200 bg-white py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
             >
-              Criar agendamento
+              {t("automations.card.schedule.action")}
             </button>
           </div>
 
@@ -387,25 +389,25 @@ export function AutomationsPage() {
                 <BoltIcon className="h-6 w-6" />
               </div>
               <h3 className="mt-4 text-lg font-bold text-neutral-900 dark:text-white">
-                Gatilho
+                {t("automations.card.trigger.title")}
               </h3>
               <p className="mt-2 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-                Configure um webhook autenticado; o endpoint exige segredo em variável de ambiente e chave de idempotência.
+                {t("automations.card.trigger.description")}
               </p>
               <div className="mt-4 space-y-2 border-t border-neutral-100 pt-3 dark:border-neutral-800">
                 <button
                   type="button"
-                  onClick={() => { setTriggerType("webhook"); setNewObjective("Disparar testes e validar build quando novo commit for detectado"); setShowModal(true); }}
+                  onClick={() => { setTriggerType("webhook"); setNewObjective(t("automations.card.trigger.objectiveTests")); setShowModal(true); }}
                   className="w-full text-left rounded-lg bg-neutral-50 px-2.5 py-1.5 text-[11px] font-medium text-neutral-700 hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
                 >
-                  ⚡ Testar repositório ao detectar commits
+                  {t("automations.card.trigger.presetTests")}
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setTriggerType("webhook"); setNewObjective("Processar arquivos e faturas adicionadas na pasta local"); setShowModal(true); }}
+                  onClick={() => { setTriggerType("webhook"); setNewObjective(t("automations.card.trigger.objectiveInvoices")); setShowModal(true); }}
                   className="w-full text-left rounded-lg bg-neutral-50 px-2.5 py-1.5 text-[11px] font-medium text-neutral-700 hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
                 >
-                  ⚡ Extrair dados de faturas recebidas
+                  {t("automations.card.trigger.presetInvoices")}
                 </button>
               </div>
             </div>
@@ -414,7 +416,7 @@ export function AutomationsPage() {
               onClick={() => { setTriggerType("webhook"); setErrorMsg(null); setShowModal(true); }}
               className="mt-6 w-full rounded-xl border border-neutral-200 bg-white py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
             >
-              Criar gatilho
+              {t("automations.card.trigger.action")}
             </button>
           </div>
 
@@ -430,33 +432,31 @@ export function AutomationsPage() {
                 </span>
               </div>
               <h3 className="mt-4 text-lg font-bold text-neutral-900 dark:text-white">
-                Automação avançada
+                {t("automations.card.advanced.title")}
               </h3>
               <p className="mt-2 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-                Descreva com suas próprias palavras o que o Hades deve fazer e escolha a frequência
-                abaixo. A interpretação de horários em linguagem natural ainda não está disponível:
-                por ora a automação roda em intervalo fixo.
+                {t("automations.card.advanced.description")}
               </p>
               <div className="mt-4 space-y-2">
                 <input
                   type="text"
                   value={naturalPrompt}
                   onChange={(e) => setNaturalPrompt(e.target.value)}
-                  placeholder="Ex: Monitore meu repositório e gere um resumo..."
+                  placeholder={t("automations.card.advanced.placeholder")}
                   className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:bg-white focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 />
                 <label className="block text-[11px] font-medium text-neutral-600 dark:text-neutral-400">
-                  Frequência
+                  {t("automations.card.advanced.frequency")}
                   <select
                     value={naturalInterval}
                     onChange={(e) => setNaturalInterval(e.target.value)}
                     className="mt-1 w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-900 focus:border-neutral-900 focus:bg-white focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                   >
-                    <option value="3600">A cada 1 hora</option>
-                    <option value="21600">A cada 6 horas</option>
-                    <option value="43200">A cada 12 horas</option>
-                    <option value="86400">Diariamente (24 horas)</option>
-                    <option value="604800">Semanalmente (7 dias)</option>
+                    <option value="3600">{t("automations.interval.hour1")}</option>
+                    <option value="21600">{t("automations.interval.hour6")}</option>
+                    <option value="43200">{t("automations.interval.hour12")}</option>
+                    <option value="86400">{t("automations.interval.day24")}</option>
+                    <option value="604800">{t("automations.interval.week7")}</option>
                   </select>
                 </label>
               </div>
@@ -465,7 +465,7 @@ export function AutomationsPage() {
               type="button"
               onClick={() => {
                 if (!naturalPrompt.trim()) {
-                  setErrorMsg("Descreva o que o Hades deve fazer antes de começar.");
+                  setErrorMsg(t("automations.card.advanced.missingPrompt"));
                   return;
                 }
                 void handleCreate(naturalPrompt, parseInt(naturalInterval, 10), "interval");
@@ -473,7 +473,7 @@ export function AutomationsPage() {
               }}
               className="mt-6 w-full rounded-xl bg-neutral-900 py-2 text-xs font-semibold text-white hover:opacity-90 dark:bg-white dark:text-neutral-900"
             >
-              Começar
+              {t("automations.card.advanced.start")}
             </button>
           </div>
         </div>
@@ -483,53 +483,52 @@ export function AutomationsPage() {
         {showModal && (
           <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-md dark:border-neutral-800 dark:bg-neutral-950">
             <h3 className="text-base font-bold text-neutral-900 dark:text-white">
-              Configurar Nova Rotina de Automação
+              {t("automations.modal.title")}
             </h3>
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                  Objetivo / Instrução para o Agente
+                  {t("automations.modal.objective")}
                 </label>
                 <input
                   type="text"
                   value={newObjective}
                   onChange={(e) => setNewObjective(e.target.value)}
-                  placeholder="Ex: Comparar dados de concorrentes e atualizar relatório"
+                  placeholder={t("automations.modal.objectivePlaceholder")}
                   className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">Tipo de gatilho</label>
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">{t("automations.modal.triggerType")}</label>
                 <select value={triggerType} onChange={(e) => setTriggerType(e.target.value as "interval" | "webhook")} className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800">
-                  <option value="interval">Intervalo recorrente</option><option value="webhook">Webhook/evento</option>
+                  <option value="interval">{t("automations.modal.triggerInterval")}</option><option value="webhook">{t("automations.modal.triggerWebhook")}</option>
                 </select>
               </div>
               {triggerType === "webhook" && <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">Variável do segredo webhook</label>
-                <input value={webhookSecretEnv} onChange={(e) => setWebhookSecretEnv(e.target.value)} placeholder="NOME_DA_VARIAVEL" className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800" />
+                <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">{t("automations.modal.secretEnv")}</label>
+                <input value={webhookSecretEnv} onChange={(e) => setWebhookSecretEnv(e.target.value)} placeholder={t("automations.modal.secretEnvPlaceholder")} className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-800" />
               </div>}
               {triggerType === "webhook" ? (
                 <div className="flex items-end">
                   <p className="text-[11px] leading-relaxed text-neutral-500 dark:text-neutral-400">
-                    Gatilhos de webhook não rodam por tempo: são acionados apenas pelo endpoint
-                    autenticado, cuja URL e instruções aparecem após salvar.
+                    {t("automations.modal.webhookNote")}
                   </p>
                 </div>
               ) : (
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                    Frequência de Execução
+                    {t("automations.modal.frequency")}
                   </label>
                   <select
                     value={newInterval}
                     onChange={(e) => setNewInterval(e.target.value)}
                     className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                   >
-                    <option value="3600">A cada 1 hora</option>
-                    <option value="21600">A cada 6 horas</option>
-                    <option value="43200">A cada 12 horas</option>
-                    <option value="86400">Diariamente (24 horas)</option>
-                    <option value="604800">Semanalmente (7 dias)</option>
+                    <option value="3600">{t("automations.interval.hour1")}</option>
+                    <option value="21600">{t("automations.interval.hour6")}</option>
+                    <option value="43200">{t("automations.interval.hour12")}</option>
+                    <option value="86400">{t("automations.interval.day24")}</option>
+                    <option value="604800">{t("automations.interval.week7")}</option>
                   </select>
                 </div>
               )}
@@ -540,7 +539,7 @@ export function AutomationsPage() {
                 onClick={() => setShowModal(false)}
                 className="rounded-xl border border-neutral-200 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300"
               >
-                Cancelar
+                {t("automations.modal.cancel")}
               </button>
               <button
                 type="button"
@@ -548,7 +547,7 @@ export function AutomationsPage() {
                 onClick={() => handleCreate(newObjective, parseInt(newInterval, 10), triggerType)}
                 className="rounded-xl bg-neutral-900 px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-neutral-900"
               >
-                {saving ? "Salvando..." : "Salvar automação"}
+                {saving ? t("automations.modal.saving") : t("automations.modal.save")}
               </button>
             </div>
           </div>
@@ -558,28 +557,28 @@ export function AutomationsPage() {
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
-              Rotinas Ativas ({schedules.length})
+              {t("automations.list.title", { count: schedules.length })}
             </h2>
             <Link
               to="/agentic"
               className="text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:hover:text-white"
             >
-              Abrir Console de Missões →
+              {t("automations.list.openConsole")}
             </Link>
           </div>
 
           {loading ? (
             <div className="py-12 text-center text-sm text-neutral-500">
-              Carregando automações...
+              {t("automations.list.loading")}
             </div>
           ) : schedules.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-neutral-300 p-12 text-center dark:border-neutral-700">
               <ClockIcon className="mx-auto h-10 w-10 text-neutral-300 dark:text-neutral-600" />
               <h3 className="mt-3 text-sm font-semibold text-neutral-900 dark:text-white">
-                Nenhuma rotina configurada
+                {t("automations.list.empty")}
               </h3>
               <p className="mt-1 text-xs text-neutral-500">
-                Use os cartões acima para criar seu primeiro agendamento ou gatilho autônomo.
+                {t("automations.list.emptyHint")}
               </p>
             </div>
           ) : (
@@ -602,8 +601,11 @@ export function AutomationsPage() {
                     </div>
                     <p className="text-xs text-neutral-500 dark:text-neutral-400">
                       {sch.webhook_secret_env
-                        ? "Acionada por webhook (não roda por tempo)"
-                        : `${formatInterval(sch.interval_seconds)} • Próxima execução: ${new Date(sch.next_run_at).toLocaleString("pt-BR")}`}
+                        ? t("automations.item.webhookOnly")
+                        : t("automations.item.nextRun", {
+                            interval: formatInterval(sch.interval_seconds),
+                            when: new Date(sch.next_run_at).toLocaleString("pt-BR"),
+                          })}
                     </p>
                     {/* Resultado por nó da última execução: uma rotina com passo
                         ignorado NÃO aparece como sucesso limpo. */}
@@ -619,20 +621,20 @@ export function AutomationsPage() {
                       type="button"
                       onClick={() => handleTriggerNow(sch)}
                       className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 dark:bg-white dark:text-neutral-900"
-                      title="Executar imediatamente"
+                      title={t("automations.item.runNowTitle")}
                     >
                       <PlayIcon className="h-3.5 w-3.5" />
-                      Executar agora
+                      {t("automations.item.runNow")}
                     </button>
                     {scheduleRunConcerns(sch.last_run ?? null).length > 0 && (
                       <button
                         type="button"
                         onClick={() => handleReprocess(sch)}
                         className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
-                        title="Reprocessar apenas os passos ignorados ou que falharam"
+                        title={t("automations.item.reprocessTitle")}
                       >
                         <ArrowPathIcon className="h-3.5 w-3.5" />
-                        Reprocessar pendentes
+                        {t("automations.item.reprocess")}
                       </button>
                     )}
                     {schedulePendingApprovals(sch.last_run ?? null).map((pending) => (
@@ -641,18 +643,18 @@ export function AutomationsPage() {
                           type="button"
                           onClick={() => handleApproval(sch, pending.step_id, pending.run_key, true)}
                           className="inline-flex items-center gap-1.5 rounded-xl bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-700"
-                          title={`Aprovar "${pending.step_id}" para esta execução`}
+                          title={t("automations.item.approveTitle", { step: pending.step_id })}
                         >
                           <CheckCircleIcon className="h-3.5 w-3.5" />
-                          Aprovar {pending.step_id}
+                          {t("automations.item.approve", { step: pending.step_id })}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleApproval(sch, pending.step_id, pending.run_key, false)}
                           className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-300 px-3 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                          title={`Recusar "${pending.step_id}" para esta execução`}
+                          title={t("automations.item.rejectTitle", { step: pending.step_id })}
                         >
-                          Recusar
+                          {t("automations.item.reject")}
                         </button>
                       </span>
                     ))}
@@ -660,7 +662,7 @@ export function AutomationsPage() {
                       type="button"
                       onClick={() => handleToggle(sch)}
                       className="rounded-xl border border-neutral-200 p-2 text-neutral-600 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                      title={sch.enabled ? "Pausar" : "Retomar"}
+                      title={sch.enabled ? t("automations.item.pause") : t("automations.item.resume")}
                     >
                       {sch.enabled ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
                     </button>
@@ -668,7 +670,7 @@ export function AutomationsPage() {
                       type="button"
                       onClick={() => handleDelete(sch.id)}
                       className="rounded-xl border border-neutral-200 p-2 text-red-600 hover:bg-red-50 dark:border-neutral-700 dark:hover:bg-red-950/30"
-                      title="Excluir rotina"
+                      title={t("automations.item.deleteTitle")}
                     >
                       <TrashIcon className="h-4 w-4" />
                     </button>
