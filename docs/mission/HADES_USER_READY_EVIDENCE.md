@@ -17,8 +17,8 @@
 | B7 | Atualização e rollback | **EXTERNO** | depende do instalador (B1/B6) |
 | B8 | Desinstalação limpa | **EXTERNO** | depende do instalador (B1/B6) |
 | B9 | Dados e privacidade (sem segredos em texto, telemetria desligável) | **INTERNO** | parcial (ver nota B9) |
-| B10 | Documentação de utilizador final | **INTERNO** | parcial (ver nota B10) |
-| B11 | Acessibilidade e i18n mínimos | **INTERNO** | **PROVADO** (acessibilidade) |
+| B10 | Documentação de utilizador final | **INTERNO** | **PROVADO** (ver abaixo) |
+| B11 | Acessibilidade e i18n mínimos | **INTERNO** | **PARCIAL**: acessibilidade PROVADA, **i18n não existe** |
 | B12 | Performance medida | **INTERNO** | **PROVADO** (ver abaixo) |
 
 ## B2 — primeiro arranque (INTERNO, PROVADO)
@@ -84,8 +84,11 @@ ok 2 axe WCAG gate — mobile  › all critical routes have no accessibility vio
 ok 3 mobile shell is operable by keyboard without a trap (565ms)
 ```
 
-**i18n**: `NÃO EXECUTADO` nesta medição (há UI em pt-BR e textos en no README; falta uma verificação
-automática de cobertura das duas línguas).
+**i18n: NÃO CUMPRIDO — e é uma lacuna real, não uma verificação em falta.** Medição no código
+(`app/ui/app/src`): **não existe camada de i18n**. Os textos estão em pt-BR **no próprio código**
+(`modelPickerUtils.ts` devolve "rótulos humanos pt-BR"; `commerceClient.ts` usa `toLocaleString("pt-BR")`).
+O requisito pede «pt-BR **e** en verificados na UI»; hoje só existe pt-BR. Traduzir a interface é
+trabalho interno por fazer, não um bloqueio externo.
 
 ## B9 — dados e privacidade (PARCIAL, INTERNO)
 
@@ -94,11 +97,23 @@ O que está provado: os testes do pare verificam que o estado **não** expõe
 `gitleaks` corre no CI em árvore **e** histórico (pass). O que **não** está provado: «telemetria
 desligável» verificado ponta-a-ponta nesta medição.
 
-## B10 — documentação de utilizador final (PARCIAL, INTERNO)
+## B10 — documentação de utilizador final (INTERNO, PROVADO)
 
-Existem `README.md`, `README.en.md`, `docs/images/screens/SCREEN_CAPTURE_NOTES.md` e a secção de
-estado verificável. O que **não** existe: um guia de utilizador com «os 5 erros mais comuns» e a sua
-resolução. `NÃO EXECUTADO`.
+**Ficheiro:** `docs/GUIA_RAPIDO_USUARIO.md` (85 -> 130 linhas nesta fatia).
+
+Cobre **instalar** (secção 1), **usar** (secções 2-4) e **6 problemas comuns** (secção 5), cada um com
+a **mensagem real** que o programa mostra — medida em execução, não inventada:
+
+| # | problema | mensagem real usada no guia | origem da medição |
+| --- | --- | --- | --- |
+| 5.1 | SmartScreen na instalação | «O Windows protegeu o computador» | instalador não assinado (#23) |
+| 5.2 | servidor offline / UI não carrega | porta 11434 ocupada por instância anterior | observado: processo antigo a servir 500 |
+| 5.3 | «Acesso negado» ao criar missão | `create agent store: mkdir ...\ollama-agent\data\missions: Acesso negado` | medido ao subir o servidor |
+| 5.4 | configuração não fica guardada | «Este endpoint é atendido pelo aplicativo desktop…» + **501** | medido (`POST /api/v1/settings`) |
+| 5.5 | execução recusada, «pare» | exige `HADES_PARE_AUTORIDADE`; sem ela responde «a autoridade não está configurada» | medido nos testes do pare |
+| 5.6 | download de modelo travou | barra de progresso pára | documentado, sem medição própria |
+
+Nota: o guia está em **pt-BR**. A versão em inglês é trabalho de i18n — ver B11.
 
 ## B12 — performance medida (INTERNO, PROVADO)
 
