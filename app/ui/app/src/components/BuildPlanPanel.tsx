@@ -33,6 +33,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { useT, type Translator } from "@/i18n";
+
 // FASE 28.7: o `build.start`. Importado do cliente de ESTADO porque e' la' que o
 // contrato do build vive; o painel de plano nao duplica os tipos.
 import { iniciarBuild } from "@/lib/buildStatusClient";
@@ -60,6 +62,7 @@ type Estado = "a-carregar" | "pronto" | "erro";
 type EstadoDoArtefacto = "inativo" | "a-medir" | "pronto" | "erro";
 
 export function BuildPlanPanel() {
+  const { t } = useT();
   const [repo, setRepo] = useState<string>("");
   // FASE 28.7: o estado do INICIO de build. Separado do `aMedir` porque sao duas accoes
   // diferentes: medir um checksum e iniciar uma build de minutos.
@@ -90,8 +93,9 @@ export function BuildPlanPanel() {
       setErroDeInicio(null);
       try {
         const resposta = await iniciarBuild({ raiz: plano.repo, alvo });
+        const sufixo = resposta.build_id ? ` (${resposta.build_id.slice(0, 8)})` : "";
         setAvisoDeInicio(
-          `Build de «${alvo}» aceite${resposta.build_id ? ` (${resposta.build_id.slice(0, 8)})` : ""} — acompanhe em «Estado dos builds».`,
+          t("buildPlan.start.accepted", { target: alvo, suffix: sufixo }),
         );
       } catch (e) {
         // 412 e' um RESULTADO (plano incompleto), nao uma falha do servidor. O painel diz o que falta
@@ -99,14 +103,14 @@ export function BuildPlanPanel() {
         const mensagem = e instanceof Error ? e.message : String(e);
         setErroDeInicio(
           mensagem.includes("412")
-            ? `O plano de «${alvo}» está incompleto: ${mensagem}`
+            ? t("buildPlan.start.incompletePlan", { target: alvo, message: mensagem })
             : mensagem,
         );
       } finally {
         setAIniciar(null);
       }
     },
-    [plano],
+    [plano, t],
   );
 
   const medir = useCallback(async () => {
@@ -120,10 +124,10 @@ export function BuildPlanPanel() {
       setMedicao(await obterChecksum(caminho));
       setEstadoDoArtefacto("pronto");
     } catch (falha) {
-      setErroDoArtefacto(mensagemDeFalha(falha));
+      setErroDoArtefacto(mensagemDeFalha(t, falha));
       setEstadoDoArtefacto("erro");
     }
-  }, [caminhoDoArtefacto]);
+  }, [caminhoDoArtefacto, t]);
 
   const verificar = useCallback(async () => {
     const caminho = caminhoDoArtefacto.trim();
@@ -139,10 +143,10 @@ export function BuildPlanPanel() {
       setVerificacao(await verificarArtefacto(caminho, referencia));
       setEstadoDoArtefacto("pronto");
     } catch (falha) {
-      setErroDoArtefacto(mensagemDeFalha(falha));
+      setErroDoArtefacto(mensagemDeFalha(t, falha));
       setEstadoDoArtefacto("erro");
     }
-  }, [caminhoDoArtefacto, shaEsperado]);
+  }, [caminhoDoArtefacto, shaEsperado, t]);
 
   const carregar = useCallback(async (alvo: string) => {
     if (!alvo.trim()) {
@@ -172,31 +176,32 @@ export function BuildPlanPanel() {
 
   return (
     <section aria-labelledby="build-plan-titulo">
-      <h2 id="build-plan-titulo">Build &amp; Release</h2>
+      <h2 id="build-plan-titulo">{t("buildPlan.title")}</h2>
 
       <p>
-        Este painel apenas <strong>detecta</strong> o projeto e <strong>sonda</strong> as ferramentas
-        instaladas. Não instala nada, não constrói nada e não assina nada.
+        {t("buildPlan.intro.before")} <strong>{t("buildPlan.intro.detect")}</strong>{" "}
+        {t("buildPlan.intro.middle")} <strong>{t("buildPlan.intro.probe")}</strong>{" "}
+        {t("buildPlan.intro.after")}
       </p>
 
-      <label htmlFor="build-plan-repo">Caminho do projeto</label>
+      <label htmlFor="build-plan-repo">{t("buildPlan.repo.label")}</label>
       <input
         id="build-plan-repo"
         type="text"
         value={repo}
         onChange={(evento) => setRepo(evento.target.value)}
-        placeholder="ex.: C:\caminho\do\projeto"
+        placeholder={t("buildPlan.repo.placeholder")}
         autoComplete="off"
         spellCheck={false}
       />
 
       <div aria-live="polite">
-        {estado === "a-carregar" && <p>A analisar o projeto…</p>}
+        {estado === "a-carregar" && <p>{t("buildPlan.loading")}</p>}
       </div>
 
       {estado === "erro" && (
         <p role="alert">
-          Não foi possível analisar o projeto: {erro}
+          {t("buildPlan.error.analyze")} {erro}
         </p>
       )}
 
@@ -205,37 +210,38 @@ export function BuildPlanPanel() {
           {plano.aviso_de_fronteira && <p>{plano.aviso_de_fronteira}</p>}
 
           <dl>
-            <dt>Projeto</dt>
+            <dt>{t("buildPlan.field.project")}</dt>
             <dd>{plano.repo}</dd>
-            <dt>Stacks</dt>
-            <dd>{plano.plano.projeto.stacks.join(", ") || "nenhuma reconhecida"}</dd>
-            <dt>Gestores de pacotes</dt>
-            <dd>{plano.plano.projeto.gestores.join(", ") || "nenhum detetado"}</dd>
-            <dt>Alvos</dt>
-            <dd>{plano.plano.projeto.alvos.join(", ") || "nenhum"}</dd>
+            <dt>{t("buildPlan.field.stacks")}</dt>
+            <dd>{plano.plano.projeto.stacks.join(", ") || t("buildPlan.stacks.none")}</dd>
+            <dt>{t("buildPlan.field.packageManagers")}</dt>
+            <dd>
+              {plano.plano.projeto.gestores.join(", ") || t("buildPlan.packageManagers.none")}
+            </dd>
+            <dt>{t("buildPlan.field.targets")}</dt>
+            <dd>{plano.plano.projeto.alvos.join(", ") || t("buildPlan.targets.none")}</dd>
             {resumo && (
               <>
-                <dt>Ferramentas</dt>
+                <dt>{t("buildPlan.field.tools")}</dt>
                 <dd>
-                  {resumo.prontas} de {resumo.total} prontas
-                  {resumo.emFalta > 0 ? `, ${resumo.emFalta} em falta` : ""}
+                  {t("buildPlan.tools.ready", { ready: resumo.prontas, total: resumo.total })}
+                  {resumo.emFalta > 0
+                    ? t("buildPlan.tools.missing", { count: resumo.emFalta })
+                    : ""}
                 </dd>
               </>
             )}
           </dl>
 
           {plano.plano.sem_alvos ? (
-            <p>
-              O projeto não declara nenhum alvo que o HADES conheça. Não há plano de build a
-              construir — isto não é um erro, é um resultado.
-            </p>
+            <p>{t("buildPlan.noTargets")}</p>
           ) : (
             <p>{plano.plano.explicacao}</p>
           )}
 
           {plano.blockers.length > 0 && (
             <section aria-labelledby="build-plan-blockers">
-              <h3 id="build-plan-blockers">O que falta</h3>
+              <h3 id="build-plan-blockers">{t("buildPlan.blockers.title")}</h3>
               <ul>
                 {plano.blockers.map((blocker) => (
                   <li key={blocker}>{blocker}</li>
@@ -246,7 +252,7 @@ export function BuildPlanPanel() {
 
           {plano.motivos.length > 0 && (
             <section aria-labelledby="build-plan-motivos">
-              <h3 id="build-plan-motivos">Porquê</h3>
+              <h3 id="build-plan-motivos">{t("buildPlan.reasons.title")}</h3>
               <ul>
                 {plano.motivos.map((motivo) => (
                   <li key={motivo}>{motivo}</li>
@@ -258,7 +264,7 @@ export function BuildPlanPanel() {
           {plano.plano.trabalho_independente &&
             plano.plano.trabalho_independente.length > 0 && (
               <section aria-labelledby="build-plan-independente">
-                <h3 id="build-plan-independente">O que pode avançar sem desbloquear nada</h3>
+                <h3 id="build-plan-independente">{t("buildPlan.independent.title")}</h3>
                 <ul>
                   {plano.plano.trabalho_independente.map((item) => (
                     <li key={item}>{item}</li>
@@ -280,13 +286,13 @@ export function BuildPlanPanel() {
             ) : null}
           </div>
           <table>
-            <caption>Plano por alvo</caption>
+            <caption>{t("buildPlan.plan.caption")}</caption>
             <thead>
               <tr>
-                <th scope="col">Alvo</th>
-                <th scope="col">Estado</th>
-                <th scope="col">O que falta</th>
-                <th scope="col">Ações</th>
+                <th scope="col">{t("buildPlan.col.target")}</th>
+                <th scope="col">{t("buildPlan.col.status")}</th>
+                <th scope="col">{t("buildPlan.blockers.title")}</th>
+                <th scope="col">{t("buildPlan.col.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -297,15 +303,16 @@ export function BuildPlanPanel() {
                     <th scope="row">{entrada.alvo}</th>
                     <td>
                       {entrada.erro_de_plano
-                        ? "não foi possível planear"
+                        ? t("buildPlan.status.planFailed")
                         : pronto
-                          ? "pronto"
-                          : "bloqueado"}
+                          ? t("buildPlan.status.ready")
+                          : t("buildPlan.status.blocked")}
                     </td>
                     <td>
                       {entrada.erro_de_plano
                         ? entrada.erro_de_plano
-                        : (entrada.plano.Blockers ?? []).join(", ") || "nada"}
+                        : (entrada.plano.Blockers ?? []).join(", ") ||
+                          t("buildPlan.blockers.none")}
                     </td>
                     <td>
                       {pronto ? (
@@ -315,7 +322,9 @@ export function BuildPlanPanel() {
                           disabled={aIniciar !== null}
                           data-testid={`build-plan-iniciar-${entrada.alvo}`}
                         >
-                          {aIniciar === entrada.alvo ? "A iniciar…" : "Iniciar build"}
+                          {aIniciar === entrada.alvo
+                            ? t("buildPlan.start.starting")
+                            : t("buildPlan.start.action")}
                         </button>
                       ) : (
                         // Um alvo bloqueado NAO ganha um botao desactivado: um botao que nunca
@@ -330,15 +339,15 @@ export function BuildPlanPanel() {
           </table>
 
           <details>
-            <summary>Detalhe das ferramentas sondadas</summary>
+            <summary>{t("buildPlan.probes.details")}</summary>
             <table>
-              <caption>Ferramentas por alvo</caption>
+              <caption>{t("buildPlan.probes.caption")}</caption>
               <thead>
                 <tr>
-                  <th scope="col">Alvo</th>
-                  <th scope="col">Ferramenta</th>
-                  <th scope="col">Estado</th>
-                  <th scope="col">Detalhe</th>
+                  <th scope="col">{t("buildPlan.col.target")}</th>
+                  <th scope="col">{t("buildPlan.col.tool")}</th>
+                  <th scope="col">{t("buildPlan.col.status")}</th>
+                  <th scope="col">{t("buildPlan.col.detail")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -358,7 +367,7 @@ export function BuildPlanPanel() {
 
           {plano.plano.avisos && plano.plano.avisos.length > 0 && (
             <section aria-labelledby="build-plan-avisos">
-              <h3 id="build-plan-avisos">Avisos da deteção</h3>
+              <h3 id="build-plan-avisos">{t("buildPlan.warnings.title")}</h3>
               <ul>
                 {plano.plano.avisos.map((aviso) => (
                   <li key={aviso}>{aviso}</li>
@@ -377,57 +386,58 @@ export function BuildPlanPanel() {
         fecha esse elo: *tres pecas provadas em separado nao sao uma integracao provada.*
       */}
       <section aria-labelledby="build-plan-artefacto">
-        <h3 id="build-plan-artefacto">Verificar um artefacto</h3>
+        <h3 id="build-plan-artefacto">{t("buildPlan.artifact.title")}</h3>
         <p>
-          Mede o SHA-256 de um ficheiro que <strong>já existe</strong> e, se der a referência,
-          compara. Não constrói, não assina e não instala. O caminho tem de ser{" "}
-          <strong>absoluto</strong>.
+          {t("buildPlan.artifact.intro.before")}{" "}
+          <strong>{t("buildPlan.artifact.intro.exists")}</strong>{" "}
+          {t("buildPlan.artifact.intro.after")}{" "}
+          <strong>{t("buildPlan.artifact.intro.absolute")}</strong>.
         </p>
 
-        <label htmlFor="build-artefacto-caminho">Caminho do artefacto</label>
+        <label htmlFor="build-artefacto-caminho">{t("buildPlan.artifact.path.label")}</label>
         <input
           id="build-artefacto-caminho"
           type="text"
           value={caminhoDoArtefacto}
           onChange={(evento) => setCaminhoDoArtefacto(evento.target.value)}
-          placeholder="ex.: C:\caminho\hades.exe"
+          placeholder={t("buildPlan.artifact.path.placeholder")}
           autoComplete="off"
           spellCheck={false}
         />
 
-        <label htmlFor="build-artefacto-sha256">SHA-256 esperado (opcional para medir)</label>
+        <label htmlFor="build-artefacto-sha256">{t("buildPlan.artifact.sha.label")}</label>
         <input
           id="build-artefacto-sha256"
           type="text"
           value={shaEsperado}
           onChange={(evento) => setShaEsperado(evento.target.value)}
-          placeholder="64 caracteres hexadecimais"
+          placeholder={t("buildPlan.artifact.sha.placeholder")}
           autoComplete="off"
           spellCheck={false}
         />
 
         <button type="button" onClick={() => void medir()} disabled={!caminhoDoArtefacto.trim()}>
-          Medir
+          {t("buildPlan.artifact.measure")}
         </button>
         <button
           type="button"
           onClick={() => void verificar()}
           disabled={!caminhoDoArtefacto.trim() || !shaEsperado.trim()}
         >
-          Verificar
+          {t("buildPlan.artifact.verify")}
         </button>
 
         <div aria-live="polite">
-          {estadoDoArtefacto === "a-medir" && <p>A medir o artefacto…</p>}
+          {estadoDoArtefacto === "a-medir" && <p>{t("buildPlan.artifact.measuring")}</p>}
         </div>
 
         {erroDoArtefacto && <p role="alert">{erroDoArtefacto}</p>}
 
         {medicao && (
-          <dl aria-label="Checksum medido">
-            <dt>Ficheiro</dt>
+          <dl aria-label={t("buildPlan.artifact.checksumAria")}>
+            <dt>{t("buildPlan.artifact.file")}</dt>
             <dd>{medicao.caminho}</dd>
-            <dt>Tamanho</dt>
+            <dt>{t("buildPlan.artifact.size")}</dt>
             <dd>{tamanhoLegivel(medicao.tamanho_bytes)}</dd>
             <dt>SHA-256</dt>
             <dd>
@@ -438,18 +448,18 @@ export function BuildPlanPanel() {
 
         {verificacao && (
           <>
-            <dl aria-label="Resultado da verificação">
-              <dt>Veredito</dt>
+            <dl aria-label={t("buildPlan.artifact.resultAria")}>
+              <dt>{t("buildPlan.artifact.verdict")}</dt>
               <dd>{resumirVerificacao(verificacao.resultado)}</dd>
-              <dt>SHA-256 medido</dt>
+              <dt>{t("buildPlan.artifact.shaMeasured")}</dt>
               <dd>
                 <code>{verificacao.resultado.sha256_medido}</code>
               </dd>
-              <dt>SHA-256 esperado</dt>
+              <dt>{t("buildPlan.artifact.shaExpected")}</dt>
               <dd>
                 <code>{verificacao.resultado.sha256_esperado}</code>
               </dd>
-              <dt>Assinatura</dt>
+              <dt>{t("buildPlan.artifact.signature")}</dt>
               <dd>{descreverAssinatura(verificacao.resultado.assinatura)}</dd>
             </dl>
             {/*
@@ -471,6 +481,6 @@ export function BuildPlanPanel() {
  * *Um estado que mente e' pior do que nenhum* -- e uma mensagem "erro desconhecido" obriga quem le'
  * a adivinhar. O `agentFetch` ja' lanca com a mensagem do backend quando ha' corpo de erro.
  */
-function mensagemDeFalha(falha: unknown): string {
-  return mensagemDaFalhaCom(falha, "não foi possível medir o artefacto");
+function mensagemDeFalha(t: Translator, falha: unknown): string {
+  return mensagemDaFalhaCom(falha, t("buildPlan.artifact.measureFailed"));
 }
