@@ -1,5 +1,6 @@
 import { useId } from "react";
-import { elevatedWarning, type ScopeOption } from "@/lib/missionCapabilities";
+import { elevatedWarning, resumoPermissoes, type ScopeOption } from "@/lib/missionCapabilities";
+import { useT } from "@/i18n";
 
 const RISK_LABEL: Record<string, string> = {
   unknown: "risco não classificado",
@@ -33,6 +34,7 @@ export function MissionCapabilityPicker({
   catalogUnavailable = false,
   disabled = false,
 }: Props) {
+  const { t } = useT();
   const groupID = useId();
   const chosen = new Set(
     options
@@ -46,10 +48,25 @@ export function MissionCapabilityPicker({
     options.filter((option) => option.elevated && chosen.has(option.name))
       .length + 1;
 
+  // I0c: o resumo abaixo (no <summary>) e a informacao que FALTAVA ver sem abrir nada.
+  const resumo = resumoPermissoes(options, selected);
+  const rotuloResumo =
+    resumo.rotulo === "somenteLeitura"
+      ? t("missionPermissions.summary.readOnly")
+      : t("missionPermissions.summary.withElevated", { count: resumo.elevados.length });
   return (
-    <details className="mt-1 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-[11px] text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300">
-      <summary className="cursor-pointer select-none font-medium text-neutral-700 dark:text-neutral-200">
-        Permissões da missão · {granted} escopo(s)
+    <details open className="mt-1 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-[11px] text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900/40 dark:text-neutral-300">
+      <summary className="cursor-pointer select-none" data-testid="mission-permission-bar">
+        <span className="font-medium text-neutral-900 dark:text-white">{rotuloResumo}</span>
+        <span className="ml-2 text-neutral-500 dark:text-neutral-400">{t("missionPermissions.summary.risk")}: {resumo.maiorRisco}</span>
+        {resumo.exigeAprovacao ? <span className="ml-2 text-amber-700 dark:text-amber-300">{t("missionPermissions.summary.approval")}</span> : null}
+        <span className="ml-2">· {granted} escopo(s)</span>
+        <span className="mt-1 flex flex-wrap gap-1">
+          <code className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] dark:bg-neutral-800">{resumo.base}</code>
+          {resumo.elevados.map((escopo) => (
+            <code key={escopo} className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">{escopo}</code>
+          ))}
+        </span>
       </summary>
       <p className="mt-2">
         A missão sempre recebe <code className="font-mono">workspace:read</code>

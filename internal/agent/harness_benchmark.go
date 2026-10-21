@@ -3,8 +3,10 @@ package agent
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -400,6 +402,11 @@ func ExtrairArquivosDaResposta(texto string) (map[string]string, error) {
 }
 
 // OllamaDisponivel mede se o Ollama local responde (sem presumir).
+//
+// ⚠️ E-671 — **ESTA SONDA NÃO BASTA, E ISSO FOI MEDIDO:** ela devolveu `true` num host onde a **GERAÇÃO** nunca
+// respondeu. A matriz real então gastou o timeout do cliente (**3 min**) **por chamada** - até 16 chamadas - e o
+// pacote `internal/agent` morreu no limite do `go test` (600 s), *em silêncio*. ***"O endpoint responde" não é
+// "o modelo gera".*** Para decidir se dá' para MEDIR, use `OllamaModeloPronto`.
 func OllamaDisponivel(ctx context.Context, baseURL string) bool {
 	base := strings.TrimSpace(baseURL)
 	if base == "" {
@@ -416,6 +423,66 @@ func OllamaDisponivel(ctx context.Context, baseURL string) bool {
 	}
 	defer resposta.Body.Close()
 	return resposta.StatusCode == http.StatusOK
+}
+
+// OllamaProbeTimeout e' o orcamento do probe de CAPACIDADE. *Curto de proposito:* a sonda existe para NAO gastar
+// minutos descobrindo que nao da' para medir. Ajustavel por `HADES_T2_PROBE_TIMEOUT` (segundos) - *limite escondido
+// em codigo nao e' limite, e' surpresa.*
+func OllamaProbeTimeout() time.Duration {
+	if bruto := strings.TrimSpace(os.Getenv("HADES_T2_PROBE_TIMEOUT")); bruto != "" {
+		if segundos, err := time.ParseDuration(bruto + "s"); err == nil && segundos > 0 {
+			return segundos
+		}
+	}
+	return 10 * time.Second
+}
+
+// OllamaModeloPronto mede se ESTE modelo consegue **GERAR** neste endpoint - e nao apenas se o endpoint responde.
+//
+// POR QUE ISTO EXISTE (E-671, medido 2026-10-15): `OllamaDisponivel` respondeu `true` num host onde a geracao
+// travava; a matriz real entao morreu no limite do `go test`, e a suite parecia "lenta" quando na verdade a sonda
+// estava **perguntando a coisa errada**. Aqui a pergunta e' a que importa: **uma geracao de 1 token completa?**
+// Só `200` **com conteudo** aprova; qualquer outra coisa (inclusive travar) devolve `false` dentro de
+// `OllamaProbeTimeout()`.
+func OllamaModeloPronto(ctx context.Context, baseURL, modelo string) bool {
+	base := strings.TrimSpace(baseURL)
+	if base == "" {
+		base = "http://127.0.0.1:11434"
+	}
+	nome := strings.TrimSpace(modelo)
+	if nome == "" {
+		return false
+	}
+	corpo, err := json.Marshal(map[string]any{
+		"model": nome, "prompt": "ok", "stream": false,
+		"options": map[string]any{"num_predict": 1},
+	})
+	if err != nil {
+		return false
+	}
+	orcamento := OllamaProbeTimeout()
+	ctxProbe, cancelar := context.WithTimeout(ctx, orcamento)
+	defer cancelar()
+	requisicao, err := http.NewRequestWithContext(ctxProbe, http.MethodPost, base+"/api/generate", bytes.NewReader(corpo))
+	if err != nil {
+		return false
+	}
+	requisicao.Header.Set("Content-Type", "application/json")
+	cliente := &http.Client{Timeout: orcamento}
+	resposta, err := cliente.Do(requisicao)
+	if err != nil {
+		return false
+	}
+	defer resposta.Body.Close()
+	if resposta.StatusCode != http.StatusOK {
+		return false
+	}
+	// **200 com corpo vazio NAO prova geracao** - e' exatamente o engodo que a sonda de endpoint aceitava.
+	conteudo, err := io.ReadAll(io.LimitReader(resposta.Body, 1<<20))
+	if err != nil {
+		return false
+	}
+	return len(bytes.TrimSpace(conteudo)) > 0
 }
 
 // limitesDeTentativa é o tempo máximo de UMA tentativa de correção.

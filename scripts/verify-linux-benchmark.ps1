@@ -36,7 +36,7 @@ param(
 $ErrorActionPreference = 'Continue'
 
 $docker = (Get-Command docker -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue)
-if (-not $docker) { $docker = 'C:\Users\DZ23\AppData\Local\Programs\DockerDesktop\resources\bin\docker.exe' }
+if (-not $docker) { $c = Get-Command docker -ErrorAction SilentlyContinue; if ($c) { $docker = $c.Source } else { $docker = 'C:\Users\DZ23\AppData\Local\Programs\DockerDesktop\resources\bin\docker.exe' } }
 if (-not (Test-Path $docker)) { throw 'docker nao encontrado: instale o Docker ou ajuste o caminho neste script.' }
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot

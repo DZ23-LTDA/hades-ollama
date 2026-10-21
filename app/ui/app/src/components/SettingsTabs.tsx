@@ -1,11 +1,13 @@
 import { SETTINGS_TABS, type SettingsTabId } from "@/lib/settingsTabs";
+import { useT } from "@/i18n";
 
 // SettingsTabs groups every configuration screen under Configurações so they
 // are found in one place instead of scattered across the sidebar.
 export function SettingsTabs({ current }: { current: SettingsTabId }) {
+  const { t } = useT();
   return (
     <nav
-      aria-label="Seções de configurações"
+      aria-label={t("settings.tabs.aria")}
       className="border-b border-neutral-200 bg-white px-6 dark:border-neutral-800 dark:bg-neutral-900 lg:px-12"
     >
       <ul className="mx-auto flex max-w-6xl gap-1 overflow-x-auto">
@@ -22,7 +24,7 @@ export function SettingsTabs({ current }: { current: SettingsTabId }) {
                     : "border-transparent text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
                 }`}
               >
-                {tab.label}
+                {t(tab.labelKey)}
               </a>
             </li>
           );

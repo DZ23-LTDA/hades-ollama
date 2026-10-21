@@ -43,6 +43,12 @@ func DefaultCapabilityPolicy() CapabilityPolicy {
 		"connector:external",
 		"media:execute",
 		"repo:read",
+		// E-666: `model:infer` e' o escopo de quem FAZ uma chamada de inferencia num passo. Ele existe porque o
+		// vocabulario e' FECHADO de proposito (`deny-by-default`): *uma ferramenta com escopo desconhecido nao
+		// autoriza nada - e' recusada na construcao do runtime, que foi exatamente o que aconteceu com a primeira
+		// versao deste executor.* A alternativa seria reusar `connector:external`, e ela mente: o provedor de
+		// modelo nao e' um conector HTTP qualquer, e a politica precisa poder distingui-lo.
+		"model:infer",
 	})
 }
 

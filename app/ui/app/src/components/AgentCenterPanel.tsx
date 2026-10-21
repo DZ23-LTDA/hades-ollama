@@ -1,0 +1,711 @@
+// Agent Center: catalogo registado, drift e instalacao.
+//
+// O QUE ESTE PAINEL NAO FAZ
+//
+//  1. Nao apresenta o ledger como catalogo -- o servidor diz `catalog_available: false` e o painel repete.
+//     *Uma lista que so' mostra o que ja' se instalou nao e' um catalogo: e' um historico.*
+//  2. Nao recalcula o drift: mostra o estado E a accao que o servidor devolveu.
+//  3. Nao reimplementa a fronteira do destino: manda como o utilizador escreveu e deixa o servidor decidir.
+import { useCallback, useState } from "react";
+import {
+  CentroAusenteError,
+  coberturaDeAvaliacao,
+  contarAchados,
+  contarCasos,
+  correrAvaliacaoReal,
+  guardarBackup,
+  lerAvaliacao,
+  libertarDaQuarentena,
+  listarQuarentena,
+  lerEquipas,
+  listarBackups,
+  restaurarBackup,
+  reterEmQuarentena,
+  resumoDeEquipas,
+  triarImportacao,
+  descreverCatalogo,
+  listarCatalogo,
+  descreverDrift,
+  instalarAgente,
+  InstalacaoRecusadaError,
+  ConflitoDeInstalacaoError,
+  lerDrift,
+  listarAgentes,
+  resumoLegivel,
+  validarDestino,
+  removerAgente,
+  actualizarAgente,
+  type Avaliacao,
+  type Catalogo,
+  type ListaDeBackups,
+  type ExecucaoDeAvaliacao,
+  type ListaDeQuarentena,
+  type ResultadoDeImportacao,
+  type Equipas,
+  type ItemDeDrift,
+  type ListaDeAgentes,
+  type RelatorioDeDrift,
+  type ResultadoDeInstalacao,
+} from "@/lib/agentCenterClient";
+import { useT } from "@/i18n";
+
+type Estado =
+  | "pronto"
+  | "a-carregar"
+  | "carregado"
+  | "catalogo"
+  | "avaliacao"
+  | "equipas"
+  | "backups"
+  | "triagem"
+  | "quarentena"
+  | "aval-real"
+  | "drift"
+  | "removido"
+  | "actualizado"
+  | "instalado"
+  | "ausente"
+  | "recusado"
+  | "conflito"
+  | "erro";
+
+const PERSONA_MINIMA = {
+  id: "revisor-exemplo",
+  name: "Revisor de exemplo",
+  version: "1.0.0",
+  source: "hades-catalogo",
+  license: "MIT",
+  description: "Exemplo de persona para provar o registo.",
+  prompt: "Leia o diff e aponte o defeito.",
+};
+
+export function AgentCenterPanel() {
+  const { t } = useT();
+  const [estado, setEstado] = useState<Estado>("pronto");
+  const [erro, setErro] = useState<string | null>(null);
+  const [actualizacao, setActualizacao] = useState<{ backup_id?: string; bytes?: number; note?: string } | null>(null);
+  const [remocao, setRemocao] = useState<{ removed?: string; file_kept?: boolean; note?: string } | null>(null);
+  const [lista, setLista] = useState<ListaDeAgentes | null>(null);
+  const [relatorio, setRelatorio] = useState<RelatorioDeDrift | null>(null);
+  const [catalogo, setCatalogo] = useState<Catalogo | null>(null);
+  const [avaliacao, setAvaliacao] = useState<Avaliacao | null>(null);
+  const [equipas, setEquipas] = useState<Equipas | null>(null);
+  const [backups, setBackups] = useState<ListaDeBackups | null>(null);
+  const [backupId, setBackupId] = useState("");
+  // O resultado do restauro tem de ser VISIVEL: sem isto o utilizador clica em «restaurar» e o ecra
+  // volta a ser a lista, sem dizer se repôs alguma coisa.
+  const [restauro, setRestauro] = useState<{ restored?: string } | null>(null);
+  const [manifesto, setManifesto] = useState("");
+  const [triagem, setTriagem] = useState<ResultadoDeImportacao | null>(null);
+  const [quarentena, setQuarentena] = useState<ListaDeQuarentena | null>(null);
+  const [revisor, setRevisor] = useState("");
+  const [quarentenaId, setQuarentenaId] = useState("");
+  const [avalReal, setAvalReal] = useState<ExecucaoDeAvaliacao | null>(null);
+  const [instalacao, setInstalacao] = useState<ResultadoDeInstalacao | null>(null);
+  const [alvo, setAlvo] = useState("hades");
+  const [destino, setDestino] = useState(".hades/agents/revisor-exemplo.md");
+
+  const correr = useCallback(
+    async (op: "list" | "catalog" | "evaluation" | "teams" | "backups" | "restore" | "triagem" | "quarentena" | "liberar" | "aval-real" | "drift" | "remover" | "atualizar" | "install",
+      // O id vem por ARGUMENTO e nao do estado: `setBackupId(id)` seguido de `correr(...)` lia o
+      // `backupId` ANTERIOR, porque o React ainda nao tinha aplicado o estado. O restauro ia com id vazio.
+      idDoBackup?: string,
+    ) => {
+      setErro(null);
+      setEstado("a-carregar");
+      try {
+        if (op === "list") {
+          setLista(await listarAgentes());
+          setEstado("carregado");
+        } else if (op === "catalog") {
+          setCatalogo(await listarCatalogo());
+          setEstado("catalogo");
+        } else if (op === "evaluation") {
+          setAvaliacao(await lerAvaliacao());
+          setEstado("avaliacao");
+        } else if (op === "teams") {
+          setEquipas(await lerEquipas());
+          setEstado("equipas");
+        } else if (op === "backups") {
+          await guardarBackup();
+          setBackups(await listarBackups());
+          setEstado("backups");
+        } else if (op === "triagem") {
+          setTriagem(await triarImportacao(manifesto));
+          setEstado("triagem");
+        } else if (op === "aval-real") {
+          setAvalReal(await correrAvaliacaoReal("hades-executor", "engenharia"));
+          setEstado("aval-real");
+        } else if (op === "quarentena") {
+          await reterEmQuarentena(manifesto);
+          setQuarentena(await listarQuarentena());
+          setEstado("quarentena");
+        } else if (op === "liberar") {
+          await libertarDaQuarentena(quarentenaId, revisor);
+          setQuarentena(await listarQuarentena());
+          setEstado("quarentena");
+        } else if (op === "restore") {
+          setRestauro(await restaurarBackup(idDoBackup ?? backupId));
+          setBackups(await listarBackups());
+          setEstado("backups");
+        } else if (op === "drift") {
+          setRelatorio(await lerDrift());
+          setEstado("drift");
+        } else if (op === "atualizar") {
+          // Actualizar faz BACKUP no servidor antes de escrever; se o servidor recusar por trabalho local, o
+          // `traduzir` levanta e o catch mostra o conflito.
+          setActualizacao(await actualizarAgente(PERSONA_MINIMA, alvo, destino));
+          setEstado("actualizado");
+        } else if (op === "remover") {
+          // O alvo e' o seletor de formato; o id vem do campo de texto do destino. Se o servidor recusar por
+          // trabalho local, o `traduzir` levanta e o catch do painel mostra o conflito.
+          // O ID e' a persona; o destino e' o destino. Trocar os dois dava 404 -- e os dois sao strings,
+          // por isso nem o TypeScript nem o compilador os distinguiam.
+          const r = await removerAgente(PERSONA_MINIMA.id, alvo, destino);
+          setRemocao(r);
+          setEstado("removido");
+        } else {
+          const problema = validarDestino(destino);
+          if (problema) {
+            setErro(problema);
+            setEstado("recusado");
+            return;
+          }
+          setInstalacao(await instalarAgente(PERSONA_MINIMA, alvo, destino));
+          setEstado("instalado");
+        }
+      } catch (causa) {
+        if (causa instanceof CentroAusenteError) {
+          setErro(t("agentCenter.error.centerMissing"));
+          setEstado("ausente");
+          return;
+        }
+        if (causa instanceof ConflitoDeInstalacaoError) {
+          setErro(t("agentCenter.error.conflict"));
+          setEstado("conflito");
+          return;
+        }
+        if (causa instanceof InstalacaoRecusadaError) {
+          setErro(causa.message);
+          setEstado("recusado");
+          return;
+        }
+        setErro(causa instanceof Error ? causa.message : t("agentCenter.error.generic"));
+        setEstado("erro");
+      }
+    },
+    [alvo, destino, t],
+  );
+
+  const itens: ItemDeDrift[] = relatorio?.items ?? [];
+  const agentes = lista?.agents ?? [];
+
+  return (
+    <section
+      data-testid="agent-center"
+      aria-labelledby="agent-center-titulo"
+      className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-4"
+    >
+      <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h3 id="agent-center-titulo" className="text-sm font-semibold text-neutral-100">
+          {t("agentCenter.title")}
+        </h3>
+        <span className="text-[11px] text-neutral-500">{t("agentCenter.subtitle")}</span>
+      </header>
+
+      {/* A nota do catalogo vem do SERVIDOR, nao do painel. */}
+      <p data-testid="agent-center-catalogo" className="mb-3 text-[11px] leading-relaxed text-amber-300">
+        {descreverCatalogo(lista)}
+      </p>
+
+      <div className="mb-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          data-testid="agent-center-listar"
+          onClick={() => void correr("list")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          {t("agentCenter.actions.list")}
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-catalogo-btn"
+          onClick={() => void correr("catalog")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          {t("agentCenter.actions.catalog")}
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-avaliacao-btn"
+          onClick={() => void correr("evaluation")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          {t("agentCenter.actions.evaluation")}
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-equipas-btn"
+          onClick={() => void correr("teams")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          {t("agentCenter.actions.teams")}
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-aval-correr"
+          onClick={() => void correr("aval-real")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          {t("agentCenter.actions.runEvaluation")}
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-quarentena-btn"
+          onClick={() => void correr("quarentena")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          {t("agentCenter.actions.quarantine")}
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-triagem-btn"
+          onClick={() => void correr("triagem")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          {t("agentCenter.actions.triage")}
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-backup-btn"
+          onClick={() => void correr("backups")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          {t("agentCenter.actions.backup")}
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-drift"
+          onClick={() => void correr("drift")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          {t("agentCenter.actions.drift")}
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-remover"
+          onClick={() => void correr("remover")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          {t("agentCenter.actions.remove")}
+        </button>
+        <button
+          type="button"
+          data-testid="agent-center-atualizar"
+          onClick={() => void correr("atualizar")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          {t("agentCenter.actions.update")}
+        </button>
+        <select
+          data-testid="agent-center-alvo"
+          value={alvo}
+          onChange={(e) => setAlvo(e.target.value)}
+          aria-label={t("agentCenter.target.aria")}
+          className="rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-xs text-neutral-200"
+        >
+          <option value="hades">hades</option>
+          <option value="codex">codex</option>
+          <option value="claude-code">claude-code</option>
+        </select>
+        <input
+          data-testid="agent-center-destino"
+          value={destino}
+          onChange={(e) => setDestino(e.target.value)}
+          placeholder={t("agentCenter.destination.placeholder")}
+          aria-label={t("agentCenter.destination.aria")}
+          className="w-64 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 font-mono text-xs text-neutral-200"
+        />
+        <button
+          type="button"
+          data-testid="agent-center-instalar"
+          onClick={() => void correr("install")}
+          className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+        >
+          {t("agentCenter.actions.install")}
+        </button>
+      </div>
+
+      {estado === "pronto" && (
+        <p data-testid="agent-center-pronto" className="text-xs text-neutral-400">
+          {t("agentCenter.idle")}
+        </p>
+      )}
+
+      {estado === "a-carregar" && (
+        <p data-testid="agent-center-a-carregar" className="text-xs text-neutral-400">
+          {t("agentCenter.loading")}
+        </p>
+      )}
+
+      {estado === "carregado" && (
+        <div className="space-y-1">
+          <p data-testid="agent-center-contagem" className="text-xs font-semibold text-emerald-300">
+            {t(
+              agentes.length === 1
+                ? "agentCenter.list.countOne"
+                : "agentCenter.list.countMany",
+              { count: agentes.length },
+            )}
+          </p>
+          <ul data-testid="agent-center-lista" className="font-mono text-[11px] text-neutral-300">
+            {agentes.map((a) => (
+              <li key={`${a.persona_id}-${a.target}-${a.destination}`}>
+                {a.persona_id} v{a.version} · {a.target} · {a.destination}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {estado === "catalogo" && (
+        <div className="space-y-1">
+          <p data-testid="agent-center-cat-versao" className="text-[11px] text-neutral-300">
+            {t("agentCenter.catalog.version", {
+              version: catalogo?.version ?? "?",
+              total: coberturaDeAvaliacao(catalogo).total,
+              evaluated: coberturaDeAvaliacao(catalogo).avaliadas,
+            })}
+          </p>
+          {/* *Um numero sem a sua qualidade ao lado e' um numero que se cita mal.* */}
+          {coberturaDeAvaliacao(catalogo).avaliadas === 0 && (
+            <p data-testid="agent-center-cat-sem-avaliacao" className="text-[11px] text-amber-300">
+              {t("agentCenter.catalog.noneEvaluated")}
+            </p>
+          )}
+          <ul data-testid="agent-center-cat-lista" className="space-y-1 font-mono text-[11px] text-neutral-300">
+            {(catalogo?.personas ?? []).map((p) => (
+              <li key={p.id}>
+                {p.id} v{p.version} · {p.division ?? "?"} · {p.license ?? "?"} ·{" "}
+                {(p.evaluation ?? "").trim() === ""
+                  ? t("agentCenter.catalog.unrated")
+                  : p.evaluation}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {estado === "avaliacao" && (
+        <div className="space-y-1">
+          <p data-testid="agent-center-aval-nota" className="text-[11px] text-amber-300">
+            {avaliacao?.note ?? t("agentCenter.evaluation.noNote")}
+          </p>
+          <p data-testid="agent-center-aval-inferencia" className="text-[11px] text-neutral-400">
+            {avaliacao?.inference_available === true
+              ? t("agentCenter.evaluation.inferenceOn")
+              : t("agentCenter.evaluation.inferenceOff")}
+          </p>
+          <ul data-testid="agent-center-aval-suits" className="space-y-1 font-mono text-[11px] text-neutral-300">
+            {(avaliacao?.divisions ?? []).map((d) => {
+              const s = avaliacao?.suites?.[d];
+              const n = contarCasos(s);
+              return (
+                <li key={d}>
+                  {t("agentCenter.evaluation.suiteLine", {
+                    division: d,
+                    version: s?.version ?? "?",
+                    cases: n.total,
+                    refusals: n.negativos,
+                  })}
+                </li>
+              );
+            })}
+          </ul>
+          <p data-testid="agent-center-aval-estados" className="text-[11px] text-neutral-500">
+            {t("agentCenter.evaluation.states", {
+              count: (avaliacao?.states ?? []).length,
+              terminal: (avaliacao?.states ?? []).filter((s) => s.terminal).length,
+            })}
+          </p>
+        </div>
+      )}
+
+      {estado === "equipas" && (
+        <div className="space-y-1">
+          <p data-testid="agent-center-eq-resumo" className="text-[11px] text-neutral-300">
+            {t("agentCenter.teams.summary", {
+              total: resumoDeEquipas(equipas).total,
+              functional: resumoDeEquipas(equipas).funcionais,
+              missing: resumoDeEquipas(equipas).comFalta,
+              invalid: resumoDeEquipas(equipas).invalidas,
+            })}
+          </p>
+          {/* *Um preset que nunca correu nao e' uma equipa: e' uma proposta de equipa.* */}
+          {resumoDeEquipas(equipas).funcionais === 0 && (
+            <p data-testid="agent-center-eq-nao-provado" className="text-[11px] text-amber-300">
+              {equipas?.note ?? t("agentCenter.teams.noneProven")}
+            </p>
+          )}
+          <ul data-testid="agent-center-eq-lista" className="space-y-1 text-[11px] text-neutral-300">
+            {(equipas?.teams ?? []).map((i) => (
+              <li key={i.team.id}>
+                <span className="font-mono">{i.team.id}</span> ·{" "}
+                {t(
+                  i.team.roles.length === 1
+                    ? "agentCenter.teams.rolesOne"
+                    : "agentCenter.teams.rolesMany",
+                  { count: i.team.roles.length },
+                )}{" "}
+                ·{" "}
+                {i.validation.ok
+                  ? t("agentCenter.teams.valid")
+                  : t("agentCenter.teams.invalid", {
+                      count: (i.validation.problems ?? []).length,
+                    })}{" "}
+                ·{" "}
+                {(i.validation.missing_tools ?? []).length > 0
+                  ? t("agentCenter.teams.missingTools", {
+                      tools: (i.validation.missing_tools ?? []).join(", "),
+                    })
+                  : t("agentCenter.teams.noMissingTools")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {estado === "triagem" && (
+        <div className="space-y-1">
+          <textarea
+            data-testid="agent-center-triagem-texto"
+            value={manifesto}
+            onChange={(e) => setManifesto(e.target.value)}
+            placeholder={t("agentCenter.triage.placeholder")}
+            rows={4}
+            className="w-full rounded border border-neutral-700 bg-neutral-900 p-1 font-mono text-[11px] text-neutral-200"
+          />
+          <p data-testid="agent-center-triagem-estado" className="text-[11px] text-neutral-300">
+            {t("agentCenter.triage.status", {
+              state: triagem?.state ?? "—",
+              blocks: contarAchados(triagem?.report ?? null).bloqueios,
+              warnings: contarAchados(triagem?.report ?? null).avisos,
+              install:
+                triagem?.installed === true
+                  ? t("agentCenter.triage.installed")
+                  : t("agentCenter.triage.notInstalled"),
+            })}
+          </p>
+          <p data-testid="agent-center-triagem-nota" className="text-[11px] text-neutral-500">
+            {triagem?.note ?? t("agentCenter.triage.note")}
+          </p>
+          {(triagem?.report?.findings ?? []).length > 0 && (
+            <ul data-testid="agent-center-triagem-achados" className="space-y-0.5 text-[11px] text-amber-300">
+              {(triagem?.report?.findings ?? []).map((f, i) => (
+                <li key={`${f.pattern}-${i}`}>
+                  [{f.severity}] {f.field}: {f.why}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {estado === "aval-real" && (
+        <div className="space-y-1">
+          <p data-testid="agent-center-aval-real-estado" className="text-[11px] text-neutral-300">
+            {t("agentCenter.realEval.status", {
+              state: avalReal?.state ?? "—",
+              cases: avalReal?.report?.cases?.length ?? 0,
+              failed: avalReal?.report?.failed ?? 0,
+              engine: avalReal?.engine?.model ?? "—",
+            })}
+          </p>
+          <p data-testid="agent-center-aval-real-nota" className="text-[11px] text-neutral-500">
+            {avalReal?.note ?? t("agentCenter.realEval.note")}
+          </p>
+          <ul data-testid="agent-center-aval-real-casos" className="space-y-0.5 text-[11px]">
+            {(avalReal?.report?.cases ?? []).map((c) => (
+              <li key={c.id} className={c.passed ? "text-emerald-300" : "text-amber-300"}>
+                [{c.kind}] {c.id}:{" "}
+                {c.passed ? t("agentCenter.realEval.passed") : c.reason ?? t("agentCenter.realEval.failed")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {estado === "quarentena" && (
+        <div className="space-y-1">
+          <p data-testid="agent-center-qr-contagem" className="text-[11px] text-neutral-300">
+            {t(
+              (quarentena?.count ?? 0) === 1
+                ? "agentCenter.quarantine.countOne"
+                : "agentCenter.quarantine.countMany",
+              { count: quarentena?.count ?? 0 },
+            )}
+          </p>
+          <ul data-testid="agent-center-qr-lista" className="space-y-1 font-mono text-[11px] text-neutral-300">
+            {(quarentena?.entries ?? []).map((e) => (
+              <li key={e.id} className="flex items-center gap-2">
+                <span>{e.persona_id}</span>
+                <span className="text-neutral-500">{e.state}</span>
+                <button
+                  type="button"
+                  data-testid={`agent-center-qr-libertar-${e.id}`}
+                  onClick={() => {
+                    setQuarentenaId(e.id);
+                    void correr("liberar");
+                  }}
+                  className="rounded border border-neutral-700 px-1 text-[10px] hover:bg-neutral-800"
+                >
+                  {t("agentCenter.quarantine.release")}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {(quarentena?.count ?? 0) === 0 && (
+            <p data-testid="agent-center-qr-vazio" className="text-[11px] text-neutral-500">
+              {t("agentCenter.quarantine.empty")}
+            </p>
+          )}
+          <input
+            data-testid="agent-center-qr-revisor"
+            value={revisor}
+            onChange={(e) => setRevisor(e.target.value)}
+            placeholder={t("agentCenter.quarantine.reviewerPlaceholder")}
+            className="w-full rounded border border-neutral-700 bg-neutral-900 p-1 text-[11px] text-neutral-200"
+          />
+          {/* *Uma revisao de seguranca que aprova para producao nao e uma revisao: e um atalho.* */}
+          <p className="text-[11px] text-neutral-500">
+            {t("agentCenter.quarantine.releaseNote")}
+          </p>
+        </div>
+      )}
+
+      {estado === "backups" && (
+        <div className="space-y-1">
+          <p data-testid="agent-center-bk-contagem" className="text-[11px] text-neutral-300">
+            {t(
+              (backups?.count ?? 0) === 1
+                ? "agentCenter.backups.countOne"
+                : "agentCenter.backups.countMany",
+              { count: backups?.count ?? 0 },
+            )}
+          </p>
+          <ul data-testid="agent-center-bk-lista" className="space-y-1 font-mono text-[11px] text-neutral-300">
+            {(backups?.backups ?? []).map((id) => (
+              <li key={id} className="flex items-center gap-2">
+                <span>{id}</span>
+                <button
+                  type="button"
+                  data-testid={`agent-center-bk-restaurar-${id}`}
+                  onClick={() => {
+                    setBackupId(id);
+                    void correr("restore", id);
+                  }}
+                  className="rounded border border-neutral-700 px-1 text-[10px] hover:bg-neutral-800"
+                >
+                  {t("agentCenter.backups.restore")}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {restauro && (
+          <p data-testid="agent-center-restaurado" className="text-[11px] text-emerald-400">
+            {t("agentCenter.backups.restored")}{" "}
+            <span className="font-mono">{restauro.restored ?? "?"}</span>
+          </p>
+        )}
+        {(backups?.count ?? 0) === 0 && (
+            <p data-testid="agent-center-bk-vazio" className="text-[11px] text-neutral-500">
+              {t("agentCenter.backups.empty")}
+            </p>
+          )}
+          {/* *O ultimo a escrever nao ganha por ser o ultimo, e o mais recente tambem nao.* */}
+          <p className="text-[11px] text-neutral-500">
+            {t("agentCenter.backups.restoreNote")}
+          </p>
+        </div>
+      )}
+
+      {estado === "drift" && (
+        <div className="space-y-1">
+          <p data-testid="agent-center-resumo" className="text-[11px] text-neutral-300">
+            {resumoLegivel(relatorio?.summary)}
+          </p>
+          <ul data-testid="agent-center-itens" className="space-y-1 text-[11px] text-neutral-300">
+            {itens.map((item) => (
+              <li key={`${item.entry.persona_id}-${item.entry.destination}`}>
+                {item.entry.persona_id} · {descreverDrift(item)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {estado === "instalado" && (
+        <p data-testid="agent-center-instalado" className="text-xs font-semibold text-emerald-300">
+          {t(
+            instalacao?.created === true
+              ? "agentCenter.install.created"
+              : "agentCenter.install.existing",
+            {
+              id: instalacao?.entry?.persona_id ?? t("agentCenter.install.noId"),
+              bytes: instalacao?.bytes ?? 0,
+            },
+          )}
+        </p>
+      )}
+
+      {estado === "actualizado" && (
+        <p data-testid="agent-center-actualizado" className="text-xs text-emerald-400">
+          {t("agentCenter.update.done")}{" "}
+          <span className="font-mono">{actualizacao?.backup_id ?? "?"}</span> ·{" "}
+          {actualizacao?.bytes ?? 0} {t("agentCenter.update.bytes")}
+          {actualizacao?.note ? " · " + actualizacao.note : ""}
+        </p>
+      )}
+
+      {estado === "removido" && (
+        <p data-testid="agent-center-removido" className="text-xs text-emerald-400">
+          {t("agentCenter.remove.line", {
+            id: remocao?.removed ?? t("agentCenter.install.noId"),
+            state: remocao?.file_kept
+              ? t("agentCenter.remove.fileKept")
+              : t("agentCenter.remove.noFile"),
+          })}
+          {remocao?.note ? " · " + remocao.note : ""}
+        </p>
+      )}
+
+      {estado === "ausente" && (
+        <p data-testid="agent-center-ausente" className="text-xs text-amber-300">
+          {erro}
+        </p>
+      )}
+
+      {estado === "conflito" && (
+        <p data-testid="agent-center-conflito" className="text-xs text-amber-300">
+          {erro}
+        </p>
+      )}
+
+      {estado === "recusado" && (
+        <p data-testid="agent-center-recusado" className="text-xs text-amber-300">
+          {erro}
+        </p>
+      )}
+
+      {estado === "erro" && (
+        <p data-testid="agent-center-erro" role="alert" className="text-xs text-red-400">
+          {erro}
+        </p>
+      )}
+
+      <p data-testid="agent-center-fronteira" className="mt-3 text-[11px] leading-relaxed text-neutral-500">
+        {t("agentCenter.footer")}
+      </p>
+    </section>
+  );
+}

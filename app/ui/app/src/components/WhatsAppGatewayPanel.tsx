@@ -15,33 +15,37 @@ import {
   removeWhatsAppContactPolicy,
   setWhatsAppActiveBackend,
   configureWhatsAppEvolution,
+  configureWhatsAppCloud,
+  getWhatsAppQR,
   type WhatsAppStatusSummary,
   type WhatsAppContactPolicy,
 } from "@/lib/agenticClient";
+import { useT, type Translator } from "@/i18n";
 
 // translateStatus converte os enums crus do backend (ex.: NOT_CONFIGURED)
-// para rótulos em português do Brasil, evitando mostrar siglas internas na UI.
-function translateStatus(raw?: string): string {
+// para rótulos traduzidos, evitando mostrar siglas internas na UI.
+function translateStatus(t: Translator, raw?: string): string {
   switch ((raw ?? "").toUpperCase()) {
     case "PASS":
     case "OK":
     case "CONNECTED":
-      return "Conectado";
+      return t("whatsapp.status.connected");
     case "NOT_CONFIGURED":
     case "":
-      return "Não configurado";
+      return t("whatsapp.status.notConfigured");
     case "FAIL":
     case "ERROR":
-      return "Falha";
+      return t("whatsapp.status.failed");
     case "PENDING":
     case "CONNECTING":
-      return "Conectando";
+      return t("whatsapp.status.connecting");
     default:
-      return raw ?? "Não configurado";
+      return raw ?? t("whatsapp.status.notConfigured");
   }
 }
 
 export function WhatsAppGatewayPanel() {
+  const { t } = useT();
   const [status, setStatus] = useState<WhatsAppStatusSummary | null>(null);
   const [allowlist, setAllowlist] = useState<WhatsAppContactPolicy[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +62,57 @@ export function WhatsAppGatewayPanel() {
   const [evoWebhookSecret, setEvoWebhookSecret] = useState("");
   const [evoSaving, setEvoSaving] = useState(false);
   const [evoSaved, setEvoSaved] = useState(false);
+
+  // Credenciais do WhatsApp Business Cloud API (Meta). Mesmo contrato: o servidor
+  // guarda com 0600 e devolve apenas o resumo mascarado, por isso os campos nascem vazios.
+  const [cloudPhoneNumberID, setCloudPhoneNumberID] = useState("");
+  const [cloudAccessToken, setCloudAccessToken] = useState("");
+  const [cloudVerifyToken, setCloudVerifyToken] = useState("");
+  const [cloudAppSecret, setCloudAppSecret] = useState("");
+  const [cloudSaving, setCloudSaving] = useState(false);
+  const [cloudSaved, setCloudSaved] = useState(false);
+
+  // I0b: estado do QR de emparelhamento. O QR vem do servidor Evolution do utilizador,
+  // por proxy autenticado -- o painel nunca ve a api key.
+  const [qrImagem, setQrImagem] = useState<string | null>(null);
+  const [qrEstado, setQrEstado] = useState<string | null>(null);
+  const [qrCarregando, setQrCarregando] = useState(false);
+  const [qrErro, setQrErro] = useState<string | null>(null);
+
+  const handleMostrarQR = async () => {
+    setQrCarregando(true);
+    setQrErro(null);
+    try {
+      const resultado = await getWhatsAppQR();
+      setQrEstado(resultado.state);
+      setQrImagem(resultado.qr ?? null);
+    } catch (err) {
+      setQrImagem(null);
+      setQrErro(err instanceof Error ? err.message : String(err));
+    } finally {
+      setQrCarregando(false);
+    }
+  };
+
+  const handleSaveCloud = async () => {
+    setCloudSaving(true);
+    setCloudSaved(false);
+    setError(null);
+    try {
+      const updated = await configureWhatsAppCloud({
+        phone_number_id: cloudPhoneNumberID.trim(),
+        access_token: cloudAccessToken.trim(),
+        verify_token: cloudVerifyToken.trim(),
+        app_secret: cloudAppSecret.trim(),
+      });
+      setStatus(updated);
+      setCloudSaved(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCloudSaving(false);
+    }
+  };
 
   const handleSaveEvolution = async () => {
     setEvoSaving(true);
@@ -155,10 +210,10 @@ export function WhatsAppGatewayPanel() {
             </div>
             <div>
               <h2 className="text-base font-bold text-neutral-900 dark:text-white">
-                WhatsApp Gateway — Controle Remoto do Agente
+                {t("whatsapp.header.title")}
               </h2>
               <p className="text-xs text-neutral-500">
-                Dispare missões, consulte progresso e aprove ações sensíveis pelo celular.
+                {t("whatsapp.header.subtitle")}
               </p>
             </div>
           </div>
@@ -173,12 +228,12 @@ export function WhatsAppGatewayPanel() {
               {isConfigured ? (
                 <>
                   <CheckCircleIcon className="h-4 w-4" />
-                  Conectado (PASS)
+                  {t("whatsapp.header.connected")}
                 </>
               ) : (
                 <>
                   <ExclamationCircleIcon className="h-4 w-4" />
-                  {translateStatus(status?.gate_status)}
+                  {translateStatus(t, status?.gate_status)}
                 </>
               )}
             </span>
@@ -187,7 +242,7 @@ export function WhatsAppGatewayPanel() {
               onClick={() => void load()}
               disabled={loading}
               className="rounded-xl border border-neutral-200 p-2 text-neutral-600 hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-900"
-              aria-label="Atualizar status"
+              aria-label={t("whatsapp.header.refreshAria")}
             >
               <ArrowPathIcon className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </button>
@@ -217,14 +272,18 @@ export function WhatsAppGatewayPanel() {
                 Evolution API (Self-Hosted)
               </h3>
               {status?.active_backend === "evolution_api" && (
-                <span className="text-[10px] font-semibold text-emerald-600">ATIVO</span>
+                <span className="text-[10px] font-semibold text-emerald-600">
+                  {t("whatsapp.backend.active")}
+                </span>
               )}
             </div>
             <p className="mt-1 text-[11px] text-neutral-500">
-              Gateway aberto de alta velocidade para instâncias próprias.
+              {t("whatsapp.backend.evolution.description")}
             </p>
             <div className="mt-3 text-[10px] text-neutral-400">
-              Status: {translateStatus(status?.adapters?.evolution_api?.status)}
+              {t("whatsapp.backend.status", {
+                status: translateStatus(t, status?.adapters?.evolution_api?.status),
+              })}
             </div>
           </button>
 
@@ -243,54 +302,132 @@ export function WhatsAppGatewayPanel() {
                 WhatsApp Business Cloud API (Meta)
               </h3>
               {status?.active_backend === "cloud_api" && (
-                <span className="text-[10px] font-semibold text-emerald-600">ATIVO</span>
+                <span className="text-[10px] font-semibold text-emerald-600">
+                  {t("whatsapp.backend.active")}
+                </span>
               )}
             </div>
             <p className="mt-1 text-[11px] text-neutral-500">
-              Endpoint oficial Meta Graph API para contas corporativas.
+              {t("whatsapp.backend.cloud.description")}
             </p>
             <div className="mt-3 text-[10px] text-neutral-400">
-              Status: {translateStatus(status?.adapters?.cloud_api?.status)}
+              {t("whatsapp.backend.status", {
+                status: translateStatus(t, status?.adapters?.cloud_api?.status),
+              })}
             </div>
           </button>
         </div>
 
+        {status?.active_backend === "evolution_api" ? (
+        <div>
         {/* Configuração do Evolution API (credenciais) */}
         <div className="mt-6 rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
           <h3 className="text-xs font-bold text-neutral-900 dark:text-white">
-            Conectar Evolution API
+            {t("whatsapp.evolution.title")}
           </h3>
           <p className="mt-1 text-[11px] text-neutral-500">
-            Informe o endereço e a chave do seu servidor Evolution API. As credenciais são guardadas com segurança no servidor local (0600) e nunca são exibidas de volta.
+            {t("whatsapp.evolution.intro")}
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-[11px] text-neutral-500">
-              URL do servidor
-              <input type="url" value={evoBaseURL} onChange={(e) => setEvoBaseURL(e.target.value)} placeholder="https://evolution.seudominio.com" className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
+              {t("whatsapp.evolution.baseUrl")}
+              <input type="url" value={evoBaseURL} onChange={(e) => setEvoBaseURL(e.target.value)} placeholder={t("whatsapp.evolution.baseUrlPlaceholder")} className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
             </label>
             <label className="flex flex-col gap-1 text-[11px] text-neutral-500">
-              Instância
-              <input type="text" value={evoInstance} onChange={(e) => setEvoInstance(e.target.value)} placeholder="nome-da-instancia" className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
+              {t("whatsapp.evolution.instance")}
+              <input type="text" value={evoInstance} onChange={(e) => setEvoInstance(e.target.value)} placeholder={t("whatsapp.evolution.instancePlaceholder")} className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
             </label>
             <label className="flex flex-col gap-1 text-[11px] text-neutral-500">
-              API Key
-              <input type="password" value={evoApiKey} onChange={(e) => setEvoApiKey(e.target.value)} autoComplete="off" placeholder="chave da API" className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
+              {t("whatsapp.evolution.apiKey")}
+              <input type="password" value={evoApiKey} onChange={(e) => setEvoApiKey(e.target.value)} autoComplete="off" placeholder={t("whatsapp.evolution.apiKeyPlaceholder")} className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
             </label>
             <label className="flex flex-col gap-1 text-[11px] text-neutral-500">
-              Segredo do webhook
-              <input type="password" value={evoWebhookSecret} onChange={(e) => setEvoWebhookSecret(e.target.value)} autoComplete="off" placeholder="segredo para validar o webhook" className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
+              {t("whatsapp.evolution.webhookSecret")}
+              <input type="password" value={evoWebhookSecret} onChange={(e) => setEvoWebhookSecret(e.target.value)} autoComplete="off" placeholder={t("whatsapp.evolution.webhookSecretPlaceholder")} className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
             </label>
           </div>
           <div className="mt-3 flex items-center gap-3">
             <button type="button" onClick={() => void handleSaveEvolution()} disabled={evoSaving || !evoBaseURL.trim() || !evoApiKey.trim() || !evoInstance.trim()} className="h-9 rounded-lg bg-emerald-600 px-4 text-xs font-medium text-white disabled:opacity-40 hover:bg-emerald-700">
-              {evoSaving ? "Salvando…" : "Salvar e conectar"}
+              {evoSaving ? t("whatsapp.evolution.saving") : t("whatsapp.evolution.save")}
             </button>
-            {evoSaved && <span className="text-[11px] text-emerald-600">Credenciais salvas. Verificando status…</span>}
+            {evoSaved && <span className="text-[11px] text-emerald-600">{t("whatsapp.evolution.saved")}</span>}
           </div>
+          {/* I0b: QR de emparelhamento, obtido do servidor Evolution do utilizador. */}
+          <div className="mt-3 rounded-lg border border-dashed border-neutral-300 p-3 dark:border-neutral-700">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => void handleMostrarQR()}
+                disabled={qrCarregando}
+                className="h-9 rounded-lg border border-neutral-300 px-3 text-xs font-medium text-neutral-800 disabled:opacity-40 dark:border-neutral-700 dark:text-neutral-200"
+              >
+                {qrCarregando ? t("whatsapp.evolution.qrLoading") : t("whatsapp.evolution.showQR")}
+              </button>
+              {qrEstado === "open" ? (
+                <span className="text-[11px] text-emerald-600">{t("whatsapp.evolution.qrLinked")}</span>
+              ) : qrEstado ? (
+                <span className="text-[11px] text-neutral-500">{qrEstado}</span>
+              ) : null}
+            </div>
+            {qrErro ? (
+              <p role="alert" className="mt-2 text-[11px] text-red-600 dark:text-red-400">
+                {t("whatsapp.evolution.qrError")}: {qrErro}
+              </p>
+            ) : null}
+            {qrImagem ? (
+              <div className="mt-3 flex flex-col items-start gap-2">
+                <img
+                  src={qrImagem}
+                  alt={t("whatsapp.evolution.showQR")}
+                  className="h-56 w-56 rounded-lg border border-neutral-200 bg-white p-1 dark:border-neutral-800"
+                />
+                <p className="text-[10px] text-neutral-400">{t("whatsapp.evolution.qrScanHint")}</p>
+              </div>
+            ) : null}
+          </div>
+
           <p className="mt-2 text-[10px] text-neutral-400">
-            Dica: configure o webhook do seu Evolution API para apontar para o endpoint do Hades (/api/agent/v1/whatsapp/webhook) usando o mesmo segredo.
+            {t("whatsapp.evolution.hint")} {t("whatsapp.evolution.qrHint")}
           </p>
         </div>
+
+        </div>
+        ) : null}
+
+        {/* WhatsApp Business Cloud API (Meta): credenciais proprias, campos diferentes do
+            Evolution. Antes o formulario do Evolution aparecia mesmo com a Meta activa, o que
+            levava o utilizador a preencher o formulario errado. */}
+        {status?.active_backend === "cloud_api" ? (
+          <div className="mt-6 rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+            <h3 className="text-xs font-bold text-neutral-900 dark:text-white">{t("whatsapp.cloud.title")}</h3>
+            <p className="mt-1 text-[11px] text-neutral-500">{t("whatsapp.cloud.intro")}</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="flex flex-col gap-1 text-[11px] text-neutral-500">
+                {t("whatsapp.cloud.phoneNumberID")}
+                <input type="text" value={cloudPhoneNumberID} onChange={(e) => setCloudPhoneNumberID(e.target.value)} placeholder={t("whatsapp.cloud.phoneNumberIDPlaceholder")} className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
+              </label>
+              <label className="flex flex-col gap-1 text-[11px] text-neutral-500">
+                {t("whatsapp.cloud.accessToken")}
+                <input type="password" value={cloudAccessToken} onChange={(e) => setCloudAccessToken(e.target.value)} autoComplete="off" placeholder={t("whatsapp.cloud.accessTokenPlaceholder")} className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
+              </label>
+              <label className="flex flex-col gap-1 text-[11px] text-neutral-500">
+                {t("whatsapp.cloud.verifyToken")}
+                <input type="password" value={cloudVerifyToken} onChange={(e) => setCloudVerifyToken(e.target.value)} autoComplete="off" placeholder={t("whatsapp.cloud.verifyTokenPlaceholder")} className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
+              </label>
+              <label className="flex flex-col gap-1 text-[11px] text-neutral-500">
+                {t("whatsapp.cloud.appSecret")}
+                <input type="password" value={cloudAppSecret} onChange={(e) => setCloudAppSecret(e.target.value)} autoComplete="off" placeholder={t("whatsapp.cloud.appSecretPlaceholder")} className="h-9 rounded-lg border border-neutral-300 bg-transparent px-2.5 text-sm outline-none dark:border-neutral-700" />
+              </label>
+            </div>
+            <div className="mt-3 flex items-center gap-3">
+              <button type="button" onClick={() => void handleSaveCloud()} disabled={cloudSaving || !cloudPhoneNumberID.trim() || !cloudAccessToken.trim()} className="h-9 rounded-lg bg-emerald-600 px-4 text-xs font-medium text-white disabled:opacity-40 hover:bg-emerald-700">
+                {cloudSaving ? t("whatsapp.cloud.saving") : t("whatsapp.cloud.save")}
+              </button>
+              {cloudSaved ? <span className="text-[11px] text-emerald-600">{t("whatsapp.cloud.saved")}</span> : null}
+            </div>
+            <p className="mt-2 text-[10px] text-neutral-400">{t("whatsapp.cloud.hint")}</p>
+          </div>
+        ) : null}
 
         {/* Command Bridge & Security Badges — só quando o gateway está
             configurado; caso contrário seria um selo falso de recursos ativos. */}
@@ -303,32 +440,36 @@ export function WhatsAppGatewayPanel() {
               <p className="mt-1 text-xs font-medium text-neutral-800 dark:text-neutral-200">
                 /goal, missao, health, projetos
               </p>
-              <p className="text-[10px] text-neutral-500">Execução real no runtime local</p>
+              <p className="text-[10px] text-neutral-500">
+                {t("whatsapp.bridge.execution")}
+              </p>
             </div>
             <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-3 dark:border-neutral-800/80 dark:bg-neutral-900/50">
               <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-                Segurança e aprovação humana
+                {t("whatsapp.card.security.title")}
               </span>
               <p className="mt-1 text-xs font-medium text-neutral-800 dark:text-neutral-200">
-                Aprovação via celular (APROVAR/REJEITAR)
+                {t("whatsapp.card.security.value")}
               </p>
-              <p className="text-[10px] text-neutral-500">Ações sensíveis bloqueadas até autorização</p>
+              <p className="text-[10px] text-neutral-500">
+                {t("whatsapp.card.security.note")}
+              </p>
             </div>
             <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-3 dark:border-neutral-800/80 dark:bg-neutral-900/50">
               <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-                Idempotência & DLQ
+                {t("whatsapp.card.idempotency.title")}
               </span>
               <p className="mt-1 text-xs font-medium text-neutral-800 dark:text-neutral-200">
-                Filtro fromMe + Dedupe TTL 24h
+                {t("whatsapp.card.idempotency.value")}
               </p>
-              <p className="text-[10px] text-neutral-500">Zero loops de resposta e DLQ ativa</p>
+              <p className="text-[10px] text-neutral-500">
+                {t("whatsapp.card.idempotency.note")}
+              </p>
             </div>
           </div>
         ) : (
           <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
-            Configure um backend acima (Evolution API ou Cloud API da Meta) para
-            ativar o Command Bridge, a aprovação humana e a proteção contra loops
-            (DLQ). Esses recursos ficam disponíveis apenas após a conexão.
+            {t("whatsapp.bridge.off")}
           </p>
         )}
       </div>
@@ -338,18 +479,18 @@ export function WhatsAppGatewayPanel() {
         <div className="flex items-center gap-2">
           <ShieldCheckIcon className="h-5 w-5 text-violet-600" />
           <h3 className="text-sm font-bold text-neutral-900 dark:text-white">
-            Allowlist de Donos e Contatos Autorizados
+            {t("whatsapp.allowlist.title")}
           </h3>
         </div>
         <p className="mt-1 text-xs text-neutral-500">
-          Apenas os números cadastrados abaixo têm permissão para interagir com o agente. Contatos fora da lista são bloqueados imediatamente.
+          {t("whatsapp.allowlist.intro")}
         </p>
 
         {/* Contact List */}
         <div className="mt-4 divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
           {allowlist.length === 0 ? (
             <div className="p-4 text-center text-xs text-neutral-500">
-              Nenhum contato cadastrado na allowlist. Adicione o seu número abaixo para começar.
+              {t("whatsapp.allowlist.empty")}
             </div>
           ) : (
             allowlist.map((contact) => (
@@ -380,7 +521,7 @@ export function WhatsAppGatewayPanel() {
                   type="button"
                   onClick={() => void handleRemoveContact(contact.phone_number)}
                   className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-red-600 dark:hover:bg-neutral-800"
-                  aria-label="Remover contato"
+                  aria-label={t("whatsapp.allowlist.removeAria")}
                 >
                   <TrashIcon className="h-4 w-4" />
                 </button>
@@ -393,14 +534,14 @@ export function WhatsAppGatewayPanel() {
         <form onSubmit={handleAddContact} className="mt-4 flex flex-wrap items-center gap-2">
           <input
             type="text"
-            placeholder="Telefone (ex: 5511999999999)"
+            placeholder={t("whatsapp.allowlist.phonePlaceholder")}
             value={newPhone}
             onChange={(e) => setNewPhone(e.target.value)}
             className="flex-1 min-w-[180px] rounded-xl border border-neutral-300 bg-transparent px-3 py-2 text-xs text-neutral-900 outline-none focus:border-neutral-500 dark:border-neutral-700 dark:text-white"
           />
           <input
             type="text"
-            placeholder="Nome do contato"
+            placeholder={t("whatsapp.allowlist.namePlaceholder")}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             className="flex-1 min-w-[140px] rounded-xl border border-neutral-300 bg-transparent px-3 py-2 text-xs text-neutral-900 outline-none focus:border-neutral-500 dark:border-neutral-700 dark:text-white"
@@ -410,9 +551,9 @@ export function WhatsAppGatewayPanel() {
             onChange={(e) => setNewRole(e.target.value as "owner" | "operator" | "viewer")}
             className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs text-neutral-900 outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
           >
-            <option value="owner">Dono (Owner - Acesso Total)</option>
-            <option value="operator">Operador (Executa missões)</option>
-            <option value="viewer">Visualizador (Somente leitura)</option>
+            <option value="owner">{t("whatsapp.allowlist.role.owner")}</option>
+            <option value="operator">{t("whatsapp.allowlist.role.operator")}</option>
+            <option value="viewer">{t("whatsapp.allowlist.role.viewer")}</option>
           </select>
           <button
             type="submit"
@@ -420,7 +561,7 @@ export function WhatsAppGatewayPanel() {
             className="inline-flex items-center gap-1 rounded-xl bg-neutral-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-40 dark:bg-white dark:text-neutral-900"
           >
             <PlusIcon className="h-4 w-4" />
-            Adicionar
+            {t("whatsapp.allowlist.add")}
           </button>
         </form>
       </div>

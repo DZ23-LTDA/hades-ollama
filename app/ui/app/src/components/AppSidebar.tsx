@@ -23,6 +23,8 @@ import {
   CommandLineIcon,
   BellIcon,
   PencilSquareIcon,
+  WrenchScrewdriverIcon,
+  KeyIcon,
 } from "@heroicons/react/24/outline";
 import { ChatIcon } from "@/components/ChatIcon";
 import { SearchDialog } from "@/components/SearchDialog";
@@ -34,6 +36,7 @@ import { fetchAgentNotifications, fetchUser, type AgentNotification } from "@/ap
 import { performLogout } from "@/lib/logout";
 import { shouldStopSseReconnect } from "@/lib/sse";
 import { useUser } from "@/hooks/useUser";
+import { useT } from "@/i18n";
 
 export type AppSection =
   | "apps"
@@ -52,7 +55,9 @@ export type AppSection =
   | "endpoint"
   | "tasks"
   | "compare"
-  | "company";
+  | "company"
+  | "capabilities"
+  | "signing";
 
 type Icon = React.ComponentType<{ className?: string }>;
 
@@ -122,6 +127,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState<string | null>(null);
   const { isAuthenticated, fetchConnectUrl } = useUser();
+  const { t } = useT();
   const [ollamaLoginPending, setOllamaLoginPending] = useState(false);
   const [userProfile, setUserProfile] = useState<{
     name: string;
@@ -175,7 +181,11 @@ export function AppNavigation({ current }: { current: AppSection }) {
         if (active) setNotifications(items);
       })
       .catch((error) => {
-        if (active) setNotificationsError(error instanceof Error ? error.message : "Não foi possível carregar notificações.");
+        if (active) {
+          setNotificationsError(
+            error instanceof Error ? error.message : t("appSidebar.notifications.loadFailed"),
+          );
+        }
       })
       .finally(() => {
         if (active) setNotificationsLoading(false);
@@ -186,7 +196,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
         const items = JSON.parse((event as MessageEvent).data) as AgentNotification[];
         if (Array.isArray(items)) setNotifications(items);
       } catch {
-        setNotificationsError("O stream de notificações retornou dados inválidos.");
+        setNotificationsError(t("appSidebar.notifications.invalidStream"));
       }
     });
     let consecutiveErrors = 0;
@@ -195,7 +205,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
     };
     stream.onerror = () => {
       if (active) {
-        setNotificationsError("Atualização ao vivo indisponível; os eventos já carregados permanecem visíveis.");
+        setNotificationsError(t("appSidebar.notifications.streamUnavailable"));
       }
       consecutiveErrors += 1;
       // Cap the native auto-reconnect so a down/404 stream endpoint does not
@@ -208,7 +218,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
       active = false;
       stream.close();
     };
-  }, [notificationsOpen]);
+  }, [notificationsOpen, t]);
 
   const handleSignOut = async () => {
     setSignOutPending(true);
@@ -218,7 +228,9 @@ export function AppNavigation({ current }: { current: AppSection }) {
       setSignOutOpen(false);
       window.location.reload();
     } catch (error) {
-      setSignOutError(error instanceof Error ? error.message : "Não foi possível encerrar a sessão.");
+      setSignOutError(
+        error instanceof Error ? error.message : t("appSidebar.signOut.failed"),
+      );
     } finally {
       setSignOutPending(false);
     }
@@ -276,7 +288,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
             Hades
           </div>
           <div className="truncate text-[10px] text-neutral-400">
-            Espaço de trabalho local
+            {t("appSidebar.header.workspace")}
           </div>
         </div>
       </div>
@@ -289,7 +301,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
         draggable={false}
       >
         <PlusIcon className={iconClass} />
-        <span>Nova tarefa</span>
+        <span>{t("appSidebar.newTask")}</span>
         <span className="ml-auto text-[10px] text-white/60 dark:text-neutral-500">
           {newTaskShortcut()}
         </span>
@@ -301,30 +313,47 @@ export function AppNavigation({ current }: { current: AppSection }) {
         className={itemClass(false)}
       >
         <MagnifyingGlassIcon className={iconClass} />
-        <span className="min-w-0 flex-1 truncate">Pesquisar</span>
+        <span className="min-w-0 flex-1 truncate">{t("appSidebar.search")}</span>
         <span className="text-[10px] text-neutral-400">/</span>
       </button>
 
-      <NavLabel>Conteúdo</NavLabel>
+      <NavLabel>{t("appSidebar.section.content")}</NavLabel>
       <TargetLink
         href="/library"
-        label="Biblioteca"
+        label={t("appSidebar.nav.library")}
         current={current}
         section="library"
         icon={BookOpenIcon}
       />
       <TargetLink
         href="/creations"
-        label="Criações"
+        label={t("appSidebar.nav.creations")}
         current={current}
         section="creations"
         icon={SparklesIcon}
       />
+        {/* FASE 28.8: diagnostico do host para construir cada alvo. Nao instala nada --
+            *um botao de instalar aqui mentiria: instalar exige approval.* */}
+        <TargetLink
+          href="/capabilities"
+          label={t("appSidebar.nav.capabilities")}
+          current={current}
+          section="capabilities"
+          icon={WrenchScrewdriverIcon}
+        />
+        {/* FASE 28.5: identidades de assinatura (metadados apenas). */}
+        <TargetLink
+          href="/signing"
+          label={t("appSidebar.nav.signing")}
+          current={current}
+          section="signing"
+          icon={KeyIcon}
+        />
 
-      <NavLabel>Agentes</NavLabel>
+      <NavLabel>{t("appSidebar.section.agents")}</NavLabel>
       <TargetLink
         href="/endpoint"
-        label="Computadores"
+        label={t("appSidebar.nav.computers")}
         current={current}
         section="endpoint"
         icon={ComputerDesktopIcon}
@@ -335,11 +364,11 @@ export function AppNavigation({ current }: { current: AppSection }) {
             draggable={false}
           >
             <BoltIcon className={iconClass} />
-            <span className="min-w-0 flex-1 truncate">Agentes</span>
-            <span className="rounded bg-violet-100 px-1 py-0.5 text-[9px] font-semibold text-violet-700 dark:bg-violet-950/60 dark:text-violet-300">Novo</span>
+            <span className="min-w-0 flex-1 truncate">{t("appSidebar.nav.agents")}</span>
+            <span className="rounded bg-violet-100 px-1 py-0.5 text-[9px] font-semibold text-violet-700 dark:bg-violet-950/60 dark:text-violet-300">{t("appSidebar.badge.new")}</span>
             <span
               className="h-1.5 w-1.5 rounded-full bg-emerald-500"
-              title="Runtime local"
+              title={t("appSidebar.nav.localRuntimeTitle")}
             />
           </Link>
           <TargetLink
@@ -349,59 +378,60 @@ export function AppNavigation({ current }: { current: AppSection }) {
             section="studio"
             icon={PencilSquareIcon}
           />
+
           <TargetLink
             href="/scheduled"
-            label="Automações"
+            label={t("appSidebar.nav.automations")}
             current={current}
             section="scheduled"
             icon={ClockIcon}
           />
           <TargetLink
             href="/connectors"
-            label="Plugins"
+            label={t("appSidebar.nav.plugins")}
             current={current}
             section="connectors"
             icon={LinkIcon}
           />
 
-          <NavLabel>Ferramentas</NavLabel>
+          <NavLabel>{t("appSidebar.section.tools")}</NavLabel>
           <TargetLink
             href="/skills"
-            label="Habilidades"
+            label={t("appSidebar.nav.skills")}
             current={current}
             section="skills"
             icon={BoltIcon}
           />
           <TargetLink
             href="/company"
-            label="Empresa"
+            label={t("appSidebar.nav.company")}
             current={current}
             section="company"
             icon={BuildingOffice2Icon}
-            badge="Novo"
+            badge={t("appSidebar.badge.new")}
           />
           <TargetLink
             href="/tasks"
-            label="Tarefas"
+            label={t("appSidebar.nav.tasks")}
             current={current}
             section="tasks"
             icon={ArrowPathIcon}
           />
           <TargetLink
             href="/compare"
-            label="Comparar modelos"
+            label={t("appSidebar.nav.compareModels")}
             current={current}
             section="compare"
             icon={ArrowsRightLeftIcon}
-            badge="Novo"
+            badge={t("appSidebar.badge.new")}
           />
 
       <div className="mt-2 flex items-center justify-between px-2.5 pt-2">
-        <NavLabel>Projetos</NavLabel>
+        <NavLabel>{t("appSidebar.section.projects")}</NavLabel>
         <a
           href="/projects"
-          aria-label="Novo projeto"
-          title="Novo projeto"
+          aria-label={t("appSidebar.projects.new")}
+          title={t("appSidebar.projects.new")}
           className="rounded-md p-1 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-white"
         >
           <PlusIcon className="h-4 w-4" />
@@ -409,20 +439,20 @@ export function AppNavigation({ current }: { current: AppSection }) {
       </div>
       <TargetLink
         href="/projects"
-        label="Todos os projetos"
+        label={t("appSidebar.nav.allProjects")}
         current={current}
         section="projects"
         icon={FolderIcon}
       />
 
-      <NavLabel>Sistema</NavLabel>
+      <NavLabel>{t("appSidebar.section.system")}</NavLabel>
       <Link
         to="/settings"
         className={itemClass(SETTINGS_SECTIONS.has(current))}
         draggable={false}
       >
         <Cog6ToothIcon className={iconClass} />
-        <span className="min-w-0 flex-1 truncate">Configurações</span>
+        <span className="min-w-0 flex-1 truncate">{t("appSidebar.nav.settings")}</span>
       </Link>
       <button
         type="button"
@@ -430,7 +460,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
         className={itemClass(false)}
       >
         <Squares2X2Icon className={iconClass} />
-        <span className="min-w-0 flex-1 truncate">Ajuda e sobre</span>
+        <span className="min-w-0 flex-1 truncate">{t("appSidebar.nav.help")}</span>
       </button>
 
       <div className="mt-auto border-t border-neutral-200/80 px-2.5 pt-3 dark:border-neutral-800">
@@ -445,7 +475,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
                   </div>
                   <div>
                     <div className="text-xs font-bold text-neutral-900 dark:text-white">{userProfile.name}</div>
-                    <div className="text-[10px] text-neutral-400">Pessoal</div>
+                    <div className="text-[10px] text-neutral-400">{t("appSidebar.profile.personal")}</div>
                   </div>
                 </div>
                 <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
@@ -454,8 +484,8 @@ export function AppNavigation({ current }: { current: AppSection }) {
               </div>
 
               <div className="py-2 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between text-xs">
-                <span className="text-neutral-500">Créditos:</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Ilimitado (Local)</span>
+                <span className="text-neutral-500">{t("appSidebar.profile.credits")}</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">{t("appSidebar.profile.creditsUnlimited")}</span>
               </div>
 
               {!isAuthenticated && (
@@ -467,10 +497,10 @@ export function AppNavigation({ current }: { current: AppSection }) {
                     className="flex w-full items-center justify-center gap-2 rounded-lg bg-neutral-900 px-2 py-2 text-xs font-semibold text-white hover:bg-neutral-700 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
                   >
                     <ArrowRightOnRectangleIcon className="h-4 w-4" />
-                    {ollamaLoginPending ? "Abrindo…" : "Entrar com conta Ollama"}
+                    {ollamaLoginPending ? t("appSidebar.login.opening") : t("appSidebar.login.action")}
                   </button>
                   <p className="mt-1.5 px-1 text-[10px] leading-4 text-neutral-400">
-                    Opcional — só para modelos na nuvem e busca na web. Os modelos locais funcionam sem conta.
+                    {t("appSidebar.login.hint")}
                   </p>
                 </div>
               )}
@@ -482,7 +512,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
                   className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <UserIcon className="h-4 w-4 text-neutral-400" />
-                  Conta
+                  {t("appSidebar.profile.account")}
                 </a>
                 <a
                   href="/settings#personalization"
@@ -490,7 +520,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
                   className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <SparklesIcon className="h-4 w-4 text-neutral-400" />
-                  Personalização
+                  {t("appSidebar.profile.personalization")}
                 </a>
                 <a
                   href="/settings"
@@ -498,7 +528,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
                   className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <Cog6ToothIcon className="h-4 w-4 text-neutral-400" />
-                  Configurações
+                  {t("appSidebar.nav.settings")}
                 </a>
                 <button
                   type="button"
@@ -509,7 +539,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
                   className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <CommandLineIcon className="h-4 w-4 text-neutral-400" />
-                  Atalhos de teclado
+                  {t("appSidebar.profile.shortcuts")}
                 </button>
               </div>
 
@@ -523,7 +553,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
                   className="w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                 >
                   <ArrowRightOnRectangleIcon className="h-4 w-4" />
-                  Sair
+                  {t("appSidebar.signOut.action")}
                 </button>
               </div>
             </div>
@@ -550,7 +580,7 @@ export function AppNavigation({ current }: { current: AppSection }) {
                 onClick={() => setNotificationsOpen((open) => !open)}
                 aria-expanded={notificationsOpen}
                 className="rounded-lg p-1 hover:text-neutral-900 dark:hover:text-white"
-                title="Notificações"
+                title={t("appSidebar.notifications.title")}
               >
                 <BellIcon className="h-4 w-4" />
               </button>
@@ -563,16 +593,16 @@ export function AppNavigation({ current }: { current: AppSection }) {
       {notificationsOpen && (
         <div role="status" aria-live="polite" className="fixed bottom-16 right-4 z-50 w-72 rounded-2xl border border-neutral-200 bg-white p-4 shadow-xl dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Notificações</h3>
-            <button type="button" aria-label="Fechar notificações" onClick={() => setNotificationsOpen(false)} className="rounded p-1 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800">×</button>
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">{t("appSidebar.notifications.title")}</h3>
+            <button type="button" aria-label={t("appSidebar.notifications.close")} onClick={() => setNotificationsOpen(false)} className="rounded p-1 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800">×</button>
           </div>
-          {notificationsLoading && <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">Carregando eventos…</p>}
+          {notificationsLoading && <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">{t("appSidebar.notifications.loading")}</p>}
           {notificationsError && <p role="alert" className="mt-3 text-xs text-red-600">{notificationsError}</p>}
           {!notificationsLoading && !notificationsError && notifications.length === 0 && (
-            <p className="mt-3 text-xs leading-5 text-neutral-500 dark:text-neutral-400">Nenhum evento de missão registrado ainda.</p>
+            <p className="mt-3 text-xs leading-5 text-neutral-500 dark:text-neutral-400">{t("appSidebar.notifications.empty")}</p>
           )}
           {!notificationsLoading && !notificationsError && notifications.length > 0 && (
-            <ul className="mt-3 max-h-72 space-y-2 overflow-y-auto" aria-label="Eventos recentes de missões">
+            <ul className="mt-3 max-h-72 space-y-2 overflow-y-auto" aria-label={t("appSidebar.notifications.listAria")}>
               {notifications.map((notification) => (
                 <li key={notification.id} className="rounded-xl border border-neutral-100 p-2.5 dark:border-neutral-800">
                   <a href={`/agentic?mission=${encodeURIComponent(notification.mission_id)}`} className="block rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500">
@@ -600,30 +630,30 @@ export function AppNavigation({ current }: { current: AppSection }) {
             className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900"
           >
             <div className="flex items-center justify-between pb-3 border-b border-neutral-100 dark:border-neutral-800">
-              <h3 id="shortcuts-title" className="text-base font-bold text-neutral-900 dark:text-white">Atalhos de Teclado</h3>
-              <button type="button" aria-label="Fechar" onClick={() => setShortcutsOpen(false)} className="text-neutral-400 hover:text-neutral-600">✕</button>
+              <h3 id="shortcuts-title" className="text-base font-bold text-neutral-900 dark:text-white">{t("appSidebar.shortcuts.title")}</h3>
+              <button type="button" aria-label={t("appSidebar.shortcuts.close")} onClick={() => setShortcutsOpen(false)} className="text-neutral-400 hover:text-neutral-600">✕</button>
             </div>
             <div className="mt-4 space-y-3 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-neutral-600 dark:text-neutral-300">Nova tarefa</span>
+                <span className="text-neutral-600 dark:text-neutral-300">{t("appSidebar.newTask")}</span>
                 <kbd className="rounded bg-neutral-100 px-2 py-1 font-mono dark:bg-neutral-800">Ctrl + ⇧ + O</kbd>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-neutral-600 dark:text-neutral-300">Pesquisar</span>
+                <span className="text-neutral-600 dark:text-neutral-300">{t("appSidebar.search")}</span>
                 <kbd className="rounded bg-neutral-100 px-2 py-1 font-mono dark:bg-neutral-800">/</kbd>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-neutral-600 dark:text-neutral-300">Novo Chat rápido</span>
+                <span className="text-neutral-600 dark:text-neutral-300">{t("appSidebar.shortcuts.newChat")}</span>
                 <kbd className="rounded bg-neutral-100 px-2 py-1 font-mono dark:bg-neutral-800">Ctrl + K</kbd>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-neutral-600 dark:text-neutral-300">Enviar e iniciar missão</span>
+                <span className="text-neutral-600 dark:text-neutral-300">{t("appSidebar.shortcuts.sendMission")}</span>
                 <kbd className="rounded bg-neutral-100 px-2 py-1 font-mono dark:bg-neutral-800">Ctrl + Enter</kbd>
               </div>
             </div>
             <div className="mt-6 flex justify-end">
               <button onClick={() => setShortcutsOpen(false)} className="rounded-xl bg-neutral-900 px-4 py-2 text-xs font-semibold text-white dark:bg-white dark:text-neutral-900">
-                Fechar
+                {t("appSidebar.shortcuts.close")}
               </button>
             </div>
           </div>
@@ -643,15 +673,15 @@ export function AppNavigation({ current }: { current: AppSection }) {
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 text-center"
           >
-            <h3 id="signout-title" className="text-base font-bold text-neutral-900 dark:text-white">Tem certeza de que deseja sair?</h3>
-            <p className="mt-2 text-xs text-neutral-500">Sair do Hades como {userProfile.email}?</p>
+            <h3 id="signout-title" className="text-base font-bold text-neutral-900 dark:text-white">{t("appSidebar.signOut.confirm")}</h3>
+            <p className="mt-2 text-xs text-neutral-500">{t("appSidebar.signOut.asEmail", { email: userProfile.email })}</p>
             {signOutError && <p role="alert" className="mt-3 text-xs text-red-600">{signOutError}</p>}
             <div className="mt-6 flex items-center justify-center gap-3">
               <button type="button" disabled={signOutPending} onClick={() => setSignOutOpen(false)} className="flex-1 rounded-xl border border-neutral-200 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-200">
-                Manter-se conectado
+                {t("appSidebar.signOut.stay")}
               </button>
               <button type="button" disabled={signOutPending} onClick={() => void handleSignOut()} className="flex-1 rounded-xl bg-red-600 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50">
-                {signOutPending ? "Saindo…" : "Sair"}
+                {signOutPending ? t("appSidebar.signOut.pending") : t("appSidebar.signOut.action")}
               </button>
             </div>
           </div>
@@ -662,14 +692,16 @@ export function AppNavigation({ current }: { current: AppSection }) {
 }
 
 export function AppSidebar({ current }: { current: AppSection }) {
+  const { t } = useT();
   return (
-    <nav aria-label="Navegação principal" className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pb-4 select-none">
+    <nav aria-label={t("appSidebar.nav.aria")} className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pb-4 select-none">
       <AppNavigation current={current} />
     </nav>
   );
 }
 
 export function ChatNavigationShortcut() {
+  const { t } = useT();
   return (
     <Link
       to="/c/$chatId"
@@ -678,7 +710,7 @@ export function ChatNavigationShortcut() {
       className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
     >
       <ChatIcon />
-      Chat
+      {t("appSidebar.chatShortcut")}
     </Link>
   );
 }

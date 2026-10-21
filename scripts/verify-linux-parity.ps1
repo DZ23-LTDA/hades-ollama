@@ -62,7 +62,7 @@ $ErrorActionPreference = 'Continue'
 function Resolve-DockerExecutable {
     $candidates = @(
         (Get-Command docker -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue),
-        'C:\Users\DZ23\AppData\Local\Programs\DockerDesktop\resources\bin\docker.exe',
+        (Join-Path $env:LOCALAPPDATA 'Programs\DockerDesktop\resources\bin\docker.exe'),
         "$env:ProgramFiles\Docker\Docker\resources\bin\docker.exe"
     ) | Where-Object { $_ -and (Test-Path $_) }
     if (-not $candidates) {

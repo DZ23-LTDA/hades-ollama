@@ -174,3 +174,47 @@ export function elevatedWarning(options: ScopeOption[]): string {
       : " Cada tool que os usa ainda passa por DLP e egress.";
   return `Escopos elevados concedidos: ${list}.${approvalNote}`;
 }
+
+/**
+ * Resumo SEMPRE visivel das permissoes de uma missao (I0c).
+ *
+ * O seletor existia mas vivia dentro de um <details> fechado -- na pratica o utilizador nao
+ * encontrava o nivel de acesso ("nao aparece o full access"). Este resumo da o estado sem
+ * obrigar a abrir nada: escopo base, escopos elevados concedidos, maior risco e se alguma
+ * ferramenta exige aprovacao humana.
+ */
+export type ResumoPermissoes = {
+  base: string;
+  elevados: string[];
+  maiorRisco: string;
+  exigeAprovacao: boolean;
+  /** Texto curto para a barra: "Só leitura" ou "Leitura + escrita de ficheiros". */
+  rotulo: "somenteLeitura" | "comElevados";
+};
+
+export function resumoPermissoes(
+  options: ScopeOption[],
+  selecionados: string[],
+): ResumoPermissoes {
+  const escolhidos = new Set(selecionados);
+  const elevados = options
+    .filter((option) => option.elevated && escolhidos.has(option.name))
+    .map((option) => option.name)
+    .sort();
+  let maiorRisco = "unknown";
+  let exigeAprovacao = false;
+  for (const option of options) {
+    if (!escolhidos.has(option.name)) continue;
+    if (RISK_ORDER.indexOf(option.risk) > RISK_ORDER.indexOf(maiorRisco)) {
+      maiorRisco = option.risk;
+    }
+    if (option.requiresApproval) exigeAprovacao = true;
+  }
+  return {
+    base: BASELINE_CAPABILITY,
+    elevados,
+    maiorRisco,
+    exigeAprovacao,
+    rotulo: elevados.length === 0 ? "somenteLeitura" : "comElevados",
+  };
+}

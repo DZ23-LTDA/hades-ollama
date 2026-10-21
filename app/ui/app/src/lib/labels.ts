@@ -1,60 +1,66 @@
-// Human, pt-BR labels for the raw backend enums (mission states, event types,
-// step kinds). The UI must never show the raw UPPER_SNAKE / dotted identifiers
-// to the user. Unknown values fall back to a humanized form instead of leaking
+// Human labels for the raw backend enums (mission states, event types, step
+// kinds). The UI must never show the raw UPPER_SNAKE / dotted identifiers to
+// the user. Unknown values fall back to a humanized form instead of leaking
 // the raw token.
+//
+// As tabelas guardam CHAVES de i18n, não texto final: `t()` é chamado dentro
+// das funções (e não no carregamento do módulo), para que a troca de idioma em
+// tempo de execução repinte os rótulos.
+
+import { t } from "@/i18n";
 
 const MISSION_STATES: Record<string, string> = {
-  PENDING: "Pendente",
-  QUEUED: "Na fila",
-  PLANNING: "Planejando",
-  RUNNING: "Em execução",
-  OBSERVING: "Observando",
-  RECOVERING: "Recuperando",
-  AWAITING_APPROVAL: "Aguardando aprovação",
-  PAUSED: "Pausada",
-  BLOCKED: "Bloqueada",
-  BLOCKED_EXTERNAL: "Bloqueada (dependência externa)",
-  COMPLETED: "Concluída",
-  FAILED: "Falhou",
-  CANCELLED: "Cancelada",
-  CANCELED: "Cancelada",
-  NOT_EXECUTED: "Não executada",
-  PASS: "OK",
+  PENDING: "labels.missionState.pending",
+  QUEUED: "labels.missionState.queued",
+  PLANNING: "labels.missionState.planning",
+  RUNNING: "labels.missionState.running",
+  OBSERVING: "labels.missionState.observing",
+  RECOVERING: "labels.missionState.recovering",
+  AWAITING_APPROVAL: "labels.missionState.awaitingApproval",
+  PAUSED: "labels.missionState.paused",
+  BLOCKED: "labels.missionState.blocked",
+  BLOCKED_EXTERNAL: "labels.missionState.blockedExternal",
+  COMPLETED: "labels.missionState.completed",
+  FAILED: "labels.missionState.failed",
+  CANCELLED: "labels.missionState.cancelled",
+  CANCELED: "labels.missionState.cancelled",
+  NOT_EXECUTED: "labels.missionState.notExecuted",
+  PASS: "labels.missionState.pass",
 };
 
 const EVENT_TYPES: Record<string, string> = {
-  "mission.created": "Missão criada",
-  "mission.planned": "Plano gerado",
-  "mission.run": "Missão iniciada",
-  "mission.running": "Em execução",
-  "mission.completed": "Missão concluída",
-  "mission.failed": "Missão falhou",
-  "mission.cancelled": "Missão cancelada",
-  "mission.repair_attempt": "Tentando corrigir",
-  "mission.repair_succeeded": "Correção aplicada",
-  "mission.repair_failed_test": "Teste ainda falhando",
-  "mission.repair_error": "Erro ao corrigir",
-  "mission.repair_exhausted": "Tentativas de correção esgotadas",
-  "mission.queue_failed": "Falha ao enfileirar",
-  "step.started": "Passo iniciado",
-  "step.succeeded": "Passo concluído",
-  "step.failed": "Passo falhou",
-  "step.awaiting_approval": "Passo aguardando aprovação",
-  "step.retry_scheduled": "Nova tentativa agendada",
-  "browser.operator": "Navegador",
-  "browser.frame": "Quadro do navegador",
-  "browser.approval": "Aprovação do navegador",
-  "git.merge.succeeded": "Merge concluído",
-  "git.merge.rejected": "Merge recusado",
+  "mission.created": "labels.eventType.missionCreated",
+  "mission.planned": "labels.eventType.missionPlanned",
+  "mission.run": "labels.eventType.missionRun",
+  "mission.running": "labels.eventType.missionRunning",
+  "mission.completed": "labels.eventType.missionCompleted",
+  "mission.failed": "labels.eventType.missionFailed",
+  "mission.cancelled": "labels.eventType.missionCancelled",
+  "mission.repair_attempt": "labels.eventType.missionRepairAttempt",
+  "mission.repair_succeeded": "labels.eventType.missionRepairSucceeded",
+  "mission.repair_failed_test": "labels.eventType.missionRepairFailedTest",
+  "mission.repair_error": "labels.eventType.missionRepairError",
+  "mission.repair_exhausted": "labels.eventType.missionRepairExhausted",
+  "mission.queue_failed": "labels.eventType.missionQueueFailed",
+  "step.started": "labels.eventType.stepStarted",
+  "step.succeeded": "labels.eventType.stepSucceeded",
+  "step.failed": "labels.eventType.stepFailed",
+  "step.awaiting_approval": "labels.eventType.stepAwaitingApproval",
+  "step.retry_scheduled": "labels.eventType.stepRetryScheduled",
+  "browser.operator": "labels.eventType.browserOperator",
+  "browser.frame": "labels.eventType.browserFrame",
+  "browser.approval": "labels.eventType.browserApproval",
+  "git.merge.succeeded": "labels.eventType.gitMergeSucceeded",
+  "git.merge.rejected": "labels.eventType.gitMergeRejected",
 };
 
 const STEP_KINDS: Record<string, string> = {
-  "workspace.read": "Ler arquivo",
-  "workspace.write": "Escrever arquivo",
-  "workspace.patch": "Alterar arquivo",
-  "workspace.list": "Listar arquivos",
-  "browser.operator": "Operar navegador",
-  "project.test.run": "Rodar testes",
+  "workspace.read": "labels.stepKind.workspaceRead",
+  "workspace.write": "labels.stepKind.workspaceWrite",
+  "workspace.patch": "labels.stepKind.workspacePatch",
+  "workspace.list": "labels.stepKind.workspaceList",
+  "browser.operator": "labels.stepKind.browserOperator",
+  "project.test.run": "labels.stepKind.projectTestRun",
 };
 
 // humanize turns an UNKNOWN raw token ("some.raw_state") into "Some raw state".
@@ -64,17 +70,22 @@ function humanize(raw: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 }
 
+function lookup(table: Record<string, string>, raw: string): string {
+  const key = table[raw];
+  return typeof key === "string" ? t(key) : humanize(raw);
+}
+
 export function missionStateLabel(state: string | undefined | null): string {
   if (!state) return "";
-  return MISSION_STATES[state] ?? humanize(state);
+  return lookup(MISSION_STATES, state);
 }
 
 export function eventTypeLabel(type: string | undefined | null): string {
   if (!type) return "";
-  return EVENT_TYPES[type] ?? humanize(type);
+  return lookup(EVENT_TYPES, type);
 }
 
 export function stepKindLabel(kind: string | undefined | null): string {
   if (!kind) return "";
-  return STEP_KINDS[kind] ?? humanize(kind);
+  return lookup(STEP_KINDS, kind);
 }

@@ -1,0 +1,107 @@
+# .gitleaks.toml -- configuracao do secret scan do HADES
+#
+# PORQUE ESTE FICHEIRO EXISTE
+#
+#   O CI nao tinha scanner de secrets (gap E-1164). *Um secret scan que so' existe quando
+#   alguem se lembra de correr nao e' um gate: e' uma auditoria.* Este ficheiro liga o gate
+#   sem que 13 fixtures legitimas o tornem vermelho no primeiro dia -- e sem silenciar o
+#   scanner para o resto do repositorio.
+#
+# O QUE ELE NAO E'
+#
+#   Nao exclui paths. Nao exclui regras inteiras. Nao usa `stopwords`. Cada entrada da
+#   allowlist abaixo e' um `regexTarget = "line"` que casa com o CONTEUDO SINTETICO de uma
+#   linha especifica, lida e classificada em docs/security/HADES_SECURITY_TRIAGE_2026-10-18.md.
+#   Uma credencial real com prefixo `ghp_`/`sk-`/`AKIA` continua a falhar o gate.
+#
+# AS 13 EXCECOES, E PORQUE CADA UMA E' SEGURA
+#
+#   12 sao FIXTURES DE TESTE cujo proposito e' provar que o valor e' redigido, bloqueado ou
+#   nao persistido -- o "segredo" e' o objeto do teste, nao uma credencial:
+#     - `abcdef...` e' o valor sintetico canonico de teste neste repositorio
+#     - `SYNTHETIC...` declara-se sintetico no proprio nome
+#     - `EVOKEY`/`WHSECR`/`APPSEC` sao prefixos de fixture do WhatsApp
+#     - `HADES_...` e' o NOME de uma variavel de ambiente, nao um valor
+#     - `012345...` e' uma tenant key numerica de teste
+#     - `dGhlIH...` e' base64 de uma frase em ingles ("the ..."), nao uma credencial
+#   A 13a e' uma TAG XML do protocolo de tool-call do GLM-4.6 (`<arg_key>`), confundida com
+#   uma chave pelo detector de entropia.
+#   A 14a era PROSA do README numa linha de 1846 caracteres. NAO foi allowlistada:
+#   a linha foi QUEBRADA em paragrafos na raiz, porque o defeito era o formato, nao a prosa.
+#
+#   Nenhuma destas linhas autentica em servico nenhum.
+#
+# PRAZO E PROCEDIMENTO DE REVISAO
+#
+#   Revisao obrigatoria em 2027-01-31, ou antes se: (a) as linhas mudarem por refactor,
+#   (b) a heuristica de `generic-api-key` mudar, (c) o gitleaks subir de major.
+#   A revisao consiste em tentar REMOVER cada entrada: se um placeholder menos entropico
+#   mantiver o teste a passar, a entrada sai.
+
+title = "HADES secret scan"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "16 excecoes por conteudo de match: fixtures sinteticas, prosa e uma chave publica"
+regexTarget = "line"
+regexes = [
+  # omnichannel_test.go:235 -- NOME de variavel de ambiente, nunca um valor
+  '''SecretEnv:\s*"HADES_''',
+  # deploy_test.go:315 -- fixture que se declara sintetica no nome
+  '''"api-token\.json":\s*"SYNTHETIC''',
+  # whatsapp_secret_leak_test.go:22,24,25 -- fixtures do fluxo WhatsApp
+  '''=\s*"EVOKEY''',
+  '''=\s*"WHSECR''',
+  '''=\s*"APPSEC''',
+  # workspace_write_test.go:197 e runtime_test.go:399 -- o valor sintetico canonico
+  '''"api_key":\s*"abcdef''',
+  # workspace_snapshot_test.go:39 -- idem, em texto de ficheiro
+  '''"api_key=abcdef''',
+  # workspace_snapshot_test.go:1106 -- tenant key numerica de teste
+  '''tenantKey\s*:=\s*"012345''',
+  # codex_desktop_test.go:1585 -- NONCE DE EXEMPLO DO RFC 6455 ("the sample nonce"),
+  # nao uma credencial: e' o valor canonico que a especificacao WebSocket usa nos exemplos
+  '''"Sec-WebSocket-Key",\s*"dGhlIHNhbXBsZSBub25jZQ=="''',
+  # model/parsers/glm46.go:32 -- tag XML do protocolo de tool-call
+  '''glm46ArgKeyOpenTag\s*=\s*"<arg_key>"''',
+  # company_ledger_test.go:311 -- chave de teste em portugues ("compartilhada-001")
+  '''key\s*:=\s*"compartilhada-001"''',
+  # README -- PROSA que descreve features. O detector `generic-api-key` e' de baixa
+  # precisao: encontrou a palavra "credentials" e classificou a SIGLA SEGUINTE
+  # (`organization/RBAC`) como valor de chave -- entropia 3.617, zero caracteres de
+  # credencial. O padrao abaixo e' o match EXACTO reportado pelo proprio scanner.
+  # A lista de features continua a ser verificada pelas regras de alta precisao
+  # (prefixos ghp_/sk-/AKIA/xox), como o controlo negativo do teste prova.
+  '''OAuth credentials, organization/RBAC ''',
+  # app/ui/app/src/lib/endpoint.test.ts:96 -- fixture que verifica o texto de um comando
+  # `curl` mostrado ao utilizador. O valor e' o literal "gw-secret" (gateway secret).
+  '''Authorization: Bearer gw-secret''',
+  # apps/hades-browser-bridge/manifest.json:65 -- CHAVE PUBLICA RSA (SubjectPublicKeyInfo,
+  # prefixo ASN.1 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A). O manifest de uma extensao Chromium
+  # EXIGE a chave publica para fixar o ID da extensao; chaves publicas sao publicas por
+  # definicao. Nao ha' chave privada aqui: uma chave privada PKCS#8 comecaria por MIIEpAIB.
+  '''"key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A''',
+  # internal/agent/secrets_prefixos_test.go:49 -- o JWT DE EXEMPLO do jwt.io
+  # (cabecalho {"alg":"HS256"} e payload {"sub":"1234567890"}); e' o token canonico de
+  # demonstracao, forjado sem chave privada e sem valor de autenticacao.
+  '''eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk''',
+  # EXCECAO HISTORICA -- .github/workflows/secret-scan.yaml, commit f1a4e7726.
+  # O primeiro commit do gate escreveu a credencial do SEU PROPRIO controlo positivo como
+  # literal. O commit seguinte (84da5415f) passou a monta-la em runtime, e a arvore de
+  # trabalho ja' nao a contem. O historico e' imutavel -- nao ha force-push nesta missao --
+  # por isso o scan historico ve'-a para sempre.
+  # O valor e' `ghp_16C7e42F292c6912E7710c838347Ae178B4a`, o TOKEN DE EXEMPLO da
+  # documentacao oficial do GitHub (vale como string publica, nao autentica em nada).
+  # Allowlist por match EXACTO: nenhum outro github-pat passa.
+  '''ghp_16C7e42F292c6912E7710c838347Ae178B4a''',
+  # E-1445 (1/2) -- PROSA da evidencia E-1395: a linha descreve o proprio scanner e a regra
+  # `generic-api-key` leu a sigla seguinte como valor de chave. Casa com o INICIO da linha, nao com
+  # o ficheiro: qualquer outra linha do mesmo documento continua a ser varrida.
+  '''\| E-1395 \| medicao \|''',
+  # E-1445 (2/2) -- FIXTURE de `signing_identity_file_test.go:75`: par campo/valor cujo proposito e'
+  # provar redaccao. Casa com ESTE campo e ESTA forma (32 alnum), nao com o ficheiro nem com o valor:
+  # o valor nao e' copiado para aqui, e qualquer outro par campo/valor naquele ficheiro continua a falhar.
+  '''"private_key":\s*"[A-Za-z0-9]{32}"''',
+]

@@ -1,8 +1,11 @@
 name: dz23-agentic-quality
 
 concurrency:
-  # PRs preempt previous attempts; each push/re-run gets an independent group
-  # so long integration jobs cannot cancel one another on the recovery branch.
+  # PRs preempt previous attempts: `group` usa o NUMERO DA PR, entao todo push na mesma PR
+  # cai no MESMO grupo e `cancel-in-progress: true` CANCELA o run em curso.
+  # *O texto anterior dizia "independent group ... cannot cancel one another" -- era FALSO:*
+  # medido em 2026-10-21: o job 118966988946 terminou `cancelled` 5 min depois do push
+  # seguinte, a meio da suite. Consequencia pratica: nao empurrar enquanto um job critico correr.
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
@@ -58,12 +61,30 @@ jobs:
       - run: go mod verify
       - name: Go vulnerability scan (reachable symbols only)
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
-      - run: gofmt -l internal/agent server/companion_ws.go server/agent_routes.go | tee /tmp/gofmt.txt && test ! -s /tmp/gofmt.txt
+      # E-665: a forma anterior era `gofmt -l ... | tee ... && test ! -s ...` — a MESMA cegueira por outro caminho:
+      # sem `set -o pipefail`, o status de uma pipeline e' o do ULTIMO comando (`tee`), entao um arquivo que NAO
+      # PARSEIA (gofmt sem stdout) passava. Agora o codigo de saida do gofmt e' observado e o erro vai para o log;
+      # o `tee` continua, porque o ficheiro e' evidencia.
+      - name: Verify Go formatting (exit code conferido)
+        run: |
+          if ! saida="$(gofmt -l internal/agent server/companion_ws.go server/agent_routes.go 2>&1)"; then
+            echo "gofmt FALHOU (arquivo nao parseavel ou erro de leitura):"
+            echo "$saida"
+            exit 1
+          fi
+          echo "$saida" | tee /tmp/gofmt.txt
+          if [ -n "$saida" ]; then
+            echo "arquivos fora do gofmt:"
+            exit 1
+          fi
+          echo "gofmt OK: nenhum arquivo fora de formato e nenhum erro de parse"
       - run: ./scripts/check-class-a-plus-integrity.sh
       - run: bash -n scripts/smoke-company-os.sh && python3 -m json.tool examples/dz23-desktop-commander-mcp.json >/dev/null && python3 -m json.tool examples/dz23-desktop-commander-remote.json >/dev/null
-      - run: CGO_ENABLED=0 go test ./internal/agent -count=1
+      # E-1120: -timeout 25m declarado (353,4 s medidos + 2-3x num runner de 2 cores).
+      - run: CGO_ENABLED=0 go test ./internal/agent -count=1 -timeout 25m
       - run: CGO_ENABLED=1 go test ./server -count=1
-      - run: CGO_ENABLED=1 go test ./... -count=1
+      # E-1120: o `./...` INCLUI o internal/agent (353,4 s) -- o default de 10 min nao cabe.
+      - run: CGO_ENABLED=1 go test ./... -count=1 -timeout 25m
       - run: CGO_ENABLED=1 go vet ./...
       - run: CGO_ENABLED=1 go build -o dist/ollama-agentic .
       - name: Windows amd64 cross-compilation for agent package
@@ -111,7 +132,19 @@ jobs:
         env:
           CGO_ENABLED: '0'
           OLLAMA_AGENT_BROWSER_EXECUTABLE: 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
-        run: go test ./internal/agent -count=1
+        # ***`E-1120`: O `-timeout` E' DECLARADO, NAO ESCONDIDO.*** *O `go test` tem o default de **10 min**, e
+        # este pacote **nao** cabe nele num runner `windows-latest`* => *medido neste host (32 threads):*
+        #   - `go test -count=1 ./internal/agent` => **353,4 s** com **1722** testes;
+        #   - e o maior teste **so'zinho** e' o `TestUpsertDiretoRespeitaOrcamentoEDeixaAtualizarNoTeto`
+        #     (**66,06 s**), porque enche **5 000** produtos (`DefaultOnboardingLimits().MaxRows`) pelo caminho
+        #     direto -- *e medir esse custo e' o proposito do teste (ver `commerce_budget_test.go`)*.
+        # => *num runner Windows (2 cores) o package leva **2-3x** => **12-18 min** => estoura os 10 do default*
+        # => *e o CI do `f813386bc` deu exactamente `panic: test timed out after 10m0s`, a meio do
+        # `TestEspecialistaQueNaoConsertaEhDeclaradoVermelho` (que estava na fila, nao a causar).*
+        # => ***`25m` NAO e' "aumentar o timeout para esconder um deadlock": e' declarar o tempo medido, dentro
+        # do `timeout-minutes: 30` do job.*** *Um deadlock nao terminaria em 25 min; um teste de volume de 5 000
+        # insercoes termina.*
+        run: go test ./internal/agent -count=1 -timeout 25m
 
   distributed-integration:
     name: PostgreSQL RLS, Redis DLQ and OTLP integration

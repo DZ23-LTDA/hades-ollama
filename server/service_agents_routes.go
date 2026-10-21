@@ -114,7 +114,28 @@ func (a *agentAPI) serviceAgentApprovals(c *gin.Context) {
 //
 // Decidir exige ator identificado: aprovação anônima não é aprovação. A decisão fica no store durável para
 // o próximo turno poder executar — ou ser bloqueado, quando negada.
+//
+// 🚨 E-429 / ADV-68 (CRÍTICO, medido por auditoria independente): **esta rota não tinha o portão de PAPEL, e o
+// ator vinha do CORPO do pedido.** A sonda, com uma sessão `RoleViewer` autenticada, obteve:
+//
+//	VIEWER decide            -> HTTP 200
+//	TURNO SEGUINTE            -> status=executed, "oportunidade op_… criada (new, 79900 centavos)"
+//	                            oportunidades: 1 -> 2   ← A ESCRITA EXECUTOU DE VERDADE NO CRM
+//	VIEWER redefine aprovadores -> HTTP 200 ({"approvers":["eu-mesmo"],"changed_by":"eu-mesmo"})
+//	sessão 'u-da-sessao', actor_id pedido 'presidente-da-empresa' -> HTTP 200
+//	                            decided_by="presidente-da-empresa", audit_recorded=true
+//
+// ⇒ ***Um viewer aprovava a própria escrita, redefinia quem pode aprovar, e a trilha de auditoria gravava o nome
+// que o CLIENTE escolhesse.*** A **mesma** sessão na rota irmã (`decideDeploymentApproval`) recebe **403** — *o
+// portão existia e funcionava; simplesmente não havia sido aplicado aqui.*
+//
+// **O que mudou**: (1) `requireApprovalApprover` antes de qualquer coisa — *owner/admin, como as rotas irmãs*;
+// (2) o ator passa a ser o **da sessão** (`agentActorID`), não o do corpo — *e o campo `actor_id` continua sendo
+// aceito para compatibilidade, mas **não decide identidade nem vai para a trilha***.
 func (a *agentAPI) serviceAgentDecideApproval(c *gin.Context) {
+	if !a.requireApprovalApprover(c) {
+		return
+	}
 	runtime := a.serviceAgents()
 	if runtime == nil {
 		writeAgentError(c, http.StatusServiceUnavailable, errServiceAgentsUnavailable)
@@ -139,7 +160,14 @@ func (a *agentAPI) serviceAgentDecideApproval(c *gin.Context) {
 		writeAgentError(c, http.StatusBadRequest, errServiceAgentApprovalStatusInvalid)
 		return
 	}
-	decided, err := store.Decide(agentOrganizationID(c), approvalID, input.Approved, input.ActorID, input.Reason, time.Now().UTC())
+	// E-429: o ATOR é o da SESSÃO, não o do corpo. *Um ator que o cliente escolhe não é identidade: é uma
+	// sugestão.* O campo `actor_id` segue sendo aceito no JSON para compatibilidade e NÃO é usado aqui.
+	actorID := agentActorID(c)
+	if actorID == "" {
+		writeAgentError(c, http.StatusForbidden, errServiceAgentApprovalStatusInvalid)
+		return
+	}
+	decided, err := store.Decide(agentOrganizationID(c), approvalID, input.Approved, actorID, input.Reason, time.Now().UTC())
 	if err != nil {
 		switch {
 		case errors.Is(err, agent.ErrServiceAgentApprovalNotFound):
@@ -158,7 +186,7 @@ func (a *agentAPI) serviceAgentDecideApproval(c *gin.Context) {
 	// a resposta DECLARA a ausência do registro, porque auditoria que falta em silêncio parece existir.
 	auditRecorded := true
 	auditReason := ""
-	if err := runtime.RecordApprovalDecision(decided, input.ActorID, input.Reason, time.Now().UTC()); err != nil {
+	if err := runtime.RecordApprovalDecision(decided, actorID, input.Reason, time.Now().UTC()); err != nil {
 		auditRecorded = false
 		auditReason = err.Error()
 	}
@@ -173,7 +201,14 @@ func (a *agentAPI) serviceAgentDecideApproval(c *gin.Context) {
 //
 // A configuração exige ator identificado e é uma decisão de risco em si: definir quem aprova é definir o
 // alcance da autorização. Sem `actor_id`, a alteração é recusada.
+//
+// 🚨 E-429 (CRÍTICO): **definir quem aprova é o ato mais sensível desta linha, e era o único sem portão de papel**
+// ✗ — a sonda de um `RoleViewer` redefiniu a lista para `["eu-mesmo"]` e recebeu **HTTP 200**. ⇒ agora exige
+// owner/admin e grava o ator **da sessão** na trilha.
 func (a *agentAPI) serviceAgentApprovalApprovers(c *gin.Context) {
+	if !a.requireApprovalApprover(c) {
+		return
+	}
 	runtime := a.serviceAgents()
 	if runtime == nil {
 		writeAgentError(c, http.StatusServiceUnavailable, errServiceAgentsUnavailable)
@@ -210,7 +245,7 @@ func (a *agentAPI) serviceAgentApprovalApprovers(c *gin.Context) {
 	// quem audita. Se a trilha não puder gravar, a resposta DECLARA isso.
 	auditRecorded := true
 	auditReason := ""
-	if err := runtime.RecordApproversChange(organizationID, input.ActorID, approvers, time.Now().UTC()); err != nil {
+	if err := runtime.RecordApproversChange(organizationID, agentActorID(c), approvers, time.Now().UTC()); err != nil {
 		auditRecorded = false
 		auditReason = err.Error()
 	}

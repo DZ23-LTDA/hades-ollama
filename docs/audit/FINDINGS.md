@@ -1,0 +1,214 @@
+# FINDINGS do PR #438 — como foram lidos, e o que NÃO se afirma
+
+**Este ficheiro é gerado de `FINDINGS.json`**, que por sua vez foi capturado da GitHub API em
+**2026-10-17T06:03:49Z** sobre o checkout `093390737`.
+
+**Total: 14** — **5 Major** · **9 Minor**.
+
+**Validados contra o código: 14 de 14** — #1 (VALIDADO_JA_CORRIGIDO), #2 (VALIDADO_JA_CORRIGIDO), #3 (VALIDADO_JA_CORRIGIDO), #4 (VALIDADO_JA_CORRIGIDO), #5 (VALIDADO_JA_CORRIGIDO), #6 (VALIDADO_JA_CORRIGIDO), #7 (CORRIGIDO_AGORA_JA_ESTAVA), #8 (CORRIGIDO_AGORA_JA_ESTAVA), #9 (CURADO_NESTA_JANELA), #10 (CORRIGIDO_AGORA_JA_ESTAVA), #11 (CORRIGIDO_AGORA_JA_ESTAVA), #12 (CORRIGIDO_AGORA_JA_ESTAVA), #13 (CORRIGIDO_AGORA_JA_ESTAVA), #14 (CURADO_NESTA_JANELA).
+
+**Com contraprova (o defeito injetado faz o teste falhar): 7 de 14** — #2, #3, #4, #5, #6, #9, #14.
+
+## O que este ficheiro NÃO afirma
+
+- **não afirma que algum finding foi corrigido** — nenhum foi marcado como resolvido no GitHub;
+- **não afirma que um finding do bot é verdadeiro** — *o prompt diz: comentário de bot é
+  hipótese, não facto*; validar exige confrontar com o código e criar contraprova;
+- **não afirma que a lista está completa** — são os **review comments** que a API devolveu
+  naquele instante; *uma thread sem comentário de linha não apareceria aqui.*
+
+## Como validar um finding, em vez de o aceitar
+
+O `E-1070` e o `E-1074` são o modelo: **reproduzir o defeito num checkout limpo**, medir, e só
+então decidir. *«Comentário de bot como hipótese não confiável: confirme no código atual, crie
+contraprova e só então corrija.»*
+
+## Validados contra o código
+
+### #1 — `scripts/hades_test_clock_check_test.py` — **VALIDADO_JA_CORRIGIDO**
+
+*«Use a mesma lista de triagem no teste e no `--check`.»*
+
+- usos(linha) devolve o CONTEXTO de cada .Add( -- dois usos na mesma linha sao classificados em separado (E-909(a))
+- usos() devolve TODOS, nao o primeiro -- uma variavel com dois deslocamentos expoe o de negocio (E-909(b))
+- TRIAGADOS indexado por assinatura(linha), o texto sem espacos e sem comentario -- reindentar nao reabre, alterar reabre (E-909(c))
+- sem_comentarios(linhas) remove // e /* */ preservando o numero de linha
+- o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists
+- 12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0
+- CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- "'ALTO' not found in ['timestamp']"
+
+**Evidência**: `E-1080`.
+
+### #2 — `scripts/hades_test_clock_check.py` — **VALIDADO_JA_CORRIGIDO**
+
+*«Classifique cada uso de relógio separadamente.»*
+
+- usos(linha) devolve o CONTEXTO de cada .Add( -- dois usos na mesma linha sao classificados em separado (E-909(a))
+- usos() devolve TODOS, nao o primeiro -- uma variavel com dois deslocamentos expoe o de negocio (E-909(b))
+- TRIAGADOS indexado por assinatura(linha), o texto sem espacos e sem comentario -- reindentar nao reabre, alterar reabre (E-909(c))
+- sem_comentarios(linhas) remove // e /* */ preservando o numero de linha
+- o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists
+- 12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0
+- CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- "'ALTO' not found in ['timestamp']"
+
+**Evidência**: `E-1080`.
+
+### #3 — `scripts/hades_test_clock_check.py` — **VALIDADO_JA_CORRIGIDO**
+
+*«Ignore comentários antes de procurar expressões.»*
+
+- usos(linha) devolve o CONTEXTO de cada .Add( -- dois usos na mesma linha sao classificados em separado (E-909(a))
+- usos() devolve TODOS, nao o primeiro -- uma variavel com dois deslocamentos expoe o de negocio (E-909(b))
+- TRIAGADOS indexado por assinatura(linha), o texto sem espacos e sem comentario -- reindentar nao reabre, alterar reabre (E-909(c))
+- sem_comentarios(linhas) remove // e /* */ preservando o numero de linha
+- o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists
+- 12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0
+- CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- "'ALTO' not found in ['timestamp']"
+
+**Evidência**: `E-1080`.
+
+### #4 — `scripts/hades_test_clock_check.py` — **VALIDADO_JA_CORRIGIDO**
+
+*«Continue a busca após o primeiro `.Add(` da variável.»*
+
+- usos(linha) devolve o CONTEXTO de cada .Add( -- dois usos na mesma linha sao classificados em separado (E-909(a))
+- usos() devolve TODOS, nao o primeiro -- uma variavel com dois deslocamentos expoe o de negocio (E-909(b))
+- TRIAGADOS indexado por assinatura(linha), o texto sem espacos e sem comentario -- reindentar nao reabre, alterar reabre (E-909(c))
+- sem_comentarios(linhas) remove // e /* */ preservando o numero de linha
+- o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists
+- 12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0
+- CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- "'ALTO' not found in ['timestamp']"
+- CONTRAPROVA: sem sem_comentarios() na assinatura, o teste FALHA por assercao -- DEPOIS de acrescentar o caso que faltava (o teste antigo nao tinha `//` e nao discriminava)
+- 2 assercoes novas: assinatura(a) == assinatura(a + ' // comentario') e o mesmo com /* */
+
+**Evidência**: `E-1080`.
+
+### #5 — `scripts/hades_test_clock_check.py` — **VALIDADO_JA_CORRIGIDO**
+
+*«Vincule a triagem ao conteúdo inspecionado, não apenas à linha.»*
+
+- usos(linha) devolve o CONTEXTO de cada .Add( -- dois usos na mesma linha sao classificados em separado (E-909(a))
+- usos() devolve TODOS, nao o primeiro -- uma variavel com dois deslocamentos expoe o de negocio (E-909(b))
+- TRIAGADOS indexado por assinatura(linha), o texto sem espacos e sem comentario -- reindentar nao reabre, alterar reabre (E-909(c))
+- sem_comentarios(linhas) remove // e /* */ preservando o numero de linha
+- o _test.py importa hades_test_clock_check as checker e usa checker.TRIAGADOS -- uma fonte, nao duas allowlists
+- 12/12 testes OK (1.3 s); repo real: 112 sitios, ALTO triagado 1, ALTO NOVO 0
+- CONTRAPROVA: um break no usos() (so o primeiro uso) faz falhar test_um_uso_seguro_nao_esconde_um_de_negocio_na_mesma_linha -- "'ALTO' not found in ['timestamp']"
+- CONTRAPROVA: sem_comentarios() devolvendo as linhas originais, test_comentario_nao_e_acusado FALHA por assercao
+
+**Evidência**: `E-1080`.
+
+### #6 — `internal/agent/service_agent_approvals.go` — **VALIDADO_JA_CORRIGIDO**
+
+*«Protect every per-organization approval write with the same lock.»*
+
+- as 6 funcoes de escrita tem withFileLock (SetApprovers:321, Save:367, expireStale:473, Request:635, Decide:715, Consume:875)
+- saveLocked aplica preservarConsumidas(:380) -- a invariante «o consumo e' terminal»
+- 3 testes discriminadores PASS (6.7 s)
+- CONTRAPROVA: sem preservarConsumidas o teste FALHA com «REGRESSAO: Save gravou o instantaneo antigo e reabriu um pedido»
+- CONTRAPROVA: uma dispensa morta em TRIAGADOS faz test_triagem_nao_tem_dispensa_morta FALHAR por assercao
+
+**Evidência**: `E-1078`.
+
+### #7 — `docs/mission/HADES_ADAPTIVE_COWORK_GAP_MATRIX.md` — **CORRIGIDO_AGORA_JA_ESTAVA**
+
+*«Alinhe as linhas da tabela ao cabeçalho.»*
+
+- o cabecalho e as linhas 53/54/55/61/62 tem 5 pipes = 4 colunas (medido)
+
+**Evidência**: `E-1081`.
+
+### #8 — `docs/mission/HADES_ADAPTIVE_COWORK_GAP_MATRIX.md` — **CORRIGIDO_AGORA_JA_ESTAVA**
+
+*«Corrija a descrição de `PreferredProvider`.»*
+
+- a linha 55 diz: PreferredProvider e' filtro RIGIDO por provedor (:85, continue), nao bonus solto
+- o codigo confirma: router.go:85
+
+**Evidência**: `E-1081`.
+
+### #9 — `docs/mission/HADES_EVIDENCE_INDEX.md` — **CURADO_NESTA_JANELA**
+
+*«Escape the pipe in the table cell.»*
+
+- 2 pipes NAO escapados dentro de codigo inline na linha 439 (E-412) foram escapados como \|
+- o GFM exige \| dentro de celula, mesmo em codigo
+- o index_shape_check continua exit 0 -- o \| renderiza como |, o conteudo do comando nao muda
+
+**Evidência**: `E-1081`.
+
+### #10 — `internal/multillm/router_pin_v2_test.go` — **CORRIGIDO_AGORA_JA_ESTAVA**
+
+*«Remove the word that fails the test checks.»*
+
+- grep em todo o .go: 0 ocorrencias de 'substituto'
+- o misspell nao tem o que acusar
+
+**Evidência**: `E-1081`.
+
+### #11 — `internal/agent/declared_categories_measured_test.go` — **CORRIGIDO_AGORA_JA_ESTAVA**
+
+*«Correct the description of the dispensation check.»*
+
+- E-912: o comentario diz 'a metade «e obsoleta» era FALSA'
+
+**Evidência**: `E-1081`.
+
+### #12 — `internal/agent/scheduling_library_declared_test.go` — **CORRIGIDO_AGORA_JA_ESTAVA**
+
+*«Detect constructor references without a direct call.»*
+
+- E-912: 'a varredura passa a procurar o SIMBOLO (\bNewSchedulingStore\b), e nao a chamada'
+
+**Evidência**: `E-1081`.
+
+### #13 — `internal/agent/types.go` — **CORRIGIDO_AGORA_JA_ESTAVA**
+
+*«Update the scope note. It no longer matches the code.»*
+
+- types.go:147-149 diz 'o incremento seguinte e' esta' feito'
+
+**Evidência**: `E-1081`.
+
+### #14 — `scripts/hades_mission_check.py` — **CURADO_NESTA_JANELA**
+
+*«Do not classify partially closed findings as closed.»*
+
+- E-913: PARCIALMENTE FECHADO removido de `encerrado` -- so' estado TERMINAL encerra
+- 3 testes discriminadores em CruzamentoDeAuditoriaTest (23 -> 26 testes)
+- CONTRAPROVA: reintroduzir PARCIALMENTE FECHADO faz o teste FALHAR com 'ATaque E ACHADO AO MESMO TEMPO: ADV-65 (achado diz: PARCIALMENTE FECHADO...)'
+
+**Evidência**: `E-1081`.
+
+## Por severidade
+
+### Major (5)
+
+| # | Ficheiro | Título |
+| --- | --- | --- |
+| 2 | `scripts/hades_test_clock_check.py`:144 | Classifique cada uso de relógio separadamente. |
+| 4 | `scripts/hades_test_clock_check.py` | Continue a busca após o primeiro `.Add(` da variável. |
+| 5 | `scripts/hades_test_clock_check.py`:269 | Vincule a triagem ao conteúdo inspecionado, não apenas à linha. |
+| 6 | `internal/agent/service_agent_approvals.go`:879 | Protect every per-organization approval write with the same lock. |
+| 10 | `internal/multillm/router_pin_v2_test.go` | Remove the word that fails the test checks. |
+
+### Minor (9)
+
+| # | Ficheiro | Título |
+| --- | --- | --- |
+| 1 | `scripts/hades_test_clock_check_test.py` | Use a mesma lista de triagem no teste e no `--check`. |
+| 3 | `scripts/hades_test_clock_check.py`:220 | Ignore comentários antes de procurar expressões. |
+| 7 | `docs/mission/HADES_ADAPTIVE_COWORK_GAP_MATRIX.md` | Alinhe as linhas da tabela ao cabeçalho. |
+| 8 | `docs/mission/HADES_ADAPTIVE_COWORK_GAP_MATRIX.md` | Corrija a descrição de `PreferredProvider`. |
+| 9 | `docs/mission/HADES_EVIDENCE_INDEX.md` | Escape the pipe in the table cell. |
+| 11 | `internal/agent/declared_categories_measured_test.go` | Correct the description of the dispensation check. |
+| 12 | `internal/agent/scheduling_library_declared_test.go` | Detect constructor references without a direct call. |
+| 13 | `internal/agent/types.go`:149 | Update the scope note. It no longer matches the code. |
+| 14 | `scripts/hades_mission_check.py` | Do not classify partially closed findings as closed. |
+
+## O que fazer a seguir
+
+**Nenhum destes findings foi corrigido por este trabalho.** O `E-1076` entregou o pacote de
+auditoria; os findings são **entrada** para a revisão humana, não saída de uma correcção
+automática. *Um pacote que dissesse «corrigido» sem um teste que discrimina o defeito estaria
+a inventar prova.*

@@ -16,6 +16,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	// E-436: o runtime passa a poder receber o REGISTRY DE MODELOS (Estagio 43). *`multillm` nao importa `agent`*
+	// (medido), entao esta direcao nao cria ciclo.
+	"github.com/ollama/ollama/internal/multillm"
 )
 
 // idempotentMissionID deriva um ID estável de (organização, chave) para que a
@@ -43,11 +47,24 @@ func missionScopeMatches(mission Mission, requestedOrganization, runtimeScope st
 type Runtime struct {
 	// writeDurability é o modo EFETIVO de durabilidade da escrita (E-168): "durable" (padrão) ou
 	// "relaxed". Fica no runtime para poder ser relatado, não para ser inferido do ambiente.
-	writeDurability     string
-	store               Store
-	planner             Planner
-	plannerResolver     PlannerResolver
-	tools               *Registry
+	writeDurability string
+	store           Store
+	planner         Planner
+	plannerResolver PlannerResolver
+	tools           *Registry
+	// E-436: o registry de MODELOS (pode ser nulo - ver `RuntimeConfig.Models`). *Fica privado, como `tools`, e o
+	// acesso e' pelo metodo `Models()`: campo exportado convidaria a mutacao de fora.*
+	models *multillm.Registry
+	// E-663: conhecimento sobre CAPACIDADE dos modelos (tool call nativo, visao...). *Nunca nulo:* NewRuntime
+	// preenche com o registro MEDIDO do ambiente quando a config nao injeta um - e o gate do passo o consulta.
+	modelCapabilities *ModelCapabilityRegistry
+	// E-666: cliente de inferencia que o passo `model.infer` usa. *O modelo NAO e' escolhido aqui:* a ferramenta
+	// le' o modelo ROTEADO do `ToolContext`. Sem cliente a ferramenta nem se registra - fail-closed.
+	inference InferenceChatClient
+	// E-669: teto de custo por PASSO (centavos por 1k tokens). *Zero = NAO DECLARADO*, e o evento registra os dois
+	// estados (`budget_declared`) - *nao declarado nao e' o mesmo que ilimitado, e o operador tem de poder ver qual
+	// dos dois vale.*
+	maxStepCostCents    int64
 	capabilityPolicy    CapabilityPolicy
 	workspaceRoot       string
 	dataRoot            string
@@ -129,6 +146,35 @@ type RuntimeConfig struct {
 	WebhookReplay       *WebhookReplayStore
 	WhatsApp            *WhatsAppGateway
 	SupervisorConfig    *SupervisorConfig
+	// E-436 (Estagio 43): o REGISTRY DE MODELOS entra no runtime do agente. **Ate aqui ele nao entrava** ✗ - o
+	// roteamento existente e' o do PLANEJADOR (`ResolvePlannerForMission`), que escreve **um** modelo para a MISSAO
+	// inteira. *Sem esta injecao, `Step.RequiredCapabilities`/`PinnedModelID` (E-433) e a ponte (E-435) nao tinham
+	// como ser consumidos: nao havia de onde ler.*
+	//
+	// **OPCIONAL POR DESENHO**: nulo significa "sem selecao por passo", e `RouteModelForStep` **falha fechado** -
+	// *nunca inventa um modelo nem cai em silencio para o da missao.* Um runtime sem Registry continua funcionando
+	// como antes; o que ele **nao** faz e' fingir que roteia.
+	Models *multillm.Registry
+
+	// E-663: capacidades de MODELO (tool call nativo, visao, saida estruturada). Opcional: quando nil, o runtime usa
+	// `DefaultModelCapabilityRegistry()` - as capacidades MEDIDAS neste ambiente. *Injetavel para que um teste possa
+	// provar a recusa de um modelo medido como `compatible_text` sem mexer no registro global.*
+	ModelCapabilities *ModelCapabilityRegistry
+
+	// E-666 (§4): cliente de inferencia para o passo `model.infer`. **Opcional e fail-closed:** sem ele a ferramenta
+	// nao se registra e um plano que peça `model.infer` e' recusado por ferramenta desconhecida - *melhor do que um
+	// passo de inferencia que devolve texto vazio como se tivesse trabalhado.*
+	InferenceChatClient InferenceChatClient
+
+	// E-669 (§4/§7 — ORCAMENTO): teto de custo por PASSO, em centavos por 1k tokens. **Zero significa "nao
+	// declarado"**, e nao declarado NAO e' o mesmo que ilimitado: o evento `step.model.route` publica o teto e o
+	// rotulo `budget_declared`, para o operador ver QUAL dos dois estados vale.
+	//
+	// *POR QUE ISTO EXISTE:* `multillm.RouteRequest.MaxCostCents` ja' existia e o motor ja' o APLICAVA
+	// (`router.go:92`) - mas **o unico caller que o definia era um TESTE do `multillm`**. *Um teto que ninguem
+	// declara nao protege orcamento nenhum: era um controle medido e nunca usado - a mesma classe do
+	// `RequireNativeToolCalling` que o E-663 ligou.*
+	MaxStepCostCents int64
 }
 
 var (
@@ -219,6 +265,12 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	}
 	if config.Media != nil {
 		tools.Register(mediaProcessTool{manager: config.Media})
+	}
+	// E-666: o passo que FAZ INFERENCIA so' existe quando ha' cliente. *Registrar a ferramenta sem cliente daria um
+	// kind que aceita o passo e falha no meio da execucao; ausencia do kind recusa no planejamento, que e' onde a
+	// recusa e' barata.*
+	if config.InferenceChatClient != nil {
+		tools.Register(inferenceTool{cliente: config.InferenceChatClient})
 	}
 	for _, descriptor := range tools.Descriptors() {
 		if err := capabilityPolicy.ValidateToolDescriptor(descriptor); err != nil {
@@ -404,7 +456,7 @@ func NewRuntime(config RuntimeConfig) (*Runtime, error) {
 	}
 	runtime := &Runtime{
 		writeDurability: durabilidade,
-		store:           store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore,
+		store:           store, planner: planner, plannerResolver: config.PlannerResolver, tools: tools, models: config.Models, modelCapabilities: registroDeCapacidadesDeModelo(config.ModelCapabilities), inference: config.InferenceChatClient, maxStepCostCents: config.MaxStepCostCents, capabilityPolicy: capabilityPolicy, workspaceRoot: root, dataRoot: dataRoot, context: contextStore, company: companyStore, consent: consentRegistry, crm: crmStore, inbox: inboxStore, omnichannel: omnichannelRuntime, serviceAgents: serviceAgentRuntime, commerce: commerceStore,
 		salesWorkforce:    salesWorkforceStore,
 		marketplace:       marketplaceSyncStore,
 		businessSnapshots: businessSnapshotStore, finance: financeOps, businessSupervisor: businessSupervisor, remoteMCP: config.RemoteMCP, metrics: &RuntimeMetrics{}, connectors: config.Connectors, mcp: config.MCP, queue: queue, redisQueue: config.RedisQueue, traces: traces, telemetry: telemetry, media: config.Media, builder: builder, collaboration: collaboration, push: config.Push, pushOutbox: pushOutbox, deployments: config.Deployments, deploymentApprovals: deploymentApprovals, webhookReplay: webhookReplay, mu: &sync.Mutex{}, running: make(map[string]bool), activeCancels: make(map[string]context.CancelFunc), cancelPollInterval: durableCancelPollInterval(),
@@ -920,6 +972,24 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 	if len(objective) > 8<<10 {
 		return Mission{}, errors.New("objective is too long")
 	}
+	// FASE 23 do adendo V3: o preset tem de EXISTIR antes de a missao nascer.
+	// Recusar aqui -- e nao mais tarde -- e' o que impede uma missao de arrancar com uma
+	// configuracao que ninguem declarou.
+	presetID := strings.TrimSpace(request.PresetID)
+	// `existe` e nao `ok` de proposito: o `hades_non_inference_scan.py` usa `if !ok {` como
+	// portao de mapa e acusa funcao LONGA quando ha uma comparacao de organizacao legitima a
+	// menos de 600 caracteres -- falso positivo que o proprio script documenta ter corrigido
+	// uma vez. *Um nome de variavel que colide com o padrao de outra coisa faz o gate acusar
+	// o inocente.* Aqui o lookup e' no CATALOGO ESTATICO de presets embutidos: nao ha tenant.
+	var preset MissionPreset
+	if presetID != "" {
+		var existe bool
+		preset, existe = MissionPresetByID(presetID)
+		if !existe {
+			return Mission{}, fmt.Errorf("%w: unknown preset %q; available: %s",
+				ErrPresetInvalido, presetID, strings.Join(MissionPresetIDs(), ", "))
+		}
+	}
 	provider := strings.TrimSpace(request.Provider)
 	if provider == "" {
 		provider = "ollama-local"
@@ -1098,7 +1168,15 @@ func (r *Runtime) CreateMission(ctx context.Context, request CreateMissionReques
 		gitWorktreeActive = true
 	}
 	now := time.Now().UTC()
-	mission := Mission{ID: missionID, Version: 1, Objective: objective, Provider: provider, Model: strings.TrimSpace(request.Model), Workspace: workspace, WorkspaceIdentity: workspaceIdentity, WorkspaceIsolated: request.IsolateWorkspace, WorkspaceSnapshotID: workspaceSnapshotID, WorkspaceSnapshotSHA256: workspaceSnapshotSHA256, GitRepoRoot: gitRepoRoot, GitBranch: gitBranch, GitWorktreePath: gitWorktreePath, GitBaseCommit: gitBaseCommit, GitMergeStatus: gitMergeStatus, GitWorktreeActive: gitWorktreeActive, AutoRepair: request.AutoRepair, MaxRepairTries: request.MaxRepairTries, ProjectID: projectID, OrganizationID: organizationID, Capabilities: capabilities, AutoRun: request.AutoRun, State: MissionPlanning, CreatedAt: now, UpdatedAt: now}
+	// O preset aplica o que e' SEGURO aplicar sozinho: o orcamento declarado e os criterios de
+	// conclusao. NAO aplica `preset.Permissions` a `Capabilities` de proposito:
+	// *escolher um preset nao pode conceder permissao -- seria um formulario que assina por baixo.*
+	// A politica continua a decidir cada capability.
+	mission := Mission{
+		ID: missionID, Version: 1, Objective: objective, PresetID: presetID,
+		PresetCompletionCriteria: preset.CompletionCriteria, PresetBudgetSeconds: preset.BudgetSeconds,
+		Provider: provider, Model: strings.TrimSpace(request.Model), Workspace: workspace, WorkspaceIdentity: workspaceIdentity, WorkspaceIsolated: request.IsolateWorkspace, WorkspaceSnapshotID: workspaceSnapshotID, WorkspaceSnapshotSHA256: workspaceSnapshotSHA256, GitRepoRoot: gitRepoRoot, GitBranch: gitBranch, GitWorktreePath: gitWorktreePath, GitBaseCommit: gitBaseCommit, GitMergeStatus: gitMergeStatus, GitWorktreeActive: gitWorktreeActive, AutoRepair: request.AutoRepair, MaxRepairTries: request.MaxRepairTries, ProjectID: projectID, OrganizationID: organizationID, ActorID: strings.TrimSpace(request.ActorID), AgentID: strings.TrimSpace(request.AgentID), Capabilities: capabilities, AutoRun: request.AutoRun, State: MissionPlanning, CreatedAt: now, UpdatedAt: now,
+	}
 	if err := r.store.CreateMission(mission); err != nil {
 		// Criação idempotente: a chave já produziu esta missão antes. Devolvemos a
 		// existente — mas SÓ se ela pertencer ao mesmo escopo, para que uma chave
@@ -2202,6 +2280,84 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 		if step.State == StepSucceeded {
 			continue
 		}
+		// 🌉 E-437 (Estagio 43) — **O CONSUMIDOR DA PONTE.** Era aqui que o laco escolhia a FERRAMENTA por passo
+		// (`r.tools.Get`, logo abaixo) e **nada** escolhia o MODELO ✗: `RouteModelForStep` existia desde E-436 e
+		// **nao era chamada por ninguem**. *Uma entrada sem consumidor e' um contrato, nao uma integracao.*
+		//
+		// **O QUE ESTA CHAMADA FAZ**: com registry injetado, a decisao por passo (*capacidades + pin*) e' tomada e
+		// **REGISTRADA** no evento `step.model.route`, com o modelo vencedor e a justificativa - *que e' o que o
+		// Estagio 43 exige que fique na cadeia de evidencias.*
+		//
+		// ⚠️ **CORRECAO POR MEDICAO (E-910, 2026-10-16)**: o texto que estava aqui dizia *"a decisao por passo
+		// fica medida e registrada, mas ainda nao **aplicada**"* - *e isso ficou **DESACTUALIZADO** no proprio
+		// commit que o `E-438` descreve (a linha 2271, logo abaixo): o `modeloRoteado` passou a subir para fora do
+		// `if` para ser ENTREGUE a ferramenta.* Texto antigo, preservado como registo historico:
+		//   *"ela **nao troca o executor**. O passo continua executando com o planejador da MISSAO; a decisao por
+		//    passo fica **medida e registrada**, mas ainda nao **aplicada**."*
+		// Medido agora, em vez de citado:
+		//   - `tool_context_model_test.go:27` => `TestModeloRoteadoChegaNaFerramenta` **PASS** (0,34s);
+		//   - `inference_tool_test.go:23` => `TestPassoDeInferenciaUsaOModeloRoteadoParaEle` **PASS** (0,32s);
+		//   - `inference_tool.go:24` => `ErrInferenciaSemModeloRoteado`, *o erro de um passo de inferencia **sem**
+		//     roteamento por passo* - *e um erro desses so' existe porque ha' um consumidor a exigi-lo.*
+		//
+		// **O QUE ELA NAO FAZ, e continua verdade**: ela **nao troca o EXECUTOR**. O laco do passo continua a
+		// correr no modelo da MISSAO; o que a decisao muda e' o modelo que a **ferramenta de inferencia do passo**
+		// usa. *Trocar o executor e' o incremento seguinte, e chama-lo de feito seria a classe que esta missao derruba.*
+		//
+		// **SEM REGISTRY NADA MUDA**: `r.models == nil` ⇒ *o ramo nao entra, e todo o comportamento anterior
+		// permanece* ✓ - e' isso que torna esta ligacao segura.
+		// E-438: o modelo roteado para ESTE passo sobe para fora do `if` para poder ser ENTREGUE a ferramenta - *antes
+		// ele era so' registrado no evento e o `ToolContext` nao o levava* ✗.
+		modeloRoteado := ""
+		if r.models != nil {
+			decisao, erroRota := r.RouteModelForStep(mission, *step)
+			if erroRota != nil {
+				// FALHA FECHADO: *um passo cujas exigencias nao podem ser atendidas NAO executa* - em vez de
+				// executar no modelo da missao fingindo que a exigencia foi honrada.
+				return r.failStep(mission, step, fmt.Errorf("roteamento de modelo do passo %q: %w", step.ID, erroRota))
+			}
+			modeloRoteado = decisao.Model.ID
+			// E-663 — A EXIGENCIA DE CHAMADA NATIVA E' CONFERIDA **ANTES** DE EXECUTAR (ver
+			// `conferirFerramentaNativa`): um passo que declara a capacidade `tools` e' RECUSADO se o modelo
+			// roteado foi MEDIDO como sem chamada nativa. Antes disto o registro sabia dizer isso e ninguem
+			// perguntava - o passo executava mesmo assim ("tool call fingido", proibido pelo V2.2).
+			rotuloFerramenta, erroFerramenta := r.conferirFerramentaNativa(*step, modeloRoteado)
+			if erroFerramenta != nil {
+				return r.failStep(mission, step, erroFerramenta)
+			}
+			// E-664 (§4: "persistir decisao, motivo, CANDIDATO e custo real/estimado"): a trilha passa a carregar
+			// QUEM foi considerado e o CUSTO do vencedor. Sem os preteridos nao se responde "por que ESTE e nao
+			// aquele"; sem o custo nao ha' base para orcamento. *A lista vem do proprio motor
+			// (`RouteCandidates`), nao de um recalculo - duas contas sobre a mesma decisao divergiriam.*
+			// FASE 19: UMA unica chamada ao motor, dois usos. *Duas chamadas para a mesma
+			// decisao divergiriam em silencio.*
+			candidatosDoMotor := r.candidatosDoPasso(mission, *step)
+			candidatos := formatarTrilhaDeCandidatos(candidatosDoMotor, limiteDeCandidatosNaTrilha)
+			fronteira := r.fronteiraDeParetoDoPasso(candidatosDoMotor)
+			if err := r.observeEvent(mission, "step.model.route", step.ID, map[string]any{
+				"step_id":                     step.ID,
+				"model":                       decisao.Model.ID,
+				"score":                       decisao.Score,
+				"reason":                      decisao.Reason,
+				"pinned":                      step.PinnedModelID,
+				"native_tool_calling":         rotuloFerramenta,
+				"estimated_cost_cents_per_1k": decisao.Model.CostPer1KInputCents + decisao.Model.CostPer1KOutputCents,
+				"candidates":                  candidatos,
+				"candidates_measured":         len(candidatos) > 0,
+				"candidates_source":           "multillm.Registry.RouteCandidates (motor de scoring; nao recalculado aqui)",
+				// FASE 19: as ALTERNATIVAS nao-dominadas. *Quando nao ha' um vencedor em todos os
+				// eixos, esconder os outros candidatos faz o utilizador achar que a escolha foi
+				// melhor do que foi.*
+				"pareto_frontier": fronteira,
+				"pareto_measured": len(fronteira) > 0,
+				// E-669: o TETO aplicado e se ele foi DECLARADO. *Publicar so' o modelo nao diz ao operador sob que
+				// restricao de orcamento a escolha foi feita - e `0` sem rotulo se confundiria com "sem limite".*
+				"budget_cents":    r.maxStepCostCents,
+				"budget_declared": r.maxStepCostCents > 0,
+			}); err != nil {
+				return err
+			}
+		}
 		tool, ok := r.tools.Get(step.Kind)
 		if !ok {
 			return r.failStep(mission, step, fmt.Errorf("tool %q is not registered", step.Kind))
@@ -2283,13 +2439,18 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 			return err
 		}
 		toolSpan := r.traces.StartForOrganization(mission.OrganizationID, "tr_"+mission.ID, missionSpan.ID(), "tool."+step.Kind, map[string]any{"mission_id": mission.ID, "step_id": step.ID, "tool": step.Kind})
-		toolContext := ToolContext{MissionID: mission.ID, StepID: step.ID, Workspace: mission.Workspace, WorkspaceRoot: workspaceRoot, OrganizationID: mission.OrganizationID, ToolConfigSHA256: step.ToolConfigSHA256, Consent: r.consent}
+		toolContext := ToolContext{MissionID: mission.ID, StepID: step.ID, Workspace: mission.Workspace, WorkspaceRoot: workspaceRoot, OrganizationID: mission.OrganizationID, ToolConfigSHA256: step.ToolConfigSHA256, Consent: r.consent, ModelID: modeloRoteado}
 		if step.Kind == "git.repo.inspect" && mission.WorkspaceIsolated {
 			toolContext.WorkspaceSnapshotManifest = snapshotManifest
 			toolContext.WorkspaceSnapshotPrefix = snapshotPrefix
 			toolContext.MissionArtifacts = append([]ArtifactManifest(nil), mission.Artifacts...)
 		}
+		// FASE 21: o relogio nasce AQUI, em volta da unica chamada que executa o passo.
+		// *Sem uma duracao medida no runtime, a FASE 21 fica decorativa: agrega zeros
+		// bonitos.* O evento `step.succeeded` nao trazia duracao nenhuma.
+		inicioDoPasso := time.Now()
 		result, executeErr := tool.Execute(runCtx, toolContext, step.Input)
+		duracaoMS := time.Since(inicioDoPasso).Milliseconds()
 		toolSpan.End("ok", executeErr)
 		if r.missionCancelled(id) {
 			return nil
@@ -2306,13 +2467,13 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 				if err := r.store.PutMissionIfVersion(mission, expectedVersion); err != nil {
 					return err
 				}
-				if err := r.observeEvent(mission, "step.retry_scheduled", step.ID, map[string]any{"error": RedactDLP(executeErr.Error())}); err != nil {
+				if err := r.observeEvent(mission, "step.retry_scheduled", step.ID, map[string]any{"duration_ms": duracaoMS, "error": RedactDLP(executeErr.Error())}); err != nil {
 					return err
 				}
 				index--
 				continue
 			}
-			return r.failStep(mission, step, executeErr)
+			return r.failStep(mission, step, executeErr, duracaoMS)
 		}
 		expectedVersion = mission.Version
 		step.State = StepSucceeded
@@ -2335,7 +2496,11 @@ func (r *Runtime) Run(ctx context.Context, id string) (runErr error) {
 				})
 			}
 		}
-		succeededPayload := map[string]any{"artifacts": len(result.Artifacts)}
+		succeededPayload := map[string]any{
+			"artifacts": len(result.Artifacts),
+			// FASE 21: duracao MEDIDA em volta do `tool.Execute`, nao estimada.
+			"duration_ms": duracaoMS,
+		}
 		// step.Result ja passou por RedactValue, e o evento aplica RedactValue de
 		// novo: publicar o trecho da saida nao expoe conteudo que ainda nao esteja
 		// persistido de forma redigida na propria missao.
@@ -2574,6 +2739,26 @@ func (r *Runtime) watchDurableCancellation(ctx context.Context, id string, cance
 	}
 }
 
+// RegisteredToolKinds devolve os kinds de ferramenta REALMENTE registrados neste runtime, em ordem estavel.
+//
+// *POR QUE EXPORTADO (E-667):* a injecao de dependencia de um kind acontece na CONSTRUCAO do runtime. Sem um jeito
+// de **perguntar de fora** o que ficou registrado, a prova de que a injecao chegou ate' o runtime fica presa no
+// pacote `agent` - *foi o que aconteceu com `model.infer`: o executor existia e os testes do pacote passavam, mas
+// nada provava que o SERVIDOR registrava o kind.* Este acessor fecha essa lacuna de observabilidade (e serve ao
+// registro de capacidade do §9, que precisa refletir indisponibilidade real).
+func (r *Runtime) RegisteredToolKinds() []string {
+	if r == nil || r.tools == nil {
+		return nil
+	}
+	descritores := r.tools.Descriptors()
+	kinds := make([]string, 0, len(descritores))
+	for _, descritor := range descritores {
+		kinds = append(kinds, descritor.Name)
+	}
+	sort.Strings(kinds)
+	return kinds
+}
+
 func (r *Runtime) Events(id string) ([]Event, error) {
 	if _, err := r.getMission(strings.TrimSpace(id)); err != nil {
 		return nil, err
@@ -2725,7 +2910,10 @@ func (r *Runtime) failMission(mission Mission, err error) (Mission, error) {
 	return redactMissionForPersistence(mission), err
 }
 
-func (r *Runtime) failStep(mission Mission, step *Step, err error) error {
+// failStep aceita a duracao OPCIONAL: nem toda a falha acontece dentro do `tool.Execute`
+// (capacidade recusada, aprovacao invalida). *Uma duracao que nao foi medida nao se inventa;
+// a funcao devolve 0 e o `metricas` do lado do resumo distingue 0 de NAO MEDIDO.*
+func (r *Runtime) failStep(mission Mission, step *Step, err error, duracoes ...int64) error {
 	expectedVersion := mission.Version
 	step.State = StepFailed
 	r.metrics.stepsFailed.Add(1)
@@ -2737,10 +2925,18 @@ func (r *Runtime) failStep(mission Mission, step *Step, err error) error {
 	if saveErr := r.store.PutMissionIfVersion(mission, expectedVersion); saveErr != nil {
 		return saveErr
 	}
-	if eventErr := r.observeEvent(mission, "step.failed", step.ID, map[string]any{"error": RedactDLP(err.Error()), "attempts": step.Attempts}); eventErr != nil {
+	if eventErr := r.observeEvent(mission, "step.failed", step.ID, map[string]any{"duration_ms": primeiraDuracao(duracoes), "error": RedactDLP(err.Error()), "attempts": step.Attempts}); eventErr != nil {
 		return errors.Join(err, eventErr)
 	}
 	return err
+}
+
+// primeiraDuracao devolve a duracao declarada, ou 0 quando nao houve medicao.
+func primeiraDuracao(duracoes []int64) int64 {
+	if len(duracoes) == 0 {
+		return 0
+	}
+	return duracoes[0]
 }
 
 func appendUniqueArtifacts(existing, incoming []ArtifactManifest) []ArtifactManifest {

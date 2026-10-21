@@ -54,6 +54,11 @@ func sanitizeErr(err error) error {
 type Gateway struct {
 	registry *Registry
 	client   *http.Client
+
+	// LocalOnly exige que TODA resolucao feita por este gateway use provedor local.
+	// Vem da configuracao do processo, nunca de cabecalho ou corpo do pedido: um cliente nao
+	// baixa nem sobe a politica do servidor.
+	LocalOnly bool
 }
 
 func NewGateway(registry *Registry, client *http.Client) *Gateway {
@@ -115,10 +120,19 @@ func (g *Gateway) Middleware() gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "model provider is configured but unavailable"})
 			return
 		}
-		model, ok := g.registry.Resolve(requested, Policy{Path: c.Request.URL.Path})
+		politica := g.politicaDoPedido(c.Request.URL.Path)
+		model, ok := g.registry.Resolve(requested, politica)
 		if !ok {
 			if strings.HasPrefix(requested, "auto/") || requested == "auto" {
 				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "no available provider satisfies the routing policy"})
+				return
+			}
+			// DEFEITO CORRIGIDO: quando a politica RECUSA um modelo pedido pelo nome (por exemplo
+			// `LOCAL_ONLY` com modelo remoto), o middleware fazia `c.Next()` -- deixava o pedido
+			// SEGUIR para o handler seguinte como se nada fosse. Uma restricao que se resolve em
+			// "continua" nao e' uma restricao: e' uma sugestao.
+			if politica.LocalOnly {
+				c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "model is not available under the current locality policy"})
 				return
 			}
 			c.Next()
@@ -139,9 +153,21 @@ func (g *Gateway) Middleware() gin.HandlerFunc {
 		}
 		attempts := g.rotationAttempts(requested, c.Request.URL.Path, provider, model)
 		var lastErr error
+		// FATIA 2: cadeia EXPLICAVEL das tentativas que falharam antes desta.
+		var cadeiaExplicavel []string
 		for index, attempt := range attempts {
 			if index > 0 {
 				slog.Warn("DZ23 gateway rotating provider", "requested", requested, "from", attempts[index-1].model.ID, "to", attempt.model.ID, "attempt", index+1, "error", sanitizeErr(lastErr))
+				// Guardar o motivo em texto (sanitizado) para o cliente poder distinguir.
+				cadeiaExplicavel = append(cadeiaExplicavel, attempts[index-1].provider.Name+"/"+attempts[index-1].model.ID+": "+sanitizeErr(lastErr).Error())
+			}
+			// FATIA 2: quem esta a servir e o que falhou antes. Os cabecalhos tem de ser
+			// postos ANTES do dispatch: depois de a resposta comecar, ja nao se alteram.
+			c.Header("X-Hades-Provider", attempt.provider.Name)
+			c.Header("X-Hades-Model", attempt.model.ID)
+			c.Header("X-Hades-Attempt", fmt.Sprintf("%d", index+1))
+			if len(cadeiaExplicavel) > 0 {
+				c.Header("X-Hades-Fallback", strings.Join(cadeiaExplicavel, " | "))
 			}
 			pristine := c.Writer.Header().Clone()
 			lastErr = g.dispatchProvider(c, attempt.provider, attempt.model, envelope)
@@ -984,4 +1010,16 @@ func copyResponseHeaders(dst, src http.Header) {
 			dst.Set(name, value)
 		}
 	}
+}
+
+// politicaDoPedido monta a politica aplicada a CADA resolucao deste gateway.
+//
+// O defeito que isto corrige: o gateway construia `Policy{Path: ...}` e NUNCA definia
+// `LocalOnly` -- a restricao existia na estrutura e nao era alcancavel a partir do pedido.
+// Uma politica que ninguem consegue ligar nao e' uma protecao: e' um campo.
+func (g *Gateway) politicaDoPedido(caminho string) Policy {
+	if g == nil {
+		return Policy{Path: caminho}
+	}
+	return Policy{Path: caminho, LocalOnly: g.LocalOnly}
 }

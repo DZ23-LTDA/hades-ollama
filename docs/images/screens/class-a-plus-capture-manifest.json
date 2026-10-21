@@ -1,74 +1,329 @@
 {
   "schema": "class-a-plus.capture.v1",
-  "capturedAtUTC": "2026-10-01",
+  "capturedAtUTC": "2026-10-21T02:10:27.472Z",
   "source": {
-    "repository": "DZ23-LTDA/hades-ollama",
-    "branch": "feat/marca-hades",
-    "gitSHA": "6ba2138d",
-    "baseURL": "http://127.0.0.1:5320",
-    "apiURL": "http://127.0.0.1:11434",
-    "captureScript": "app/ui/app/scripts/capture-parity-screens.mjs"
+    "baseURL": "http://127.0.0.1:4175",
+    "repoRoot": "C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollama",
+    "gitSHA": "31487dca404a71dbb1216c4ae863e8b8b4f74fa9",
+    "buildID": "unknown",
+    "version": "unknown"
   },
   "viewport": {
     "width": 1440,
-    "height": 900,
-    "deviceScaleFactor": 1
+    "height": 900
   },
+  "expectedHTTPFailurePolicy": "Only local no-account / known base-UI bridge gaps and aborted auth probes are classified as expected; assets, JavaScript, other request failures and agentic API failures remain fatal.",
+  "outputDir": "C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollama\\docs\\images\\screens",
   "files": [
     {
       "path": "class-a-plus-home.png",
-      "bytes": 86042,
-      "sha256": "a7e551add5fcdf511868fcfe8af60530c9eee93b5e0fad8ba5452b83aca0d6ff"
+      "bytes": 81567,
+      "sha256": "840e75cfd53caa97241371e0523ea46bc391cac510577ccaea14836c0a329c03"
     },
     {
       "path": "class-a-plus-projects.png",
-      "bytes": 88054,
-      "sha256": "83c6fece4ad1d053e7ed523f03560ad3bab63e74d6396dff94d4b4bf4bee185c"
+      "bytes": 86292,
+      "sha256": "971c579a13c2b24ca8fcbe5e54c55ce1253d04c1ad912d044d73dcfff3e0ed60"
     },
     {
       "path": "class-a-plus-library.png",
-      "bytes": 55838,
-      "sha256": "605529e2f5d99d97309b6758e74df08ee197d7d2eebcce0edfa82dfcbe20d4d9"
+      "bytes": 54129,
+      "sha256": "c7c6abfd6b273454bb34e3e52f62c9deb03e6301f1a06f40d3de8d134a4a663a"
     },
     {
       "path": "class-a-plus-scheduled.png",
-      "bytes": 83163,
-      "sha256": "36eb42c3208f615aa0fdeaf05502f75db3726e24887c084bfac4d7282a606a3e"
+      "bytes": 87051,
+      "sha256": "090f44cd882cd86c6cc666f60335e079009515350b4f3994093c990cd2de61a1"
     },
     {
       "path": "class-a-plus-skills.png",
-      "bytes": 77479,
-      "sha256": "f7e0762a8e34a07315b742dedec0c5915e79e5d269af0feff7e79dc022bcc5dd"
+      "bytes": 93366,
+      "sha256": "93fdd3e833f96f8cbd3ae096089af75f2bdbd9fb82a9ccd4206af7ff6ae35232"
     },
     {
       "path": "class-a-plus-plugins.png",
-      "bytes": 76068,
-      "sha256": "dd2d77d6ae27d43c8a0615665b4c24587145687c8393b5b57a36352fd6b3f9fb"
+      "bytes": 78599,
+      "sha256": "b219cca7fbfd79296a7c1a19543615f26ed3ec3d6276250e33f860d426911eb6"
     },
     {
       "path": "class-a-plus-tasks.png",
-      "bytes": 74889,
-      "sha256": "b53746ef5729705ae38ad33ef985fc7d642609ec8d7fe42202407152e2704f2c"
+      "bytes": 92756,
+      "sha256": "acfd74e38035872fe5193778862882c5577ab5628dc33d649f0a0f93a9d663df"
     },
     {
       "path": "class-a-plus-agentic.png",
-      "bytes": 89323,
-      "sha256": "4e0f380c6c63b6bbbfa64e853a78e6166e7762d7c611295ebe113d866766efcc"
+      "bytes": 91607,
+      "sha256": "0b54ba95fa93cadcf93c1f545edd7716ae72520aa47a90c3d835d2629713a190"
     },
     {
       "path": "class-a-plus-settings.png",
-      "bytes": 134511,
-      "sha256": "725b85980c65287584ae6c6c3fd2bc090054954ace25e20f1254521cda9a576b"
+      "bytes": 86321,
+      "sha256": "5d69f328767fee8198a980e28ad1253b02f50c5a28b79473f67af6fd8b8ab535"
     },
     {
       "path": "class-a-plus-company.png",
-      "bytes": 81507,
-      "sha256": "3e1ff7fafa1ee6fcf09c8ac68fd3d33480882e8164fab29ce98778a7118357b7"
+      "bytes": 79257,
+      "sha256": "0a10135438085bb8b442ce925e1c636c2d944a8d99e9a9b6c55e5a27cbe94754"
+    }
+  ],
+  "captures": [
+    {
+      "route": "/",
+      "screenshot": "C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollama\\docs\\images\\screens\\class-a-plus-home.png",
+      "bytes": 81567,
+      "sha256": "840e75cfd53caa97241371e0523ea46bc391cac510577ccaea14836c0a329c03",
+      "interaction": "field-fill-clear",
+      "title": "Hades",
+      "h1": "O que posso fazer por você?",
+      "capturedAtUTC": "2026-10-21T02:10:13.344Z",
+      "diagnostics": {
+        "pageErrors": [],
+        "expectedPageErrors": [
+          "Error: {\"error\":\"Este endpoint e' atendido pelo aplicativo desktop do Hades; o servidor local nao persiste configuracoes. Use a janela do aplicativo para escolher o modelo.\"}",
+          "Error: {\"error\":\"Este endpoint e' atendido pelo aplicativo desktop do Hades; o servidor local nao persiste configuracoes. Use a janela do aplicativo para escolher o modelo.\"}",
+          "Error: {\"error\":\"Este endpoint e' atendido pelo aplicativo desktop do Hades; o servidor local nao persiste configuracoes. Use a janela do aplicativo para escolher o modelo.\"}"
+        ],
+        "consoleErrors": [],
+        "requestFailures": [],
+        "expectedRequestFailures": [],
+        "httpFailures": [
+          {
+            "status": 501,
+            "url": "http://127.0.0.1:4175/api/v1/settings"
+          },
+          {
+            "status": 501,
+            "url": "http://127.0.0.1:4175/api/v1/model/upstream"
+          },
+          {
+            "status": 501,
+            "url": "http://127.0.0.1:4175/api/v1/settings"
+          },
+          {
+            "status": 501,
+            "url": "http://127.0.0.1:4175/api/v1/settings"
+          },
+          {
+            "status": 501,
+            "url": "http://127.0.0.1:4175/api/v1/settings"
+          },
+          {
+            "status": 501,
+            "url": "http://127.0.0.1:4175/api/v1/settings"
+          }
+        ],
+        "expectedHTTPFailures": [
+          {
+            "status": 501,
+            "url": "http://127.0.0.1:4175/api/v1/settings"
+          },
+          {
+            "status": 501,
+            "url": "http://127.0.0.1:4175/api/v1/model/upstream"
+          },
+          {
+            "status": 501,
+            "url": "http://127.0.0.1:4175/api/v1/settings"
+          },
+          {
+            "status": 501,
+            "url": "http://127.0.0.1:4175/api/v1/settings"
+          },
+          {
+            "status": 501,
+            "url": "http://127.0.0.1:4175/api/v1/settings"
+          },
+          {
+            "status": 501,
+            "url": "http://127.0.0.1:4175/api/v1/settings"
+          }
+        ],
+        "unexpectedHTTPFailures": []
+      }
+    },
+    {
+      "route": "/projects",
+      "screenshot": "C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollama\\docs\\images\\screens\\class-a-plus-projects.png",
+      "bytes": 86292,
+      "sha256": "971c579a13c2b24ca8fcbe5e54c55ce1253d04c1ad912d044d73dcfff3e0ed60",
+      "interaction": "field-fill-clear",
+      "title": "Hades",
+      "h1": "Projetos",
+      "capturedAtUTC": "2026-10-21T02:10:19.941Z",
+      "diagnostics": {
+        "pageErrors": [],
+        "expectedPageErrors": [],
+        "consoleErrors": [],
+        "requestFailures": [],
+        "expectedRequestFailures": [],
+        "httpFailures": [],
+        "expectedHTTPFailures": [],
+        "unexpectedHTTPFailures": []
+      }
+    },
+    {
+      "route": "/library",
+      "screenshot": "C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollama\\docs\\images\\screens\\class-a-plus-library.png",
+      "bytes": 54129,
+      "sha256": "c7c6abfd6b273454bb34e3e52f62c9deb03e6301f1a06f40d3de8d134a4a663a",
+      "interaction": "field-fill-clear",
+      "title": "Hades",
+      "h1": "Biblioteca",
+      "capturedAtUTC": "2026-10-21T02:10:20.669Z",
+      "diagnostics": {
+        "pageErrors": [],
+        "expectedPageErrors": [],
+        "consoleErrors": [],
+        "requestFailures": [],
+        "expectedRequestFailures": [],
+        "httpFailures": [],
+        "expectedHTTPFailures": [],
+        "unexpectedHTTPFailures": []
+      }
+    },
+    {
+      "route": "/scheduled",
+      "screenshot": "C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollama\\docs\\images\\screens\\class-a-plus-scheduled.png",
+      "bytes": 87051,
+      "sha256": "090f44cd882cd86c6cc666f60335e079009515350b4f3994093c990cd2de61a1",
+      "interaction": "field-fill-clear",
+      "title": "Hades",
+      "h1": "Automações",
+      "capturedAtUTC": "2026-10-21T02:10:21.359Z",
+      "diagnostics": {
+        "pageErrors": [],
+        "expectedPageErrors": [],
+        "consoleErrors": [],
+        "requestFailures": [],
+        "expectedRequestFailures": [],
+        "httpFailures": [],
+        "expectedHTTPFailures": [],
+        "unexpectedHTTPFailures": []
+      }
+    },
+    {
+      "route": "/skills",
+      "screenshot": "C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollama\\docs\\images\\screens\\class-a-plus-skills.png",
+      "bytes": 93366,
+      "sha256": "93fdd3e833f96f8cbd3ae096089af75f2bdbd9fb82a9ccd4206af7ff6ae35232",
+      "interaction": "field-fill-clear",
+      "title": "Hades",
+      "h1": "Habilidades",
+      "capturedAtUTC": "2026-10-21T02:10:21.990Z",
+      "diagnostics": {
+        "pageErrors": [],
+        "expectedPageErrors": [],
+        "consoleErrors": [],
+        "requestFailures": [],
+        "expectedRequestFailures": [],
+        "httpFailures": [],
+        "expectedHTTPFailures": [],
+        "unexpectedHTTPFailures": []
+      }
+    },
+    {
+      "route": "/plugins",
+      "screenshot": "C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollama\\docs\\images\\screens\\class-a-plus-plugins.png",
+      "bytes": 78599,
+      "sha256": "b219cca7fbfd79296a7c1a19543615f26ed3ec3d6276250e33f860d426911eb6",
+      "interaction": "field-fill-clear",
+      "title": "Hades",
+      "h1": "Registro avançado",
+      "capturedAtUTC": "2026-10-21T02:10:22.693Z",
+      "diagnostics": {
+        "pageErrors": [],
+        "expectedPageErrors": [],
+        "consoleErrors": [],
+        "requestFailures": [],
+        "expectedRequestFailures": [],
+        "httpFailures": [],
+        "expectedHTTPFailures": [],
+        "unexpectedHTTPFailures": []
+      }
+    },
+    {
+      "route": "/tasks",
+      "screenshot": "C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollama\\docs\\images\\screens\\class-a-plus-tasks.png",
+      "bytes": 92756,
+      "sha256": "acfd74e38035872fe5193778862882c5577ab5628dc33d649f0a0f93a9d663df",
+      "interaction": "button:/nova tarefa/i",
+      "title": "Hades",
+      "h1": "Agentic",
+      "capturedAtUTC": "2026-10-21T02:10:24.364Z",
+      "diagnostics": {
+        "pageErrors": [],
+        "expectedPageErrors": [],
+        "consoleErrors": [],
+        "requestFailures": [],
+        "expectedRequestFailures": [],
+        "httpFailures": [],
+        "expectedHTTPFailures": [],
+        "unexpectedHTTPFailures": []
+      }
+    },
+    {
+      "route": "/agentic",
+      "screenshot": "C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollama\\docs\\images\\screens\\class-a-plus-agentic.png",
+      "bytes": 91607,
+      "sha256": "0b54ba95fa93cadcf93c1f545edd7716ae72520aa47a90c3d835d2629713a190",
+      "interaction": "field-fill-clear",
+      "title": "Hades",
+      "h1": "Agentic",
+      "capturedAtUTC": "2026-10-21T02:10:25.162Z",
+      "diagnostics": {
+        "pageErrors": [],
+        "expectedPageErrors": [],
+        "consoleErrors": [],
+        "requestFailures": [],
+        "expectedRequestFailures": [],
+        "httpFailures": [],
+        "expectedHTTPFailures": [],
+        "unexpectedHTTPFailures": []
+      }
+    },
+    {
+      "route": "/settings",
+      "screenshot": "C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollama\\docs\\images\\screens\\class-a-plus-settings.png",
+      "bytes": 86321,
+      "sha256": "5d69f328767fee8198a980e28ad1253b02f50c5a28b79473f67af6fd8b8ab535",
+      "interaction": "field-focus",
+      "title": "Hades",
+      "h1": "Configurações",
+      "capturedAtUTC": "2026-10-21T02:10:25.940Z",
+      "diagnostics": {
+        "pageErrors": [],
+        "expectedPageErrors": [],
+        "consoleErrors": [],
+        "requestFailures": [],
+        "expectedRequestFailures": [],
+        "httpFailures": [],
+        "expectedHTTPFailures": [],
+        "unexpectedHTTPFailures": []
+      }
+    },
+    {
+      "route": "/company",
+      "screenshot": "C:\\Users\\DZ23\\Documents\\deepseek-harness\\default-workspace\\hades-ollama\\docs\\images\\screens\\class-a-plus-company.png",
+      "bytes": 79257,
+      "sha256": "0a10135438085bb8b442ce925e1c636c2d944a8d99e9a9b6c55e5a27cbe94754",
+      "interaction": "field-fill-clear",
+      "title": "Hades",
+      "h1": "Empresa",
+      "capturedAtUTC": "2026-10-21T02:10:26.713Z",
+      "diagnostics": {
+        "pageErrors": [],
+        "expectedPageErrors": [],
+        "consoleErrors": [],
+        "requestFailures": [],
+        "expectedRequestFailures": [],
+        "httpFailures": [],
+        "expectedHTTPFailures": [],
+        "unexpectedHTTPFailures": []
+      }
     }
   ],
   "limitations": [
-    "These files show observed local/sandbox UI state only; they do not prove external providers, accounts, devices, deployment, store review, or production readiness.",
-    "The manifest records the development branch checkpoint that produced the captures; it is not a claim that every screen is merged into main.",
-    "The settings.png and agentic-console.png aliases are historical compatibility assets and are not part of this current capture set."
+    "A capture proves only the observed local UI state and does not validate external providers, accounts, devices, deployment, or store review.",
+    "The chosen README Home image supplied by the maintainer is not replaced by this script unless explicitly recaptured and reviewed."
   ]
 }

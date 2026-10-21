@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -130,6 +131,15 @@ func TestMatrizComContextoCanceladoRegistraNaoMedido(t *testing.T) {
 
 // MATRIZ REAL com modelos locais: roda quando o Ollama responde; caso contrário PULA com motivo declarado.
 func TestMatrizRealComModelosLocais(t *testing.T) {
+	// E-968: MEDICAO COM MODELO REAL e' OPT-IN.
+	// *Este teste pede 25 min de contexto contra os **10 min** do pacote `go test`, e o
+	// Ollama local responde — logo ele NAO pulava e o pacote estourava (medido: 905 s no CI).*
+	// O `t.Skip` abaixo protege contra «sem Ollama»; este guarda protege contra «com Ollama»,
+	// que e' o caso normal. *O orcamento nao se esconde: declara-se.*
+	if strings.TrimSpace(os.Getenv("HADES_T2_MEDIR_MODELO")) == "" {
+		t.Skip("medicao com modelo real = NAO_MEDIDO (opt-in): pede 25 min contra os 10 min do pacote. " +
+			"Defina HADES_T2_MEDIR_MODELO=1 para a correr.")
+	}
 	ctx, cancelar := context.WithTimeout(context.Background(), 25*time.Minute)
 	defer cancelar()
 	if !OllamaDisponivel(ctx, "") {
@@ -139,6 +149,26 @@ func TestMatrizRealComModelosLocais(t *testing.T) {
 	if escolhido := os.Getenv("HADES_T2_MODELS"); escolhido != "" {
 		modelos = []string{escolhido}
 	}
+	// ⚠️ E-671 — A SONDA DE ENDPOINT MENTIU (medido 2026-10-15): `OllamaDisponivel` devolveu `true` e a GERACAO
+	// travava; a matriz gastou 3 min por chamada e o pacote morreu no limite do `go test`. *O skip passa a exigir
+	// CAPACIDADE por modelo: uma geracao de 1 token que COMPLETA.* Modelo que nao gera e' DECLARADO, nao medido.
+	prontos := make([]string, 0, len(modelos))
+	var semCapacidade []string
+	for _, modelo := range modelos {
+		if OllamaModeloPronto(ctx, "", modelo) {
+			prontos = append(prontos, modelo)
+			continue
+		}
+		semCapacidade = append(semCapacidade, modelo)
+	}
+	if len(semCapacidade) > 0 {
+		t.Logf("modelos locais que NAO geraram (declarados, nao medidos): %v", semCapacidade)
+	}
+	if len(prontos) == 0 {
+		t.Skipf("nenhum modelo local consegue GERAR (endpoint responde? %v): matriz com modelos = NAO_MEDIDO "+
+			"(nunca 'ok' por ausencia)", OllamaDisponivel(ctx, ""))
+	}
+	modelos = prontos
 	harnesses := make([]HarnessProposer, 0, len(modelos))
 	for _, modelo := range modelos {
 		harnesses = append(harnesses, OllamaHarness{Modelo: modelo})

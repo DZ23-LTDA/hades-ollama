@@ -4,6 +4,7 @@ import { CURRENT_ONBOARDING_VERSION } from "@/lib/onboarding";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { HomePage } from "@/components/HomePage";
+import { useT } from "@/i18n";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async ({ context }) => {
@@ -38,9 +39,10 @@ export const Route = createFileRoute("/")({
 });
 
 function HomeRoute() {
+  const { t } = useT();
   // Fallback only; beforeLoad always redirects to the chat home.
   return (
-    <SidebarLayout title="Início" sidebar={<AppSidebar current="chat" />}>
+    <SidebarLayout title={t("route.home.title")} sidebar={<AppSidebar current="chat" />}>
       <HomePage />
     </SidebarLayout>
   );

@@ -314,8 +314,17 @@ func (s *CommerceStore) persistLocked(organizationID string) error {
 			payload.Idempotency[key] = orderID
 		}
 	}
-	sort.SliceStable(payload.Products, func(i, j int) bool { return payload.Products[i].ID < payload.Products[j].ID })
-	sort.SliceStable(payload.Orders, func(i, j int) bool { return payload.Orders[i].ID < payload.Orders[j].ID })
+	// 🚨 E-558: ***`SliceStable` → `Slice`, e a razão é FACTUAL, não estética.*** *Os IDs são **únicos**
+	// (`prd_<uuid>`), logo uma ordenação **estável** e uma **instável** produzem **exactamente o mesmo** resultado.*
+	//
+	// *E importa porque este caminho é **quente**: o `persistLocked` corre **a cada** `UpsertProduct`, e o
+	// `TestUpsertDiretoRespeitaOrcamentoEDeixaAtualizarNoTeto` faz **5 000** deles — *medidos em **94,47 s*** ⇒ *e em
+	// macOS/arm64 com `-race` isso são **557 s**, contra o corte de **10 min** do `go test`.*
+	//
+	// *`sort.Slice` faz **menos** trabalho que `SliceStable` (que aloca e mantém a ordem de empate) — *e aqui o empate
+	// **não existe**.* **A catraca do `commerce_direct_cost_test.go` continua a valer: as gravações não mudam.**
+	sort.Slice(payload.Products, func(i, j int) bool { return payload.Products[i].ID < payload.Products[j].ID })
+	sort.Slice(payload.Orders, func(i, j int) bool { return payload.Orders[i].ID < payload.Orders[j].ID })
 	return writeJSONAtomic(path, payload)
 }
 

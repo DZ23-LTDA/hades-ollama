@@ -49,8 +49,21 @@ OutputDir=..\dist\
 ; Disable logging once everything's battle tested
 ; Filename will be %TEMP%\Setup Log*.txt
 SetupLogging=yes
-CloseApplications=no
-RestartApplications=no
+; O Restart Manager do Windows e' o mecanismo NATIVO para isto: fecha as aplicacoes que
+; tem os ficheiros abertos e, com RestartApplications=yes, reabre-as no fim.
+;
+; *Achado pela auditoria E2E de 2026-10-18:* estavam ambos a `no`, e nao havia nenhum passo
+; que fechasse a instancia anterior. Um UPGRADE com o Hades aberto falhava no meio com
+; `DeleteFile failed; code 5 (Acesso negado)` em `ollama app.exe`, fazia rollback, e o
+; utilizador via "cancelado" sem saber porquê.
+;
+; Tentei matar o processo por PowerShell em `PrepareToInstall`. O log provou que a funcao
+; corria (`HADES-DIAG: PrepareToInstall entrou`) e que o `Exec` executava
+; (`Exec Ok=1 Codigo=1`), e o mesmo comando isolado mata o processo em 1,1 s -- mas o
+; `DeleteFile` continuava a falhar. *Se o comando funciona isolado e falha no instalador, o
+; problema nao e' o comando: e' quem o chama.* O Restart Manager resolve-o no sitio certo.
+CloseApplications=yes
+RestartApplications=yes
 RestartIfNeededByRun=no
 
 ; https://jrsoftware.org/ishelp/index.php?topic=setup_wizardimagefile
@@ -115,19 +128,27 @@ Source: "..\scripts\dz23-configure.ps1"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"
-Name: "{app}\lib\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"
+; O nome TEM de ser Ollama.lnk: app/cmd/app/app_windows.go:createLoginShortcut() copia
+; exatamente "{app}\lib\Ollama.lnk" para a pasta de arranque. Com {#MyAppName} (Hades) o
+; ficheiro saia como Hades.lnk, o Stat falhava com "no such file" e o motor NUNCA arrancava
+; com o Windows -- era por isso que outras aplicacoes deixavam de encontrar o endpoint.
+Name: "{app}\lib\Ollama"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"
 Name: "{userprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\app.ico"
 ; A configuração de provedores fica dentro do app (Configurações -> Provedores);
 ; um atalho separado no menu Iniciar parecia um segundo "Hades" para o usuário.
 
 [Run]
-Filename: "{cmd}"; Parameters: "/C set ""OLLAMA_DZ23_CONFIG={userappdata}\Ollama DZ23\dz23-providers.json"" & set PATH={app};%PATH% & ""{app}\{#MyAppExeName}"""; Flags: postinstall nowait runhidden
+; `skipifsilent` NAO e' cosmetico: sem ele, um `/VERYSILENT` lanca a app e o processo do
+; instalador fica a espera que ela termine -- foi a causa de dois bloqueios de 10 minutos na
+; auditoria E2E de 2026-10-18. *Um instalador silencioso que abre uma janela e nao retorna
+; nao e' silencioso.* Quem quer a app aberta usa o atalho; quem pediu silencio quer silencio.
+Filename: "{cmd}"; Parameters: "/C set ""OLLAMA_DZ23_CONFIG={userappdata}\Ollama DZ23\dz23-providers.json"" & set PATH={app};%PATH% & ""{app}\{#MyAppExeName}"""; Flags: postinstall nowait runhidden skipifsilent
 
 [UninstallRun]
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-CimInstance Win32_Process | Where-Object {{ $_.ExecutablePath -and $_.ExecutablePath.StartsWith('{app}',[System.StringComparison]::OrdinalIgnoreCase) }} | ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }}"""; Flags: runhidden
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""Get-CimInstance Win32_Process | Where-Object {{ $_.ExecutablePath -and $_.ExecutablePath.StartsWith('{app}',[System.StringComparison]::OrdinalIgnoreCase) }} | ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }}"""; Flags: runhidden; RunOnceId: "HadesPararProcessos"
 ; HACK!  need to give the server and app enough time to exit
 ; TODO - convert this to a Pascal code script so it waits until they're no longer running, then completes
-Filename: "{cmd}"; Parameters: "/c timeout 5"; Flags: runhidden
+Filename: "{cmd}"; Parameters: "/c timeout 5"; Flags: runhidden; RunOnceId: "HadesEsperarSaida"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{userstartup}\{#MyAppName}.lnk"
@@ -158,6 +179,10 @@ Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "OLLAMA_DZ23_
 Root: HKCU; Subkey: "Software\Classes\ollama-dz23"; ValueType: string; ValueName: ""; ValueData: "URL:Ollama DZ23 Protocol"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\ollama-dz23"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Classes\ollama-dz23\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Flags: uninsdeletekey
+; A chave Run herdada apontava para "{localappdata}\Programs\Ollama\ollama app.exe", caminho que
+; deixou de existir quando o Ollama antigo foi desinstalado. O Windows tentava arrancar um
+; executavel inexistente e outras aplicacoes ficavam sem endpoint. Passa a apontar para esta app.
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Ollama"; ValueData: """{app}\{#MyAppExeName}"" --hide"; Flags: uninsdeletevalue
 
 [Code]
 
@@ -216,8 +241,92 @@ begin
     DelTree(LegacyDir, True, True, True);
 end;
 
+{ Corre ANTES de o Inno comecar a substituir ficheiros. E' o unico ponto em que fechar a
+  instancia anterior ainda evita o `DeleteFile failed; code 5`.
+
+  *Achado pela auditoria E2E de 2026-10-18:* o `.iss` declara `CloseApplications=no` e
+  `RestartApplications=no`, e nao havia nenhum passo que parasse a app. Resultado: um
+  UPGRADE com o Hades aberto falhava no meio com `DeleteFile failed; code 5 (Acesso
+  negado)` em `ollama app.exe`, o instalador fazia rollback, e o utilizador via
+  "cancelado" sem saber porquê.
+
+  Usa `StopProcessesInDir`, que filtra por ExecutablePath: nunca mata um Ollama oficial
+  instalado noutra pasta. E o `Exec` dentro dela passou a esperar (`ewWaitUntilTerminated`)
+  -- antes era assincrono, e a app ainda estava viva quando o Inno tentava substituir. }
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  Ok: Boolean;
+  Codigo: Integer;
+begin
+  Log('HADES-DIAG: PrepareToInstall entrou; app=' + ExpandConstant('{app}'));
+  Ok := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+    '-NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith(''''' + ExpandConstant('{app}') + '\'''',[System.StringComparison]::OrdinalIgnoreCase) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"',
+    '', SW_HIDE, ewWaitUntilTerminated, Codigo);
+  Log('HADES-DIAG: Exec Ok=' + IntToStr(Ord(Ok)) + ' Codigo=' + IntToStr(Codigo));
+  Sleep(1500);
+  Result := '';
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssInstall then
+  begin
+    { Fecha a instancia ANTERIOR desta app antes de substituir ficheiros.
+      *Achado pela auditoria E2E de 2026-10-18:* o `.iss` declara
+      `CloseApplications=no` e `RestartApplications=no`, e nao havia nenhum passo que
+      parasse a app. Resultado: um UPGRADE com o Hades aberto falhava no meio com
+      `DeleteFile failed; code 5 (Acesso negado)` em `ollama app.exe`, e o instalador
+      fazia rollback -- o utilizador via "cancelado" sem saber porquê.
+
+      Usa a mesma funcao que o desinstalador ja' usa, e que filtra por ExecutablePath:
+      nunca mata um Ollama oficial instalado noutra pasta. }
     RemoveLegacyInstalls();
+  end;
+end;
+
+{ Remove a entrada que o instalador pos no PATH do utilizador.
+  *Achado pela auditoria E2E de 2026-10-18, nao por leitura de codigo:* a instalacao
+  adiciona a pasta da app ao HKCU Environment Path com Check NeedsAddPath, mas esse valor
+  nao aceita Flags uninsdeletevalue -- porque apagar o valor inteiro destruiria o PATH todo.
+  Sem este procedimento, desinstalar deixava uma entrada a apontar para uma pasta que ja'
+  nao existe, e o utilizador so' descobria ao ver o PATH sujo.
+
+  O OLLAMA_DZ23_CONFIG nao precisou disto: e' um valor proprio e tem a flag. O PATH e'
+  um valor PARTILHADO e precisa de remocao cirurgica -- dai' este codigo em vez de uma flag. }
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  PathOrigem, PathLimpo, Entrada, AppDir: String;
+  i: Integer;
+begin
+  if CurUninstallStep = usPostUninstall then
+  begin
+    if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', PathOrigem) then
+      exit;
+
+    AppDir := ExpandConstant('{app}');
+    PathLimpo := '';
+
+    { Reconstroi entrada a entrada, preservando a ordem e tudo o que nao e' nosso. }
+    i := 1;
+    while i <= Length(PathOrigem) do
+    begin
+      Entrada := '';
+      while (i <= Length(PathOrigem)) and (PathOrigem[i] <> ';') do
+      begin
+        Entrada := Entrada + PathOrigem[i];
+        i := i + 1;
+      end;
+      i := i + 1; { salta o ';' }
+
+      if (Entrada <> '') and (CompareText(Entrada, AppDir) <> 0) then
+      begin
+        if PathLimpo <> '' then
+          PathLimpo := PathLimpo + ';';
+        PathLimpo := PathLimpo + Entrada;
+      end;
+    end;
+
+    if CompareText(PathLimpo, PathOrigem) <> 0 then
+      RegWriteExpandStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', PathLimpo);
+  end;
 end;

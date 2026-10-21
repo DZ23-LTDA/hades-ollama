@@ -1,0 +1,508 @@
+# HADES — Confiabilidade de Contexto e Memória (complemento V2.2)
+
+**Escopo:** complemento transversal da missão MASTER V2.2 (§9 do
+`HADES_V2_2_COMPLEMENTO_MEMORIA_COMPACTACAO_UNIVERSAL.txt`). **Não** reclassifica os
+estágios 1–47 nem substitui o Estágio 15, que continua `COMPLETED_VERIFIED`.
+
+**Estado do complemento:** `IN_PROGRESS` — **não homologável** (§10). A peça central
+existe e está ligada; **o efeito sobre as mensagens não existe ainda**.
+
+**Commit medido:** a medição mais recente deste documento refere-se a `f9ddaa75c`
+(branch `fix/checker-relogio`, PR #438). Medições anteriores são históricas.
+
+**Inventário de código construído e testado desde a primeira versão deste documento**
+(cada um com testes próprios; **nenhum ligado ao funil**, ver §4):
+
+| commit | peça | o que prova |
+| --- | --- | --- |
+| `68ab4b1a3` | histórico bruto append-only + cadeia de hashes | 5 testes: cadeia, retomada após reabrir, deteção de adulteração, linha corrompida recusada |
+| `2f58f86ed` | plano (recentes intactas × faixa a resumir) | 4 testes: a instrução corrente nunca é resumida |
+| `807db4bdc` | efeito (bruto ANTES do resumo) | 4 testes: §7-D — falha na gravação não substitui nada |
+| `38a7d205b` | digest determinístico da faixa | 3 testes: fidelidade, corte declarado, corte nunca a meio de uma mensagem |
+| `0ff52217c` | fluxo ponta a ponta | 3 testes: **recuperação provada** (fechar → reabrir → recuperar o material coberto) |
+| `f9ddaa75c` | `ContextStore.Root()` | 3 testes: habilita o histórico dentro do escopo já governado |
+| `0ca5cae62` | caminho do histórico com recusa de travessia | 3 testes: 12 casos de ataque recusados + identificadores legítimos com ponto aceites |
+| `18e413433` | recuperação pelo **caminho derivado** | 2 testes: material recuperado no caminho derivado e isolamento entre projetos |
+| `9ec100db3` | compactação no chat como unidade testável | 3 testes: 4 recusas devolvem as **originais**; sem efeito antes da decisão |
+| `7cba79ee9` | **LIGAÇÃO** ao funil com a raiz do `ContextStore` | `vet` 0 · funil verde · 4 sítios (o 4.º só apareceu no compilador) |
+| `856bfec6b` | **compactação PONTA A PONTA por HTTP** | 2 testes: corpo no handler com resumo + bruto recuperável em disco; **sem teto, nada muda** |
+
+**A ligação EXISTE desde `7cba79ee9`** — esta secção substitui a afirmação anterior de que
+era `AUSENTE`. O que continua a decidir o §10 é a **cobertura parcial**: a compactação e a
+recuperação estão provadas ponta a ponta; o **handoff entre agentes e modelos (§4)
+continua AUSENTE**, a retomada de **missões** após interrupção não está medida, e a memória
+governada é a do Estágio 15 (que não tem `OrganizationID`/`WorkspaceID` no registo).
+
+E a compactação é **opt-in**: sem `OLLAMA_AGENT_CHAT_CONTEXT_TOKENS` declarado a decisão é
+«não declarado» e o corpo do pedido segue **igual** ao que o cliente enviou — medido em
+`TestChatContextNaoCompactaSemTetoDeclarado`, que também exige que **nenhum histórico seja
+criado sem compactação**.
+
+**O que continua `AUSENTE` apesar destas peças:** a **ligação** ao funil do chat. O
+`FluxoDaCompactacao` não é chamado por ninguém em produção, e o chat continua a enviar as
+mensagens tal e qual. As duas linhas de decisão por orçamento (`4542ea468`) correm, mas
+**por omissão não mudam nada** (sem teto declarado, a decisão é «não declarado»).
+
+---
+
+## 1. O que existe, e o que está **ligado**
+
+| Capacidade | Estado | Evidência |
+| --- | --- | --- |
+| Compactação no protocolo **Responses/Codex** | `IMPLEMENTADO_E_TESTADO` (35 testes) | `server/responses_compact.go` (248 linhas), `openai/responses_compact.go` |
+| Medição de tokens **rotulada** (`Exata=false`) | `TESTED` **e ligada** | `internal/agent/memory_summary_envelope.go`, chamada no funil |
+| Decisão por **orçamento** com motivo | `TESTED` **e ligada** | `server/chat_context_budget.go` + `chat_context.go:146` |
+| Envelope versionado (versão, hash, fontes, validação) | `TESTED` **e DESLIGADO** | `memory_summary_envelope.go`; só usado no próprio teste |
+| Gravar **histórico bruto antes** do resumo | `TESTED` **e DESLIGADO** | `historico_bruto.go` (append-only + cadeia + retomada, 5 testes) e `compactacao_aplicar.go` (§7-D provado); nenhum chamador em produção |
+| Substituir mensagens pelo resumo | `TESTED` **e DESLIGADO** | `compactacao_plano.go` + `compactacao_digest.go` + `compactacao_fluxo.go` (recuperação ponta a ponta provada); o funil decide e regista, mas **não altera** `request.Messages` |
+| Ligação do fluxo ao funil do chat | `TESTED` **e LIGADA** (E-584) | `withAgentChatContext(raizDoHistorico)` + `CompactarMensagensDoChat`; raiz de `a.context.Root()`; provada ponta a ponta por HTTP em `856bfec6b` |
+| Memória **governada por organização** (8 rotas) | **VERIFICADO — já coberto** | a governação é TRANSITIVA (`Memory` → `ProjectID` → `Project.OrganizationID`, `context.go:97/431` + `agent_routes.go:2145/2148`); escrita em `agent_object_scope_test.go:71` (projectB) e governação em `project_memories_test.go:85/129`, `memory_export_delete_routes_test.go:72`. **Nenhum teste novo era devido** — a "lacuna" era falsa |
+| Handoff universal (§4) | **AUSENTE** | `BuildHandoff|MissionHandoff|HandoffContract` → 0 ocorrências |
+| Camadas de memória A–E (§3) | **PARCIAL** | `Memory.Kind` é texto livre; sem camada, validade ou sensibilidade por registo |
+| Busca híbrida / rerank / contradição (§3) | **AUSENTE** | `RetrieveRelevant` é **ou** cosseno **ou** literal, mutuamente exclusivos |
+| UI de contexto e memória (§5) | **AUSENTE / declarada indisponível** | `Settings.tsx:893-900` mostra «Indisponível» |
+| Sincronização multiplataforma (§6) | `NAO_MEDIDO` | exige dispositivos reais |
+
+**Limites do Estágio 15, reverificados no código de hoje — todos continuam verdadeiros:**
+resumo padrão é digest determinístico; embedder é opcional e o sistema não finge
+semântica; criptografia é opt-in com chave do operador (chave perdida = memória
+irrecuperável); integração externa opcional ausente; escopo de workspace é derivado do
+projeto. **Nenhum foi reclassificado.**
+
+---
+
+## 2. Evidências desta fatia (commits em `fix/checker-relogio`)
+
+| Commit | Entrega | Prova |
+| --- | --- | --- |
+| `6d1ff46a7` | envelope + gatilho por orçamento | 6 testes · Estágio 15 preservado (5/5) |
+| `4c23e8f22` | orçamento no funil do chat | 4 testes · 6 testes do funil preservados |
+| `18f25ec63` | catraca do pré-filtro DLP | 3 testes · 19 amostras + caixa alta + controlo |
+| `7402ad345` | F4: `gho_/ghu_/ghs_/ghr_` | 30 testes DLP PASS |
+| `8f7cf227b` | F5: `DeleteProject` disco-antes-da-memória | caminho normal PASS |
+| `27a8be64d` | prova do caminho de falha do F5 | **controlo negativo executado** |
+| `81cffdb47` | F1: orquestração valida projeto×organização | vet 0 · testes de orquestração PASS |
+| `4542ea468` | **liga** o gatilho no funil (fecha P0-1) | teste do middleware executa as linhas novas |
+| `d2d580367` | prova que a decisão chega ao handler | **controlo negativo executado** |
+
+**Controlos negativos executados** (o padrão que este repositório exige: um teste que
+passe nos dois sentidos não prova nada):
+- E-566: reposta a ordem antiga do `DeleteProject` → `FAIL "o projeto desapareceu da memória: []"`;
+- E-569: removida a linha de ligação do gatilho → `FAIL "o middleware NÃO registou a decisão"`.
+
+---
+
+## 3. Defeitos declarados (deste trabalho, não escondidos)
+
+1. **`4c23e8f22` tem o assunto errado.** O título no histórico é o parágrafo da lição de
+   instrumento, não `feat(memoria): orcamento de contexto no funil do chat (E-562)` — o
+   texto acrescentado com `AppendAllText` acabou como primeira linha. Corrigir exigiria
+   reescrever história (**force-push, proibido**); a discrepância fica registada aqui.
+2. **E-561 e E-562 nasceram desligadas** e foram apontadas pela auditoria independente;
+   o P0-1 só fechou no `4542ea468`. O comentário de `chat_context_budget.go` afirmava uma
+   ligação que não existia.
+3. **Não há teste do comportamento de recusa do guard F1** — o guard corre, mas não está
+   medido que recusa um projeto de outra organização.
+4. **Não há contagem exata de tokens** — a estimativa é 4 caracteres/token e está
+   rotulada; o tokenizer real existe noutro caminho (`server/prompt.go`).
+5. **`encrypted_content`: o nome herda-se do PROTOCOLO, e o conteúdo depende do caminho**
+   (corrigido — a versão anterior deste defeito tratava dois casos como um):
+   - **memória** (`internal/agent`): o campo **É cifra** quando há chave — `memory_encryption.go:113/124` sela, `:140-157` decifra, e `types.go:306-308` declara «existe SÓ no disco». Faz o que o nome promete.
+   - **protocolo de compactação** (Responses/Codex): carrega JSON canónico em claro, e o próprio código o documenta (`openai/responses_compact.go:37`). O nome vem do protocolo alheio — renomeá-lo não está ao nosso alcance.
+   ⇒ o defeito real é de LEITURA, não de criptografia: quem vê o campo fora do contexto da memória supõe proteção que ali não existe.
+6. **CADÊNCIA DE PUSH INVALIDA A VALIDAÇÃO (defeito operacional, meu).** Empurrei ~19
+   commits em rápida sucessão e o `concurrency: cancel-in-progress` dos workflows
+   **cancelou os runs intermédios**: `test` #1116 (E-575), `agentic-quality` #1892/#1895,
+   `class-a-plus-integrity` #1990. Um run `cancelled` **não é verde nem vermelho — é
+   `NAO_MEDIDO`**, e vários commits desta série nunca foram totalmente validados. Pior: o
+   `pr-gate` recusa passar quando um gate profundo está `cancelled` (E-541), logo o PR
+   pode estar bloqueado **pela cadência de push, não pelo código**. A regra já estava
+   escrita nesta missão («um push por run; ler o run anterior antes de empurrar») e foi
+   violada: ***a lição escrita não é a lição aplicada.*** Correcção em vigor: nenhum push
+   sem ler o run anterior.
+
+---
+
+## 4. Aberto, por prioridade
+
+| Prioridade | Item |
+| --- | --- |
+| **P0** | Compactação real: gravar histórico bruto imutável → resumo versionado (hash, faixa, orçamento) → substituir mensagens, com **teste de recuperação** |
+| **P0** | `race (macos-latest)` excede 600 s — F2: data race em `swarm.go:313-372` × `:478-479` |
+| **P1** | Teste do guard F1 · ligar o envelope a `/memories/summary` · histórico bruto antes do resumo |
+| **P1** | Idempotência/transação da compactação; DLP e `LOCAL_ONLY` no caminho de compactação |
+| **P2** | `Memory` sem `OrganizationID`/`WorkspaceID` · busca híbrida · §4 handoff · UI de memória · §6 dispositivos |
+
+---
+
+## 5. Regra de homologação (§10)
+
+A funcionalidade **só** estará `COMPLETED_VERIFIED` quando compactação automática,
+memória compartilhada governada, handoff, recuperação de fontes e retomada de missões
+tiverem **provas ponta a ponta**, com persistência íntegra e autorização em todas as
+rotas. **Falhas e dependências externas permanecem expressas, nunca disfarçadas.**
+Enquanto o P0 da compactação real estiver aberto, este complemento é `IN_PROGRESS`.
+
+## Decisões tomadas e ainda NÃO executadas
+
+Registadas aqui de propósito: esta missão já perdeu decisões que existiam só na conversa
+quando o contexto foi compactado. Uma decisão que não está em disco não é uma decisão.
+
+### D-1. Envelope versionado no `/memories/summary` — forma ADITIVA, nunca breaking
+`agent_routes.go:2322-2333` devolve `MemorySummary` **directo** (`c.JSON(200, summary)`) e o
+envelope do E-561 (`ConstruirEnvelope`: versão, hash, fontes cobertas, orçamento, validação)
+**existe e não é usado**. Escolha fixada:
+- **(b) ADITIVA** — juntar os campos do envelope AO `MemorySummary`. Consumidores antigos
+  continuam a ler o que liam. **É este o caminho.**
+- (a) aninhar em `{"summary":…,"envelope":…}` está **RECUSADA**: muda a forma na rede sem
+  necessidade, quebra `memory_summary_routes_test.go` e clientes — uma alteração breaking
+  desnecessária não é progresso, é um incidente à espera de acontecer.
+- Cuidado obrigatório: `MemorySummary` é **Estágio 15, a preservar**. *Preservar não é não
+  tocar: é não lhe mudar o significado.* O teste tem de provar que os campos antigos saem
+  **iguais** (nome, tipo e conteúdo) além dos novos.
+
+### D-2. §4 handoff — o que falta é a INTEGRAÇÃO, não o contrato
+`internal/agent/handoff.go` (E-588) tem contrato + `Validar` + `ParaContexto` provados, e
+**nenhum chamador em produção**. Passo seguinte: ligar o `Handoff` a um caminho real de troca
+entre agentes/modelos (Mission Control / Cowork) e prová-lo ponta a ponta, como se fez com a
+compactação (E-585). Enquanto isso não existir, o §4 está **contrato-feito / integração-AUSENTE**
+— o mesmo defeito «apenas adaptador» que esta missão persegue, aqui declarado em vez de escondido.
+
+### D-3. `race (macos-latest)` — a medição que decide o F2
+O E-589 fez `persistLocked` tomar `o.taskMu` (o mesmo lock das escritas em `job.Tasks`).
+**Não está provado que fosse essa a causa do vermelho**: `Cancel` de um job a correr já
+evitava persistir por causa dessa corrida (`swarm.go:454-458`), logo o autor conhecia-a e
+fechara o caminho que conhecia. O log do próximo `race (macos)` decide:
+- `WARNING: DATA RACE` ⇒ a corrida era real e o E-589 mirou certo;
+- `panic: test timed out after 10m0s` ⇒ é **TEMPO**, o F2 não era a causa, e a frente passa a
+  ser a duração do pacote `internal/agent` (fatia do CI medida localmente: 241,9–288,1 s;
+  limite de 600 s por binário).
+
+### D-4. Consumidor do handoff — desenho CORRIGIDO por leitura, não por suposição
+Eu tinha proposto (D-2) injectar o `Handoff` no corpo do `POST /missions/:id/run`. **Está
+errado**: `runMission` (`agent_routes.go:3863-3882`) **não aceita corpo** — resolve a missão
+por `missionForRequest`, confere a versão, chama `EnqueueMission(id)` e devolve `202` com o
+job. O plano/objetivo vivem no registo da missão no runtime, não no pedido.
+
+Desenho corrigido, e é MENOR do que o proposto antes:
+- `POST /missions/:id/handoff` — anexa um `Handoff` ao registo da missão, **validado com
+  `Validar()` (E-588)**: um handoff inválido é RECUSADO com o motivo, não guardado.
+- `GET /missions/:id/handoff` — exporta o handoff, construído com `HandoffDoJob` (E-593) a
+  partir do job de orquestração.
+- Ambos ADITIVOS, sob o guard de missão que já existe (`missionForRequest`) — nenhum caminho
+  novo de autorização.
+
+LIMITE DECLARADO ANTES DE ESCREVER: isto torna o handoff **transportável dentro do Hades**
+(gravado + recuperável sob governação). **Injectá-lo no contexto do modelo durante a
+execução continua a ser o passo seguinte** — e a diferença fica dita agora, não descoberta
+depois de alguém ler «handoff implementado».
+
+Superfícies adjacentes que NÃO são este conceito, para não serem confundidas: `resumeCompany`
+e `resumeCompanyAgent` (`:762`/`:767`) são retoma de empresa/agente; `Last-Event-ID`
+(`:2966`) é retoma de stream SSE.
+
+### D-4 FECHADO (§4 completo) — o que fica dito para quem ler isto depois
+
+A integração que o D-4 deixava em aberto está **feita e provada**, em quatro passos que se
+podem seguir no histórico:
+
+| commit | peça | prova |
+| --- | --- | --- |
+| `5d3633d20` (E-588) | contrato: `Validar` · `ParaContexto` · marcador de dado | 5 testes |
+| `36db38979` (E-593) | produtor da **orquestração** (`HandoffDoJob`) | 5 testes |
+| `3bf2fc3a5` (E-595) | produtor da **missão** (`HandoffDaMissao`), com autorização REAL e só a concedida | 5 testes |
+| `30769e3a4` (E-596) | o bootstrap **aceita** o bloco (documento **e** preâmbulo) | 3 testes |
+| `eaff74969` (E-597) | preâmbulo **REDIGIDO** (sem identificadores nem caminhos) | 3 testes |
+| `c6171257d` (E-598) | **a ligação**: builder usa o redigido · `missionContext` deriva e passa | **prova conjunta**: `server` = 0 **e** `internal/agent` = 0 |
+
+**E um defeito que só apareceu porque um teste já existia**: ligar o bloco completo ao
+preâmbulo fez `mission_context_test.go:118` falhar com a linha exacta —
+`preamble leaked "mis_…"`, `"prj_…"` e **o caminho do workspace**. *O teste estava certo e a
+ligação estava errada.* Identificador interno e caminho local não são conteúdo de trabalho:
+são topologia do servidor. Daí o `ParaPreambulo` por **lista branca** — *uma lista negra
+esquece-se de um campo e vaza-o; uma lista branca esquece-se de um campo e omite-o.*
+
+**O QUE CONTINUA FORA, e não se esconde atrás de «§4 feito»**: o contrato chega ao contexto
+das **missões**; no **chat** ele só chegaria se o pedido identificasse a missão — e hoje o
+chat identifica PROJETO, não missão (`chat_context.go:55-63`, sem `MissionID`). Fazer isso é
+**decisão de contrato de API**, não detalhe de implementação.
+
+### D-3 RESOLVIDO — o `race (macos)` NÃO era corrida: era TEMPO. O F2 está REFUTADO
+
+O job `116110478082` (`race (macos-latest)`, `c6171257d`) diz, textualmente:
+```
+21:24:58  Run go test -race -count=1 ./...
+21:36:11  panic: test timed out after 10m0s
+          FAIL github.com/ollama/ollama/internal/agent  600.096s
+```
+e — o que decide tudo — **não há um único `WARNING: DATA RACE` no log**.
+
+**A hipótese registada como F2 estava errada.** O que estava provado era que existia um
+caminho **não ordenado** entre dois locks (`persistLocked` sob `o.mu` × escritas em
+`job.Tasks` sob `taskMu`); **não** estava provado que fosse ele a reprovar o CI. O comentário
+em `swarm.go:454-458` já mostrava que o autor conhecia aquela corrida e evitava aquele
+caminho. O **E-589** (`taskMu` como campo + `persistLocked` a tomá-lo) mantém-se como
+correcção legítima de ordenação — **não era a causa**. *Não basta provar que um defeito
+existe: é preciso provar que é ELE que quebra.*
+
+**A causa real**: `go test` mata cada binário aos **10 min por omissão**; o `-race` multiplica
+o custo; e o `internal/agent` no macOS ultrapassa os 600 s. Neste mesmo run o `test` **normal**
+passou nas **três** plataformas ⇒ não é defeito de código, é **orçamento de tempo**.
+
+**Correcção (E-600, `062970bd8`)**: `-timeout 20m` em `.github/workflows/test.yaml`. O que ela
+**não** faz, e por isso é aceitável: **não** desliga o `-race` (a rede contra corridas
+continua, agora com tempo para terminar) e **não** esconde uma travagem (um hang real continua
+a falhar, aos 20m em vez de aos 10m). O motivo ficou escrito no próprio workflow.
+
+**O que isto ainda NÃO prova**: que 20 m chega. A confirmação é o próximo `race (macos-latest)`
+ficar verde; se voltar a estourar, o número está medido e o passo seguinte é **dividir o
+pacote** ou **reduzir peso sob `-race`** — nunca subir o limite outra vez.
+
+### D-5. Identidade de MISSÃO no funil do chat — decisão, não implementação
+
+**O facto medido.** `chat_context.go:55-63` constrói o `ContextBootstrapInput` com
+`Version`, `OrganizationID`, `ProjectID`, `Objective` (a **última mensagem do utilizador**,
+`:59`/`:71`), `GrantedCapabilities`, `Policy`, `UntrustedSources` — e **sem `MissionID`**. Logo
+o handoff (que deriva de uma missão) **não alcança o contexto do modelo no chat**; alcança-o
+no caminho de missão (`missionContext`, `agent_routes.go:2894`). Isto é um **limite do
+contrato**, e eu tinha-o declarado como se estivesse resolvido.
+
+**As três opções, com o custo de cada uma:**
+1. **Cabeçalho `X-Hades-Mission`** no pedido de chat, validado por `missionForRequest`
+   (o mesmo guard, não um segundo). Menor superfície; e o guard existente já aplica
+   isolamento por organização.
+2. **Corpo/parametro explícito** no pedido de chat. Mais visível, mas muda o contrato do
+   corpo que hoje é compatível com `/api/chat`.
+3. **Não fazer nada** e deixar o chat project-scoped. Zero risco, zero ganho: o handoff
+   continua a não chegar ao modelo no chat.
+
+**Recomendação: (1)** — com uma condição inegociável: o identificador **vem do pedido**, logo
+**tem de passar pelo guard de missão** (`missionForRequest`), e o handoff derivado tem de
+seguir pela versão **REDIGIDA** (`ParaPreambulo`, E-597). Sem isso, um cabeçalho controlado
+pelo cliente seria uma **superfície de injecção de contexto entre inquilinos** — exactamente o
+que o E-597 fechou no outro lado.
+
+**E uma nota que não é detalhe:** (1) faz o preâmbulo do chat passar a carregar estado de uma
+missão. Isso tem de ser **auditável** — quem injectou o quê, em que missão — senão troca-se um
+limite por um caminho sem rasto. O histórico bruto (E-571) é o sítio onde esse rasto já existe.
+
+### D-6. As falhas LOCAIS não são regressões — e não foi preciso linha de base para o saber
+
+Correr a fatia larga nesta máquina dá pacotes vermelhos que **passam no CI com o MESMO código**:
+
+| pacote | local (Windows, esta máquina) | CI (macos, `c6171257d`) |
+| --- | --- | --- |
+| `cmd/launch` | FAIL 68,9 s | **ok 19.741s** |
+| `create` | FAIL 4,3 s | **ok 2.102s** |
+| `mlxrunner/model/qwen3_5` | FAIL 0,7 s | **ok 2.741s** |
+| `parser` | FAIL 1,7 s | **ok 1.114s** |
+
+Além de `app/...` (na base `4b3e21854`: **37 linhas FAIL sem nenhuma mudança minha** — medido
+com *worktree* no ponto de fusão). A causa é a que o `AGENTS.md` documenta: **nesta máquina o
+temp/`APPDATA` do usuário negam escrita**, e o sintoma aparece como falha de teste, não como
+erro de ambiente.
+
+**Isto é melhor do que uma linha de base**: não é preciso correr noutro commit para saber que
+não é regressão — **o CI já correu o mesmo código e passou**. Regra que fica: *antes de
+atribuir uma falha local ao código, verificar se o CI, com o mesmo código, a tem.*
+
+### D-7. Os 8 `unused` do meu lint local NÃO são dívida do CI — são artefacto do instrumento
+
+A config do lint **não tem exclusões** (`.golangci.yaml`, `version: "2"`, 5353 bytes) e o CI usa
+a **mesma** versão (`golangci-lint-action` com `version: v2.13.0`, `test.yaml:501-507`) **sem**
+filtro de «issues novas». Mesmo assim o CI nunca os acusou. A razão é a **tag de compilação**:
+
+| ficheiro | tag | consequência |
+| --- | --- | --- |
+| `mlx/stub_nocgo.go` | `//go:build !cgo` | só é compilado com **CGO desligado** |
+| `mlx/dynamic_other.go` | `//go:build !darwin` | é compilado em Windows/Linux, não em macOS |
+
+O CI linta com **CGO ligado** (o log do job mostra `CGO_ENABLED: 1`) ⇒ `stub_nocgo.go` **não**
+entra no conjunto lintonado. Eu corro com `CGO_ENABLED=0` — **esta máquina não tem compilador
+C** — ⇒ compilo os stubs ⇒ `unavailableN`, `macOSMajorVersion` e companhia aparecem como `unused`.
+
+**Portanto: não se toca em nada.** Ficam declarados como dívida do *briefing* e ficam, agora,
+**explicados**: são da mesma família das falhas locais de `create`, `parser`, `cmd/launch` e
+`app/...` (D-6). Três vezes na mesma sessão a mesma lição: ***o ambiente local não é o ambiente
+do CI, e as diferenças disfarçam-se de defeitos.*** A pergunta que passa a ser obrigatória antes
+de agir sobre uma medida local: **o CI, neste código, produziria este resultado?**
+
+### D-8. Integração às SUPERFÍCIES — medida, e com o ponto de inserção identificado
+
+**O que foi medido (não suposto).** No front-end do desktop (`app/ui/app/src`):
+- `lib/agenticClient.ts:381-387` tem sete funções de missão — `listMissions`, `getMission`,
+  `listMissionEvents`, `createMission`, `runMission`, `deleteMission`, `decideMissionApproval`
+  — e **nenhuma** de contexto/handoff;
+- `components/MissionDeliveryCard.tsx` mostra o que a missão **entregou**;
+  `MissionCapabilityPicker.tsx` mostra o que ela **pode**; `hooks/useMissionEvents.ts` mostra o
+  que ela **fez**;
+- e **nada** mostra o que ela **sabe**: zero ocorrências de `missions/:id/context`,
+  `memories/summary` ou do conceito de handoff. As sete ocorrências de «handoff» que existem
+  são de **autenticação** (`Onboarding.tsx:1316`, `api.test.ts:91`) — *contar a palavra não é
+  medir o conceito*, a mesma armadilha que a auditoria independente documentou no início.
+
+**A rota já existe e já traz o bloco certo**: `GET /missions/:id/context` devolve o
+`ContextBootstrap`, que desde o E-596/E-598 inclui o handoff **na versão redigida**
+(`ParaPreambulo`) — sem identificadores internos nem caminhos. **Não é preciso servidor novo.**
+
+**Ponto de inserção**: `lib/agenticClient.ts`, ao lado das outras sete:
+`export const getMissionContext = (id) => agentFetch<ContextBootstrap>("/api/agent/v1/missions/" + encodeURIComponent(id) + "/context")`.
+
+**E a superfície, que é decisão de PRODUTO, em duas opções com custos distintos:**
+1. **secção no `MissionDeliveryCard`** — menor, reaproveita a superfície da missão, responde a
+   «o que esta missão sabe»; risco: misturar entrega com contexto no mesmo cartão;
+2. **vista própria de contexto** (rota nova) — mais espaço para objetivo, pendentes, o que
+   exige aprovação e as capacidades autorizadas; risco: mais superfície para manter.
+
+**Recomendação: (1)** como primeiro passo, com o bloco **colapsado por defeito** (o contexto é
+longo e não é o que se olha primeiro) e **sem nunca mostrar o que a versão redigida remove**.
+Nenhuma das duas se implementa sem um teste que prove que o identificador da missão e os
+caminhos **não** aparecem no que é renderizado — a mesma asserção que fechou o vazamento no
+servidor (`mission_context_test.go:118`, E-597) tem de existir no cliente.
+
+### D-9. Levantamento das superfícies — o que cada uma mostra da missão (medido)
+
+| superfície | ciclo de vida da missão | **contexto / handoff** |
+| --- | --- | --- |
+| servidor (`GET /missions/:id/context`) | ✅ | ✅ **já devolve o handoff REDIGIDO** (E-596/E-598) |
+| desktop `app/ui/app` | ✅ entrega (`MissionDeliveryCard`) · capacidades (`MissionCapabilityPicker`) · eventos (`useMissionEvents`) | ✅ **primeiro consumidor real** (`47c5cae45`, E-608) |
+| mobile `apps/mobile-agentic` | ✅ incl. **fila offline** (`enqueue`), notificações, expiração de sessão | ❌ nenhum (medido: 0 ocorrências) |
+| `AgenticConsole` (rota própria) | ✅ consome o cartão | ❌ sem vista própria de contexto |
+| `Model Gateway` / MCPs / skills | — | ❌ nada (não medido em profundidade) |
+
+**O que este levantamento corrige**: a frase «integração às superfícies ausente» era **larga de
+mais**. As superfícies estão construídas e funcionais para o **ciclo de vida** da missão — criar,
+correr, aprovar, cancelar, ver eventos, ver artefactos, e no mobile até com fila offline. O que
+faltava era a superfície do **contexto** (o que a missão *sabe*), e ela começou a existir no
+E-608 no desktop.
+
+**O caminho que fica para o mobile**, para não ser redescoberto: `apps/mobile-agentic/App.tsx`
+já tem `request<Mission>(base, ...)` e um `refresh(id)`; falta a chamada a
+`/missions/:id/context` e uma secção colapsada — **com o mesmo tipo por lista branca do lado do
+cliente** (`MissionContextView`) e um teste que exija que identificadores e caminhos **não**
+apareçam no renderizado. *A garantia que o servidor ganhou (E-597) tem de ser ganha de novo em
+cada cliente — e é por isso que ela se põe no TIPO, não na disciplina de quem escreve o JSX.*
+
+### D-3, encerrado com a MEDIÇÃO: 657 s contra um limite de 600 s
+
+O run de `72f01d6cd` fechou o caso. O step «go test -race» do job `race (macos-latest)` correu de
+**22:02:55 a 22:13:52 = 657 s** e terminou **SUCCESS**; o `race (ubuntu-latest)` levou **666 s**,
+também SUCCESS.
+
+| | valor |
+| --- | --- |
+| limite antigo (`go test` por omissão) | **600 s** ⇒ 657 s **estourava** — e foi o que aconteceu |
+| limite novo (E-600) | **1200 s** ⇒ 657 s **passa** |
+| previsão declarada ANTES de medir | multiplicador 2×-4× ⇒ 480-1160 s |
+| medido | **657 s** — ***dentro do intervalo previsto*** |
+
+**O que isto encerra**: a hipótese F2 (corrida de dados) está refutada pelo log («nenhum
+`WARNING: DATA RACE`») e o E-589 não era o remédio; a causa era **orçamento de tempo**, e o E-600
+(um só limite, com o motivo escrito no workflow) resolveu os **dois** jobs `race`. Com este run,
+**nenhum job vermelho conhecido resta** nesta cabeça.
+
+### D-10. Model Gateway: o contexto ATRAVESSA-O por construção (medido, com alcance declarado)
+
+**O que foi medido.** O Model Gateway é `internal/multillm` (`NewGateway`, `proxy.go:59`), e em
+`server/routes.go:2007-2008` ele é registado **no router inteiro**:
+```
+s.multiProvider = multillm.NewGateway(registry, nil)
+r.Use(s.multiProvider.Middleware())
+```
+Logo **todas** as rotas passam por ele — incluindo `/api/agent/v1/chat`. E o preâmbulo (com o
+handoff redigido) e a compactação já vão **no corpo do pedido** que o gateway encaminha.
+Conclusão: *o contexto viaja pelo Model Gateway **por construção**, não por uma ligação nova a
+fazer.* O `internal/agent/step_routing.go` usa também o `multillm.Registry` para rotear modelo
+por passo (`RouteModelForStep`), com o comentário do E-435 a documentar que antes não usava.
+
+**E o que o gateway NÃO faz**: não conhece memória nem contexto. É um **encaminhador
+transparente** — «integrar» aqui significa «o contexto atravessa-o», e **não** «ele gere o
+contexto». Chamar-lhe integração de memória seria vender outra coisa.
+
+**Alcance declarado**: medi que o middleware está no router inteiro (logo o chat passa por ele) e
+que o roteamento por passo usa o Registry. **NÃO medi** que o corpo é encaminhado sem alteração
+(embora seja o que um proxy faz) e **não medi** a integração com **MCPs/skills** — que continua
+por medir, e fica dito em vez de contado como feito.
+
+### D-11. MCPs/skills: NÃO há ferramenta de memória — a lacuna que sobra, com o ponto de inserção
+
+**Medido.** Procurei em `internal/agent` ferramentas de agente que exponham memória/contexto
+(`memory_*`, `search_memories`, `context_*`, `handoff_*`): **zero**. O que existe é outra coisa, e
+vale registar porque mostra que a governação já está lá:
+- `company_agents.go:17` — `MemoryScope string` ⇒ agentes de empresa **já declaram** um escopo de
+  memória (é configuração, não pedido);
+- `component_contracts_seed.go:28` — `memory_context_engine` → `context.go`, «memória governada com
+  escopo, proveniência e isolamento» ⇒ o motor é um **componente registado** com contrato versionado.
+
+**Consequência**: um agente **não pode pedir memória pelo protocolo**. A memória entra no contexto
+por **injecção** (o preâmbulo), não por pedido da ferramenta. Para o mandato — «integrar a MCPs,
+skills» — isto é uma **lacuna real**, e é a única que sobra depois do E-608/E-614/E-615.
+
+**O ponto de inserção, auditado (`internal/agent/tools.go`)**:
+```
+:23  type Registry struct { tools map[string]Tool }
+:27  ErrCapabilityDenied = "tool capability is not granted to this mission"
+:33  func NewRegistry() *Registry { registry.Register(workspaceListTool{}) ... }
+```
+Uma ferramenta de memória segue **o padrão que já existe**: uma struct que implementa `Tool`, um
+`registry.Register(...)` em `NewRegistry`, e um `ToolDescriptor` com a capacidade exigida (por
+exemplo `memory:read`). Fica assim sujeita ao **mesmo portão de capacidades** das outras — *o que
+torna esta lacuna implementável sem inventar política nova: a governação já existe, falta o
+pedido.*
+
+**E o que NÃO fazer**: expor a procura sem escopo de ator. A memória `private` de outro usuário do
+mesmo projeto não pode entrar por uma ferramenta — a mesma regra que `SearchMemoriesForActor` já
+aplica no caminho do contexto (`agent_routes.go:2887`). Uma ferramenta nova **tem de passar pelo
+mesmo filtro**, não por um atalho.
+
+### D-12. A ferramenta de memória esbarra numa decisão: o runtime NÃO conhece o ATOR
+
+Ao auditar onde injectar a ferramenta (D-11), apareceu um obstáculo que não é de código:
+
+- o registry por missão constrói-se em `internal/agent/runtime.go:224` (`tools = NewRegistry()`,
+  campo `tools *Registry` em `:54`);
+- a interface é `Tool.Descriptor()` + `Execute(ctx, ToolContext, input)` (`types.go:268`), e o
+  `ToolContext` (`:236`) leva `MissionID`, `StepID`, `Workspace`, `OrganizationID`, `Consent`,
+  `ModelID` — **não leva `ProjectID` nem `ActorID`**;
+- e o registo da missão (`types.go:75-115`) tem organização e projeto, **e nenhum criador/autor**.
+
+**A consequência, dita sem rodeios**: o runtime de missões é escopado por **organização e
+projeto**, não por **ator**. Uma ferramenta de memória registada ali poderia aplicar o filtro de
+projeto e **não** o de ator — e o filtro de ator é o que impede a memória `private` de um colega
+do mesmo projeto de entrar. Uma ferramenta que *parece* governada e filtra a menos é **pior** do
+que uma ferramenta ausente: a ausente sabe-se que falta.
+
+**As duas saídas, ambas decisões e não detalhes:**
+1. **`CreatedBy` na missão** (campo aditivo, preenchido do pedido que a cria) ⇒ o runtime passa a
+   poder preencher `ToolContext.ActorID` e a ferramenta aplica o mesmo filtro do caminho do
+   contexto (`SearchMemoriesForActor`, `agent_routes.go:2887`);
+2. **ferramenta request-scoped**, fora do runtime, onde o ator existe por construção.
+
+**O que fica decidido já**: qualquer das duas exige que `ToolContext` ganhe os campos que faltam —
+e isso é aditivo, com precedente no próprio ficheiro (o E-438 acrescentou `ModelID` exactamente
+para uma decisão chegar à ferramenta). O que **não** se faz é registar a ferramenta no sítio
+óbvio e ficar com um filtro a menos.
+
+
+### D-3, corrigido por medição nova: o job estava À BEIRA do limite, não sempre acima
+
+Eu tinha escrito que o `race` «estourava» o limite antigo de 600 s. Quatro medições do mesmo job
+obrigam a corrigir a frase — e a correcção é mais útil do que a frase original:
+
+| run | job | duração de `go test -race` |
+| --- | --- | --- |
+| `5bba1132e` | race (ubuntu) | 653 s |
+| `5bba1132e` | race (macos) | 657 s |
+| `9c7cdf154` | race (ubuntu) | **469 s** |
+| `72f01d6cd` | race (macos) | 867 s |
+
+**A leitura certa**: a duração varia de **469 s a 867 s**, e o limite antigo era 600 s ⇒ o job
+ficava **à beira da linha**: reprovava umas vezes e passava outras. ***É isso que explica o CI
+intermitentemente vermelho*** — não «estava sempre acima», mas «estava por cima da linha, às
+vezes». E uma falha intermitente é a pior de diagnosticar, porque se parece com flake sem o ser:
+é orçamento.
+
+O limite de 20m (1200 s) dá ~1,4× de folga sobre o pior caso medido (867 s). Não é folga
+generosa — é folga **medida**, e é o motivo de eu não tratar o assunto como encerrado para
+sempre: se a duração voltar a subir, a frente passa a ser **dividir o pacote**, e não subir o
+limite outra vez.

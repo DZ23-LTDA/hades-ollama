@@ -12,7 +12,11 @@ import {
   getSupervisorStatus,
   setSupervisorConfig,
   triggerSupervisorTick,
+  getSupervisorIncidents,
+  getSupervisorTicks,
   type SupervisorStatus,
+  type SupervisorIncident,
+  type SupervisorTickRecord,
 } from "@/lib/agenticClient";
 
 export function CompanySupervisorPanel() {
@@ -20,6 +24,8 @@ export function CompanySupervisorPanel() {
   const [, setLoading] = useState(true);
   const [ticking, setTicking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [incidentes, setIncidentes] = useState<SupervisorIncident[]>([]);
+  const [ticks, setTicks] = useState<SupervisorTickRecord[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -27,6 +33,19 @@ export function CompanySupervisorPanel() {
     try {
       const st = await getSupervisorStatus();
       setStatus(st);
+      // Incidentes e ticks sao pedidos separados: a falha deles nao apaga o estado.
+      try {
+        const ri = await getSupervisorIncidents();
+        setIncidentes(ri.incidents ?? []);
+      } catch {
+        setIncidentes([]);
+      }
+      try {
+        const rt = await getSupervisorTicks();
+        setTicks(rt.ticks ?? []);
+      } catch {
+        setTicks([]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -190,6 +209,67 @@ export function CompanySupervisorPanel() {
           </span>
         </div>
       </div>
+      <div className="mt-4 border-t border-neutral-800 pt-3">
+        <h4 className="mb-2 text-xs font-semibold text-neutral-300">
+          Incidentes ({incidentes.length})
+        </h4>
+
+        {incidentes.length === 0 ? (
+          <p data-testid="supervisor-sem-incidentes" className="text-[11px] text-neutral-500">
+            Lista vazia. Isto não distingue «não há incidentes» de «não há supervisor»: sem
+            runtime o servidor devolve a mesma lista vazia.
+          </p>
+        ) : (
+          <ul data-testid="supervisor-incidentes" className="space-y-1">
+            {incidentes.map((i) => (
+              <li
+                key={i.id}
+                data-testid={`supervisor-incidente-${i.id}`}
+                className="rounded border border-neutral-800 px-2 py-1 text-[11px]"
+              >
+                <span className="font-semibold text-neutral-200">{i.kind}</span>{" "}
+                <span className="text-neutral-400">[{i.state}]</span>{" "}
+                <span className="text-neutral-300">{i.subject}</span>
+                <span
+                  data-testid={`supervisor-ciencia-${i.id}`}
+                  className="block text-neutral-500"
+                >
+                  {i.acknowledged_by
+                    ? `reconhecido por ${i.acknowledged_by} — reconhecer NÃO é resolver`
+                    : "sem reconhecimento humano"}
+                </span>
+                <span className="block text-neutral-500">
+                  {i.recovery_attempts} tentativa(s) de recuperação
+                  {i.resolution ? ` · resolução: ${i.resolution}` : " · sem resolução registada"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <h4 className="mb-2 mt-3 text-xs font-semibold text-neutral-300">
+          Ciclos recentes ({ticks.length})
+        </h4>
+
+        {ticks.length === 0 ? (
+          <p data-testid="supervisor-sem-ticks" className="text-[11px] text-neutral-500">
+            Nenhum ciclo no diário.
+          </p>
+        ) : (
+          <ul data-testid="supervisor-ticks" className="space-y-0.5 text-[11px] text-neutral-400">
+            {ticks.slice(0, 8).map((t) => (
+              <li key={t.tick_number}>
+                #{t.tick_number} · {t.missions_resumed} missão(ões) retomada(s) ·{" "}
+                {t.approvals_created} aprovação(ões) criada(s) ·{" "}
+                {t.blocked_external_actions} ação(ões) externa(s) bloqueada(s) ·{" "}
+                {t.risk_paused_companies} empresa(s) pausada(s) por risco ·{" "}
+                {t.error_count} erro(s)
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
     </section>
   );
 }

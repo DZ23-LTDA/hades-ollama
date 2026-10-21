@@ -30,9 +30,23 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      # E-665: a forma anterior era `test -z "$(gofmt ...)"`, VERDE POR CONSTRUCAO — um arquivo que NAO PARSEIA faz
+      # o gofmt escrever o erro em STDERR e sair com STDOUT VAZIO, entao a comparacao de string vazia PASSAVA.
+      # *Foi essa a cegueira que deixou um `internal/agent/adaptive_router.go` com uma `}` faltando atravessar o CI.*
       - name: Verify formatting
         shell: bash
-        run: test -z "$(gofmt -l internal/multillm app/ui/responses/types.go server/dz23_multi_provider_test.go server/routes.go)"
+        run: |
+          if ! saida="$(gofmt -l internal/multillm app/ui/responses/types.go server/dz23_multi_provider_test.go server/routes.go 2>&1)"; then
+            echo "gofmt FALHOU (arquivo nao parseavel ou erro de leitura):"
+            echo "$saida"
+            exit 1
+          fi
+          if [ -n "$saida" ]; then
+            echo "arquivos fora do gofmt:"
+            echo "$saida"
+            exit 1
+          fi
+          echo "gofmt OK: nenhum arquivo fora de formato e nenhum erro de parse"
       - name: Test multi-provider contracts
         shell: bash
         run: |

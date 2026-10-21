@@ -88,7 +88,7 @@ func TestRuntimeRecusaNoPlanejamentoPlanoSemInputObrigatorio(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: planejadorComInputFaltando{}, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, Planner: planejadorComInputFaltando{}, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,6 +10,7 @@ import {
   type SkillContextInput,
 } from "@/lib/skillCatalog";
 import type { AgentSkill } from "@/lib/agenticClient";
+import { SkillVersionsCard } from "@/components/SkillVersionsCard";
 
 export type SkillCatalogPanelProps = {
   skills: AgentSkill[];
@@ -133,6 +134,9 @@ export function SkillCatalogPanel({
               key={skill.id}
               className="rounded-xl border border-neutral-200/80 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900"
             >
+              {/* E-644: o HISTÓRICO de versões desta skill, com restauro. A confiança devolvida
+                  pelo servidor é mostrada como vem — restaurar recupera conteúdo, não confiança. */}
+              <SkillVersionsCard skillId={skill.id} activeVersion={skill.version} />
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-medium text-neutral-900 dark:text-white">
@@ -182,8 +186,8 @@ export function SkillCatalogPanel({
             A ordem é determinística e o orçamento é aplicado pelo servidor — a tela não decide sozinha.
           </p>
           <ul className="mt-2 space-y-1 text-[11px] text-neutral-600 dark:text-neutral-300">
-            {selection.selected.length === 0 ? <li>Nenhuma skill entrou para este contexto.</li> : null}
-            {selection.selected.map((skill) => (
+            {(selection.selected ?? []).length === 0 ? <li>Nenhuma skill entrou para este contexto.</li> : null}
+            {(selection.selected ?? []).map((skill) => (
               <li key={skill.id}>
                 • {skill.id} {skill.category ? `(${skill.category})` : ""} — {skill.token_budget || 0} tokens
               </li>

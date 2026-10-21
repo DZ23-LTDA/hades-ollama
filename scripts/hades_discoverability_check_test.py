@@ -71,6 +71,55 @@ class DescobertaHonestaTest(unittest.TestCase):
         # Sem site hospedado, a ausência é honesta: não se inventa sitemap de um domínio que não existe.
         self.assertEqual([], validar_sitemap(Path(tempfile.mkdtemp()) / "sitemap.xml"))
 
+    def test_sitemap_com_doctype_e_recusado(self) -> None:
+        """Anti-XXE: nenhum sitemap do protocolo tem DOCTYPE, e um com DOCTYPE e' recusado.
+
+        *Recusar so' a forma que eu imaginei seria um filtro que se testa a si proprio* --
+        por isso os tres casos abaixo variam a caixa e o espaco.
+        """
+        for payload in (
+            '<!DOCTYPE sitemap SYSTEM "http://evil.example/x.dtd">'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            "<url><loc>https://hades.example/a</loc></url></urlset>",
+            '<!doctype sitemap [<!ENTITY x "y">]>'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            "<url><loc>https://hades.example/a</loc></url></urlset>",
+            "<!DocType sitemap>"
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            "<url><loc>https://hades.example/a</loc></url></urlset>",
+        ):
+            with tempfile.TemporaryDirectory() as tmp:
+                caminho = Path(tmp) / "sitemap.xml"
+                caminho.write_text(payload, encoding="utf-8")
+                violacoes = validar_sitemap(caminho)
+            assert violacoes, "sitemap com DOCTYPE tem de ser RECUSADO, nao aceito em silencio"
+            assert any("recusado" in v for v in violacoes), violacoes
+
+    def test_sitemap_com_entity_e_recusado(self) -> None:
+        """Billion laughs: o Python 3 resolve entidades INTERNAS; recusar `<!ENTITY` fecha isso."""
+        payload = (
+            '<!DOCTYPE urlset [<!ENTITY lol "lol">]>'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            "<url><loc>https://hades.example/&lol;</loc></url></urlset>"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            caminho = Path(tmp) / "sitemap.xml"
+            caminho.write_text(payload, encoding="utf-8")
+            violacoes = validar_sitemap(caminho)
+        assert violacoes, "sitemap com ENTITY tem de ser RECUSADO"
+        assert any("recusado" in v for v in violacoes), violacoes
+
+    def test_sitemap_normal_continua_passo(self) -> None:
+        """A cura nao pode quebrar o caminho legitimo -- *um filtro que recusa tudo tambem passa nos testes de recusa*."""
+        payload = (
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            "<url><loc>https://hades.example/a</loc></url></urlset>"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            caminho = Path(tmp) / "sitemap.xml"
+            caminho.write_text(payload, encoding="utf-8")
+            violacoes = validar_sitemap(caminho)
+        assert violacoes == [], violacoes
     def test_jsonld_invalido_ou_sem_contexto_e_acusado(self) -> None:
         raiz = self._raiz(readme='<script type="application/ld+json">{"nome": "sem contexto"}</script>\n')
         violacoes = validar_jsonld(raiz / "README.md")

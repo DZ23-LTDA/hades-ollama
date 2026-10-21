@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>HADES Browser Bridge</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="../icons/hades-icon-192.png" alt="" width="24" height="24">
+    <h1>HADES Browser Bridge</h1>
+  </header>
+
+  <p id="aviso" class="aviso" role="status" aria-live="polite"></p>
+
+  <section aria-labelledby="t-estado">
+    <h2 id="t-estado">Estado</h2>
+    <dl>
+      <dt>Missão</dt><dd id="missao">—</dd>
+      <dt>Host local</dt><dd id="host">—</dd>
+      <dt>Aprovação</dt><dd id="aprovacao">—</dd>
+      <dt>Abas conectadas</dt><dd id="abas">0</dd>
+    </dl>
+  </section>
+
+  <section aria-labelledby="t-aba">
+    <h2 id="t-aba">Esta aba</h2>
+    <p id="origem-aba" class="mono">—</p>
+    <p class="nota">
+      Ao conectar, o HADES poderá observar o DOM desta aba e interagir com ela
+      enquanto a concessão durar. Campos de senha, cartão e MFA <strong>nunca</strong>
+      são lidos: nesses campos o controlo é seu.
+    </p>
+    <div class="accoes">
+      <button id="bt-conectar" type="button" class="primario">Conectar esta aba</button>
+      <button id="bt-desconectar" type="button">Desconectar</button>
+    </div>
+  </section>
+
+  <section aria-labelledby="t-canal">
+    <h2 id="t-canal">Canal local (Companion)</h2>
+    <p class="nota">
+      O <strong>HADES Local Companion</strong> é um processo separado, no seu PC, e
+      só existe se você o instalar. Enquanto não ligar aqui, a extensão não fala com
+      ele. A extensão <strong>não</strong> recebe controlo do sistema operativo: ela
+      pede, o Companion verifica a permissão, e o HADES decide a aprovação.
+    </p>
+    <div class="accoes">
+      <button id="bt-canal" type="button">Ligar ao HADES</button>
+    </div>
+  </section>
+
+  <section aria-labelledby="t-arquivos">
+    <h2 id="t-arquivos">Ficheiros</h2>
+    <p class="nota">
+      O HADES decide sobre transferências de ficheiros. <strong>Um executável nunca é
+      transferido sem prova de aprovação</strong>, e um ficheiro inerte em download passa.
+    </p>
+    <p id="autoridade-arquivos" class="mono" role="status" aria-live="polite">—</p>
+  </section>
+
+  <section aria-labelledby="t-takeover">
+    <h2 id="t-takeover">Quem tem o controlo</h2>
+    <p class="nota">
+      Se você digitar ou clicar na página, o HADES <strong>para de escrever</strong> e não
+      disputa o campo. Aqui você vê de quem é o controlo e pode assumir ou devolver.
+    </p>
+    <p id="takeover-estado" class="mono" role="status" aria-live="polite">—</p>
+    <div class="accoes">
+      <button id="bt-takeover" type="button">Assumir eu</button>
+    </div>
+  </section>
+
+  <section aria-labelledby="t-privada">
+    <h2 id="t-privada">Rede privada</h2>
+    <p class="nota">
+      Por omissão o HADES <strong>recusa</strong> <code>localhost</code> e
+      <code>127.0.0.1</code> — é a proteção contra SSRF e contra alcançar serviços que
+      só existem na sua máquina. Ligue aqui <strong>só</strong> se precisar de testar
+      uma aplicação local, e desligue quando terminar.
+    </p>
+    <p id="optin-estado" class="mono" role="status" aria-live="polite">—</p>
+    <div class="accoes">
+      <button id="bt-optin" type="button">Ligar rede privada</button>
+    </div>
+  </section>
+
+  <section aria-labelledby="t-esc">
+    <h2 id="t-esc">Permissões</h2>
+    <ul id="escopos" class="escopos"></ul>
+  </section>
+
+  <footer>
+    <button id="bt-revogar" type="button" class="perigo">Revogar todas as abas</button>
+    <p class="nota">
+      A extensão não decide aprovações e não tem acesso ao sistema operativo.
+      Toda a ação de risco é aprovada no HADES.
+    </p>
+  </footer>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

@@ -24,7 +24,16 @@ type GitWorktreeSession struct {
 	BaseCommit   string    `json:"base_commit"`
 	TargetBranch string    `json:"target_branch"`
 	CreatedAt    time.Time `json:"created_at"`
-	Status       string    `json:"status"` // "active", "merged", "rejected", "removed"
+	// Status e' o estado do ciclo de vida (FASE 2). Valores validos em EstadosDoWorktree();
+	// so' muda por Transitar, nunca por atribuicao directa.
+	Status string `json:"status"`
+	// MotivoDoDescarte e' preenchido quando alguem descarta trabalho nao integrado de proposito.
+	// *Um descarte deliberado tem de deixar rastro.*
+	MotivoDoDescarte string `json:"motivo_do_descarte,omitempty"`
+	// TrabalhoDescartado descreve, em texto, o que se perdeu no descarte.
+	TrabalhoDescartado string `json:"trabalho_descartado,omitempty"`
+	// CaminhoRemovido e' o caminho que foi efectivamente apagado.
+	CaminhoRemovido string `json:"caminho_removido,omitempty"`
 }
 
 // GitMergeApproval contains details for human-in-the-loop merge approval.
@@ -133,8 +142,23 @@ func CreateGitWorktree(ctx context.Context, repoRoot, dataRoot, missionID, custo
 	if err := os.MkdirAll(filepath.Dir(worktreeDir), 0o700); err != nil {
 		return nil, fmt.Errorf("create worktrees directory: %w", err)
 	}
-	// If worktree directory already exists, ensure it is clean
-	_ = os.RemoveAll(worktreeDir)
+	// Se o diretorio ja' existe, NAO o apagar a' toa.
+	//
+	// A versao anterior fazia `_ = os.RemoveAll(worktreeDir)` aqui -- o mesmo defeito que a
+	// E-1226 corrigiu na remocao, escondido no caminho de CRIACAO. *Criar por cima do que nao se
+	// sabe o que e' destroi trabalho com o nome de "limpeza".*
+	if _, statErr := os.Stat(worktreeDir); statErr == nil {
+		existente := &GitWorktreeSession{RepoRoot: absRepo, WorktreeDir: worktreeDir, BaseCommit: baseCommit}
+		diagExistente := DiagnosticarWorktree(ctx, existente)
+		if diagExistente.TemTrabalhoNaoIntegrado {
+			return nil, fmt.Errorf("%w: ja' existe um worktree em %s com %s",
+				ErrTrabalhoNaoIntegrado, worktreeDir, diagExistente.Detalhe)
+		}
+		// Sem trabalho por integrar: remover e' seguro, e a remocao passa pela funcao que valida.
+		if errRemover := removerWorktree(ctx, existente, diagExistente); errRemover != nil {
+			return nil, fmt.Errorf("limpar worktree vazio anterior: %w", errRemover)
+		}
+	}
 
 	// Create worktree on a new branch from HEAD
 	_, err = runRawGit(ctx, absRepo, "worktree", "add", "-b", branchName, worktreeDir, baseCommit)
@@ -154,21 +178,28 @@ func CreateGitWorktree(ctx context.Context, repoRoot, dataRoot, missionID, custo
 		BaseCommit:   baseCommit,
 		TargetBranch: targetBranch,
 		CreatedAt:    time.Now().UTC(),
-		Status:       "active",
+		// O estado inicial vem da maquina de estados, e e' PREPARADO: o `git worktree add`
+		// ja' deixou o diretorio e o branch prontos, portanto `criado` nunca e' observavel
+		// numa sessao real. A versao anterior escrevia "active", que nem pertence a' lista
+		// fechada (E-1227).
+		Status: string(WorktreePreparado),
 	}, nil
 }
 
 // RemoveGitWorktree safely detaches and removes the worktree.
+// RemoveGitWorktree to protect work that nobody integrated.
+//
+// FASE 2 do adendo V3: a versao anterior fazia `git worktree remove --force` seguido de
+// `os.RemoveAll` SEM VERIFICAR NADA, descartava todos os erros e escrevia `Status = "removed"`
+// mesmo quando nada tinha sido removido.
+//
+//	*Apagar trabalho que ninguem integrou nao e' limpeza: e' perda de dados com nome tecnico.*
+//
+// Agora delega em `RemoveGitWorktreeSeguro`: recusa quando ha' commits nao integrados ou
+// ficheiros por commitar, e propaga os erros reais. Para descartar de proposito existe
+// `RemoveGitWorktreeComPerda`, que exige um motivo.
 func RemoveGitWorktree(ctx context.Context, session *GitWorktreeSession) error {
-	if session == nil || session.WorktreeDir == "" {
-		return nil
-	}
-	if session.RepoRoot != "" {
-		_, _ = runRawGit(ctx, session.RepoRoot, "worktree", "remove", "--force", session.WorktreeDir)
-	}
-	_ = os.RemoveAll(session.WorktreeDir)
-	session.Status = "removed"
-	return nil
+	return RemoveGitWorktreeSeguro(ctx, session)
 }
 
 // GetWorktreeDiff computes the diff between the base commit and the worktree changes.

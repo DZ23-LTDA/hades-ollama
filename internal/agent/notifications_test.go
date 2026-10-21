@@ -15,7 +15,7 @@ func TestRuntimeListNotificationsUsesPersistedMissionEvents(t *testing.T) {
 	if err := store.AppendEvent(Event{ID: "evt_notifications", MissionID: mission.ID, OrganizationID: LocalOrganizationID, Type: "mission.completed", CreatedAt: created}); err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := NewRuntime(RuntimeConfig{Store: store, WorkspaceRoot: t.TempDir()})
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

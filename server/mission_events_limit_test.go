@@ -20,7 +20,7 @@ func TestMissionEventsSupportLimitAndReportTotal(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	workspace := t.TempDir()
 	store := agent.NewMemoryStore()
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: store, Planner: agent.RulePlanner{}, WorkspaceRoot: workspace})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: store, Planner: agent.RulePlanner{}, WorkspaceRoot: workspace, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

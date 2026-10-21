@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -46,7 +47,8 @@ MATRIZ_ACEITE = [
     ("APIs externas configuradas são testadas e usadas", "BLOCKED_BY_EXTERNAL_DEPENDENCY", "B-07: chaves de provedor", "Credencial de provedor (estágio 4)"),
     ("A troca de modelo preserva contexto autorizado", "DONE", "Bootstrap de contexto reconstruído por modelo, com teste (estágio 5)", "—"),
     ("O sistema de permissões é aplicado pelo servidor", "DONE", "Autorização server-side com testes de escopo (estágios 5 e 18)", "—"),
-    ("Plugins têm instalação e execução verificáveis", "BLOCKED_BY_EXTERNAL_DEPENDENCY", "**Provado (30 testes PASS)**: instalação com verificação de assinatura, rejeição de conteúdo adulterado, rollback que restaura a versão anterior UMA vez, isolamento por organização, sete caminhos de recusa e **delegação ao sandbox governado** com trilha de auditoria. **E-293**: o desfecho da execução passou a ser **afirmado, não tolerado** (o teste anterior aceitava sucesso OU falha). Medido neste host: `sandbox.exec requires the Linux namespace executor; host-process fallback is disabled` — o Hades **recusa cair para processo de host** (fail-closed, correto por segurança), logo a execução real é `BLOCKED_BY_EXTERNAL_DEPENDENCY`", "Executar em **Linux/WSL2 com o executor de namespace** (mantendo o fallback de host desabilitado)"),
+    ("Plugins têm instalação e execução verificáveis", "BLOCKED_BY_EXTERNAL_DEPENDENCY", "**Provado (30 testes PASS)**: instalação com verificação de assinatura, rejeição de conteúdo adulterado, rollback que restaura a versão anterior UMA vez, isolamento por organização, sete caminhos de recusa e **delegação ao sandbox governado** com trilha de auditoria. **E-293**: o desfecho da execução passou a ser **afirmado, não tolerado**. **Correção de um defeito real (commit 3f4984962)**: `sandbox_linux.go` comparava `cgroup.controllers` com `strings.Contains(\" \"+conteudo+\" \", ...)` e o ficheiro termina em newline, pelo que o **último** controlador (`pids`) nunca casava -- o sandbox estrito respondia `NOT_CONFIGURED` em **qualquer** Linux real. Corrigido para comparação por campos. **Medido depois do fix, em WSL2 Ubuntu com cgroup v2 delegado (cpu memory pids), `node` v22.22.1 em `/usr/bin` e `chroot` real em caminho confiável**: 27 PASS, 0 FAIL, 2 SKIP -- e os 2 SKIP mostram agora a causa exacta: `exit status 127` com `stderr=\"setpriv: setgroups failed: Operation not permitted\"`. **O bloqueio real é o WSL2 negar `setgroups`**, não o produto. Medido neste host: `sandbox.exec requires the Linux namespace executor; host-process fallback is disabled` quando falta o executor -- o Hades **recusa cair para processo de host** (fail-closed, correto por segurança) **RE-MEDIDO em 2026-10-21 e a causa anterior estava ERRADA**: `setpriv --reuid=1 --regid=1 --clear-groups true` devolve **`DIRETO_OK`** neste WSL2 -- o `setgroups` **ja' nao e'** o bloqueio. O que falha e' a **delegacao de cgroup v2**: criada a raiz `/sys/fs/cgroup/hades-sandbox` com `+cpu +memory +pids` aplicado (`hades-sandbox controllers: cpu memory pids`) e `OLLAMA_AGENT_SANDBOX_CGROUP_ROOT` apontada, os 2 testes passam de SKIP a FAIL com `configure strict sandbox cgroup cpu.max: ... permission denied`; repetido com um cgroup2 proprio dentro de `unshare -Cm` deu `SUBTREE_FALHOU` e `CPU_MAX_FALHOU` (mesmo erro). O teste `TestPluginExecutionFailureCarriesSandboxDiagnostics` falha pela **mesma** causa (o plugin nunca executa, logo nao existe `stderr`): `o diagnostico precisa conter stderr; chaves: [gate_status execution_isolation]`. Estado medido da suite nesse cenario: **27 PASS, 2 FAIL**", "Um host Linux **nativo** (ou runner) onde a **delegacao de cgroup v2** seja permitida -- ou seja, onde se possa escrever `cpu.max`/`pids.max` em cgroups filhos. Medido neste WSL2: o `setgroups` ja' PASSA; o que e' negado e' a delegacao (`permission denied`), mesmo com a raiz delegada e mesmo com cgroup2 proprio em `unshare -Cm`"),
+
     ("MCPs têm instalação e execução verificáveis", "DONE", "MCP local/stdio exercitado com testes de revogação e auditoria (estágio 7)", "—"),
     ("Skills têm ativação e execução verificáveis", "DONE", "Ativação por projeto/agente/modelo com testes (estágio 8)", "—"),
     ("Agentes e subagentes executam missões reais", "DONE", "Orquestração com cotas e artefatos verificáveis (estágio 9)", "—"),
@@ -62,7 +64,7 @@ MATRIZ_ACEITE = [
     ),
     ("O agente de código entrega correções testadas", "DONE", "Fluxo issue → teste → correção → PR comprovado (estágio 11)", "—"),
     ("Workflows executam os nós realmente suportados", "DONE", "Motor determinístico com retry/DLQ e log por nó (estágio 13)", "—"),
-    ("Browser/computer-use funciona nos ambientes homologados", "BLOCKED_BY_EXTERNAL_DEPENDENCY", "B-09 residual: Python ausente para o E2E de browser", "Ambiente com navegador/Python para o E2E (estágio 14)"),
+    ("Browser/computer-use funciona nos ambientes homologados", "DONE", "**Medido em 2 ambientes com o helper do proprio produto** (`internal/agent/browser_helper.py`). (a) **CI, runner Windows**: job *Go agentic Windows portability* -> `TestBrowserOperatorNavigateAndSnapshot` **pass** (run 39541806198) depois de a causa-raiz do tecto de 15 s ter sido fechada. (b) **Host local Windows**: driver sobre o helper -> `navigate` rc=0 com title `DZ23` e screenshot JPEG real; `snapshot` rc=0 com content `Hello Browser`; **recusa** de destino privado sem `OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE` -> rc=1 com erro `browser URL resolves to a non-public address`. Playwright 1.64.0 + Chromium do host. **Limite declarado**: a prova e' em Windows (CI + local); a cobertura Linux/macOS do operador pertence aos itens #21/B5 e **nao** e' reclamada aqui", "—"),
 ("A memória respeita os escopos", "DONE", "Isolamento entre organizações com prova em disco (estágio 15). **E-289/E-290**: a escrita passou a **recusar** sobrescrever trabalho de outro escritor — **intenção declarada por caminho** (não-destrutivos guardados, destrutivos por intenção) e detecção também por **revisão**. Limites: os 3 caminhos destrutivos seguem **sem guarda por intenção**; a trava do arquivo é **ADVISORY**; sem **fila de escritas**", "—"),
 ("A segurança multitenant está validada", "DONE", "**E-294 — lastro medido**: o job de CI *PostgreSQL RLS, Redis DLQ and OTLP integration* sobe um **PostgreSQL 16 real** com **três papéis distintos** (admin/runtime/migrator, senhas geradas por execução), restringe a autenticação **por papel** via `pg_hba`, roda as migrações e executa com `-tags integration`: `TestDistributedPostgresRLSAndEvents`, `...RuntimeRejectsRLSDrift` (**guarda**: recusa quando o RLS desvia), `...RuntimeCannotConnectOutsideApplicationDatabase` (**sonda negativa** de permissão), `...TenantKeyRotation` e a suíte `TestDistributed` completa (**32 testes**). Limite: roda no runner Linux do CI, não no host de desenvolvimento, e **não** mede inferência por timing", "—"),
     ("A suíte obrigatória está aprovada", "DONE", "Lint, contrato, suíte Go e paridade Linux (com detector de corrida) verdes na rodada mais recente", "—"),
@@ -105,7 +107,84 @@ def tabela_de_estagios(estado: dict, filtro: set[str] | None = None) -> str:
     return "\n".join(linhas)
 
 
+def snapshot_do_git() -> dict:
+    """Le o snapshot REAL do Git, em vez de o supor a partir do estado.
+
+    **E-987**: o §ESTAGIO 22 item 1 pede *«transformar o gate em prova do **mesmo snapshot
+    candidato**»*. Medido antes desta cura: o gate citava `measured_commit =
+    fbe1a235dc79…` e `measured_at = 2026-10-15T14:19:33` — *ambos lidos do
+    `HADES_MASTER_STATE.json`* — enquanto o `HEAD` era `417fe9735b43…`, **36 commits
+    depois**. E o ficheiro nao tinha **uma unica** chamada a `subprocess`/`rev-parse`/
+    `porcelain`: era um **espelho de um ficheiro parado**, e por isso provava o snapshot
+    de **ontem**, nao o candidato.
+
+    *O gate passa a declarar os dois*: o `measured_commit` (a **proveniencia** — de que
+    estado o texto foi gerado) e o `gate_head` (o **snapshot real** em que o gate corre).
+    Se divergirem, o texto **diz** que divergem e quantos commits os separam.
+
+    Falha suave: sem git, devolve `NAO_MEDIDO` em vez de rebentar — *um gate que nao
+    corre nao prova nada, e um gate que rebenta por falta de git seria pior*.
+    """
+    def _git(*args: str) -> str:
+        try:
+            saida = subprocess.run(
+                ["git", *args],
+                cwd=RAIZ,
+                capture_output=True,
+                text=True, encoding="utf-8", errors="replace",
+                timeout=30,
+                check=False,
+            )
+            if saida.returncode != 0:
+                return ""
+            return saida.stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            return ""
+
+    head = _git("rev-parse", "HEAD")
+    sujo = _git("status", "--porcelain")
+    porcelana = [l for l in sujo.splitlines() if l.strip()]
+    ramo = _git("rev-parse", "--abbrev-ref", "HEAD")
+    return {
+        "head": head or "NAO_MEDIDO",
+        "branch": ramo or "NAO_MEDIDO",
+        "dirty": len(porcelana),
+        "dirty_amostra": porcelana[:3],
+    }
+
+
+def distancia_do_measured(estado: dict, snapshot: dict) -> tuple[str, int]:
+    """Quantos commits separam o snapshot real do `measured_commit`.
+
+    Devolve `(rotulo, n)` onde o rotulo e' `MESMO`, `DIVERGENTE` ou `NAO_MEDIDO`.
+    *E' isto que o §ESTAGIO 22 item 1 chama «prova do mesmo snapshot»: nao basta citar um
+    commit; tem de se dizer se **o que corre** e' o que esta' citado.*
+    """
+    medido = (estado.get("measured_commit") or "").strip()
+    head = snapshot.get("head") or ""
+    if not medido or not head or head == "NAO_MEDIDO":
+        return "NAO_MEDIDO", 0
+    if medido == head:
+        return "MESMO", 0
+    try:
+        saida = subprocess.run(
+            ["git", "rev-list", "--count", f"{medido}..{head}"],
+            cwd=RAIZ,
+            capture_output=True,
+            text=True, encoding="utf-8", errors="replace",
+            timeout=30,
+            check=False,
+        )
+        if saida.returncode == 0 and saida.stdout.strip():
+            return "DIVERGENTE", int(saida.stdout.strip())
+    except (OSError, ValueError, subprocess.SubprocessError):
+        pass
+    return "DIVERGENTE", 0
+
+
 def gerar_relatorio(estado: dict) -> str:
+    snapshot = snapshot_do_git()
+    rotulo, distancia = distancia_do_measured(estado, snapshot)
     contagem = contagem_por_execucao(estado)
     externos = [b for b in estado.get("blockers", []) if "EXTERNO" in (b.get("tipo") or "").upper()]
     resolvidos = [b for b in estado.get("blockers", []) if "RESOLVIDO" in (b.get("tipo") or "").upper()]
@@ -120,6 +199,13 @@ def gerar_relatorio(estado: dict) -> str:
 
 | Número | Valor |
 | --- | --- |
+| **Commit medido** (`measured_commit`) | `{estado.get('measured_commit', 'NAO_MEDIDO')}` |
+| **Commit da `main`** (`git.main_sha`) | `{estado.get('git', {}).get('main_sha', 'NAO_MEDIDO')}` |
+| **Gerado em** (`measured_at`) | {estado.get('measured_at', 'NAO_MEDIDO')} |
+| **Snapshot real** (`gate_head`) | `{snapshot['head']}` |
+| **Ramo do snapshot** (`gate_branch`) | `{snapshot['branch']}` |
+| **Entradas nao commitadas** (`gate_dirty`) | {snapshot['dirty']} |
+| **O gate prova o snapshot candidato?** (`gate_snapshot`) | **{rotulo}**{(' - ' + str(distancia) + ' commits depois do `measured_commit`') if rotulo == 'DIVERGENTE' else ''} |
 | Estágios | {len(estado['stages'])} |
 | Linhas de evidência no índice | {linhas_do_indice()} |
 | `COMPLETED_VERIFIED` | {contagem.get('COMPLETED_VERIFIED', 0)} |
@@ -178,6 +264,8 @@ possível sem ele**.
 
 
 def gerar_gate(estado: dict) -> str:
+    snapshot = snapshot_do_git()
+    rotulo, distancia = distancia_do_measured(estado, snapshot)
     externos = [b for b in estado.get("blockers", []) if "EXTERNO" in (b.get("tipo") or "").upper()]
     resumo: dict[str, int] = {}
     for _, status, _, _ in MATRIZ_ACEITE:
@@ -196,6 +284,25 @@ def gerar_gate(estado: dict) -> str:
 > Exigido pela seção **11.8**. Este é o **gate GLOBAL**, posterior aos estágios 1–38 — e **não** substitui o gate
 > intermediário de engenharia (estágio 22, em [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md)).
 > **Gerado por `scripts/hades_release_gate.py`** — rode com `--check` para conferir.
+
+## Procedência
+
+🚨 **E-552 + E-554: *o commit medido tem de estar ESCRITO, ou o documento não se pode reproduzir nem contestar.***
+
+| Campo | Valor |
+| --- | --- |
+| **Commit medido** (`measured_commit`) | `{estado.get('measured_commit', 'NAO_MEDIDO')}` |
+| **Commit da `main`** (`git.main_sha`) | `{estado.get('git', {}).get('main_sha', 'NAO_MEDIDO')}` |
+| **Gerado em** (`measured_at`) | {estado.get('measured_at', 'NAO_MEDIDO')} |
+| **Snapshot real** (`gate_head`) | `{snapshot['head']}` |
+| **Ramo do snapshot** (`gate_branch`) | `{snapshot['branch']}` |
+| **Entradas nao commitadas** (`gate_dirty`) | {snapshot['dirty']} |
+| **O gate prova o snapshot candidato?** (`gate_snapshot`) | **{rotulo}**{(' - ' + str(distancia) + ' commits depois do `measured_commit`') if rotulo == 'DIVERGENTE' else ''} |
+
+*Dois campos, e não um: o `E-552` mediu que este derivado **não** citava commit nenhum, e que o
+`HADES_BASELINE_REPORT.md` citava **só** a `main` — *o que não está errado (*ele mede o baseline, e o baseline é da
+`main`*), mas era **ambíguo**: «commit de referência» não dizia **se** era o medido ou o comparado* ⇒ *agora a
+ambiguidade desaparece **por construção**.*
 
 ## Veredito
 
@@ -243,6 +350,63 @@ Nenhuma dessas condições pode ser satisfeita por documentação: todas exigem 
 """
 
 
+def normalizar_volateis(texto: str) -> str:
+    """Remove do texto as linhas que mudam **por si**, para o `--check` poder comparar.
+
+    **E-987, e foi o proprio `--check` que o apanhou**: ao acrescentar o `gate_dirty` a
+    tabela, o `--check` passou a falhar **sempre** — *«GATE DIVERGENTE do estado da missão»*
+    — porque o numero de entradas sujas muda **a cada escrita do proprio gerador**
+    (*13 -> 14*). Um gerador tem de ser **deterministico**, e uma linha volatil dentro de
+    um ficheiro gerado torna o `--check` inutil: *ele acusaria divergencia todos os dias e
+    ninguem voltaria a acreditar nele.*
+
+    *A escolha nao foi retirar a informacao* — o `gate_dirty` e' exactamente o que prova
+    que ha' WIP, e o §ESTAGIO 22 quer essa prova. *A escolha foi o `--check` comparar o que
+    e' estavel* e **declarar as volateis como nao comparadas**. As estaveis (`gate_branch`)
+    continuam a ser comparadas, e sao elas que provam o **mesmo snapshot**.
+
+    **E-993 — eu tinha aplicado so' METADE desta cura, e o CI provou-o.** O `gate_head`
+    continuava a ser **comparado**. *E num workflow `pull_request`, o `actions/checkout` faz
+    checkout do **merge commit sintetico*** — pelo que `git rev-parse HEAD` no CI **nunca**
+    e' o SHA da branch. => *o passo `hades_release_gate.py --check` do
+    `class-a-plus-integrity.yaml` falhou em **205a1705f**, e os dois passos seguintes
+    ficaram `skipped` porque o job para no primeiro `failure`* => *o meu manifesto e o meu
+    inventario **nunca correram no CI**.*
+
+    *E o erro de raciocinio foi este*: eu escrevi um gate que **pergunta ao CI** em que commit
+    ele corre, *como se a resposta fosse o commit candidato*. **Nao e':** em PR, HEAD e' um
+    commit que **nao existe** fora do CI. => *logo `gate_head` e' um facto sobre **onde o gate
+    corre**, e nao sobre **o que ele prova***. O que ele prova e' o `measured_commit` — *que
+    esta' gravado no texto que este modulo compara*.
+
+    Volateis removidas: `gate_dirty` (muda com qualquer ficheiro escrito), `gate_head`
+    (e' o merge commit no CI) e `gate_branch` (em `pull_request` o checkout e' **detached
+    HEAD**, logo o ramo medido no CI **nao e'** o ramo da branch). **O `gate_snapshot` fica
+    no documento**: *e' informacao para o leitor, e nao criterio para o `--check`.*
+
+    *E a terceira so' apareceu porque o teste a mediu*: eu tinha classificado `gate_branch`
+    como **estavel** e troquei-o no teste de simulacao -- *e o `--check` falhou (exit 1)*.
+    Classifiquei-o por intuicao, e a intuicao estava errada. => e' o `E-992` («a distincao
+    e' a coisa toda») outra vez: **o que descreve ONDE o gate corre nao pode ser criterio do
+    que ele PROVA.**
+    """
+    volateis = (
+        "| **Entradas nao commitadas** (`gate_dirty`) |",
+        "| **Snapshot real** (`gate_head`) |",
+        "| **Ramo do snapshot** (`gate_branch`) |",
+        # **E-993, quarta volátil, e tambem so' apareceu porque o teste a mediu**: a linha do
+        # `gate_snapshot` carrega a **distancia** («DIVERGENTE - **36** commits depois»). *O
+        # rotulo coincide no CI, mas o numero nao*: la' o `HEAD` e' o merge commit, e a
+        # distancia e' outra. => *comparar a linha seria falhar por um numero que descreve o
+        # ambiente, e nao o documento* => *e' a mesma doenca do `gate_head`, na mesma celula.*
+        "| **O gate prova o snapshot candidato?** (`gate_snapshot`) |",
+    )
+    return "\n".join(
+        linha for linha in texto.splitlines()
+        if not any(linha.startswith(prefixo) for prefixo in volateis)
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Gera/confere os artefatos do gate global.")
     parser.add_argument("--check", action="store_true", help="não escreve: falha se houver divergência")
@@ -255,7 +419,9 @@ def main() -> int:
         divergentes = []
         for caminho, conteudo in gerados.items():
             atual = caminho.read_text(encoding="utf-8") if caminho.exists() else ""
-            if atual != conteudo:
+            # **E-987**: comparar o ESTAVEL. Uma linha volatil num ficheiro gerado faria o
+            # `--check` falhar todos os dias - *e um gate que grita sempre nao e' um gate*.
+            if normalizar_volateis(atual) != normalizar_volateis(conteudo):
                 divergentes.append(caminho.name)
         if divergentes:
             print("GATE DIVERGENTE do estado da missão: " + ", ".join(divergentes))

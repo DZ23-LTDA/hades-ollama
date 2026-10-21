@@ -30,7 +30,17 @@ import (
 // instante escolhido cruzaria uma fronteira, o teste **falha dizendo por quê** em vez de acusar o produto.
 func instanteDeTeste(t *testing.T) time.Time {
 	t.Helper()
-	base := time.Now().UTC().Add(24 * time.Hour)
+	// E-527 (CORRIGIDO, com a causa medida no CI): era `Add(24 * time.Hour)` - e a **truncagem para as 10:00**
+	// faz com que a distancia real fique entre **10 h e 34 h**, enquanto a guarda exige **>= 20 h**.
+	// ⇒ *sempre que "agora" esteja entre 10:00 e 24:00 UTC, o instante fica a <= 20 h e a guarda DISPARA.*
+	//
+	// ***Foi o que aconteceu em 2026-10-14 (14:46 UTC): o truncamento deu 2026-10-15T10:00Z, a 19 h 14 min.***
+	// *A proteccao contra o relogio tornou-se, ela propria, dependente do relogio - e com PRAZO DE VALIDADE.*
+	//
+	// +48 h: o **minimo** passa a **34 h > 20 h**, e a guarda deixa de poder disparar por causa do horario do dia
+	// - SEM afrouxar o criterio. *Continua a usar aritmetica RELATIVA (`Now() + offset`), logo NAO depende do
+	// relogio ABSOLUTO da maquina.*
+	base := time.Now().UTC().Add(48 * time.Hour)
 	instante := time.Date(base.Year(), base.Month(), base.Day(), 10, 0, 0, 0, time.UTC)
 
 	// Guarda: 10:00 UTC tem de estar a pelo menos 2 h de qualquer virada de dia. *É esta asserção que transforma

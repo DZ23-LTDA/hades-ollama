@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { LiveBuildPanel } from "@/components/LiveBuildPage";
 import { SidebarLayout } from "@/components/layout/layout";
 import { missionStateLabel } from "@/lib/labels";
 import { generateStudioHTML } from "@/lib/studioHtml";
@@ -40,159 +41,204 @@ import {
   PuzzlePieceIcon,
   DevicePhoneMobileIcon,
   ChartBarIcon,
+  BoltIcon,
 } from "@heroicons/react/24/outline";
 // Relatório de publicação local (E-281/E-282): o que a cópia ENTREGOU de fato.
 import { PublishReportNotice } from "./PublishReportNotice";
+import { useT } from "@/i18n";
 
+// Os modelos guardam CHAVES de i18n, não texto: o rótulo é resolvido no render e
+// o conteúdo inicial no momento de inserir, para acompanhar o idioma activo.
 const COMPONENT_TEMPLATES: Array<{
   type: string;
-  label: string;
+  labelKey: string;
   icon: string;
   defaultProps: Record<string, string>;
+  textProps: Record<string, string>;
   defaultStyle: Record<string, string>;
   width: number;
   height: number;
 }> = [
   {
     type: "heading",
-    label: "Título",
+    labelKey: "studio.template.heading.label",
     icon: "H",
-    defaultProps: { text: "Novo Título de Impacto", level: "h1" },
+    defaultProps: { level: "h1" },
+    textProps: { text: "studio.template.heading.text" },
     defaultStyle: { color: "#111827", fontSize: "2rem", fontWeight: "bold" },
     width: 600,
     height: 60,
   },
   {
     type: "paragraph",
-    label: "Parágrafo",
+    labelKey: "studio.template.paragraph.label",
     icon: "P",
-    defaultProps: { text: "Descreva sua ideia, solução ou produto com detalhes claros e objetivos." },
+    defaultProps: {},
+    textProps: { text: "studio.template.paragraph.text" },
     defaultStyle: { color: "#4B5563", fontSize: "1rem" },
     width: 600,
     height: 50,
   },
   {
     type: "button",
-    label: "Botão de Ação",
+    labelKey: "studio.template.button.label",
     icon: "B",
-    defaultProps: { label: "Clique Aqui", action: "submit" },
+    defaultProps: { action: "submit" },
+    textProps: { label: "studio.template.button.text" },
     defaultStyle: { backgroundColor: "#111827", color: "#FFFFFF", borderRadius: "8px" },
     width: 160,
     height: 44,
   },
   {
     type: "card",
-    label: "Card / Recurso",
+    labelKey: "studio.template.card.label",
     icon: "C",
-    defaultProps: { title: "Destaque do Produto", body: "Explicação dos benefícios chave da solução construída." },
+    defaultProps: {},
+    textProps: {
+      title: "studio.template.card.title",
+      body: "studio.template.card.body",
+    },
     defaultStyle: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB", borderRadius: "12px" },
     width: 320,
     height: 160,
   },
   {
     type: "metric",
-    label: "Métrica / KPI",
+    labelKey: "studio.template.metric.label",
     icon: "M",
-    defaultProps: { label: "Taxa de Sucesso", value: "99.8%", change: "+4.2%" },
+    defaultProps: { value: "99.8%", change: "+4.2%" },
+    textProps: { label: "studio.template.metric.sampleLabel" },
     defaultStyle: { backgroundColor: "#F3F4F6", borderRadius: "8px" },
     width: 200,
     height: 90,
   },
   {
     type: "navbar",
-    label: "Barra de Navegação",
+    labelKey: "studio.template.navbar.label",
     icon: "N",
-    defaultProps: { brand: "Ollama Studio", links: "Início, Recursos, Preços, Contato" },
+    defaultProps: { brand: "Ollama Studio" },
+    textProps: { links: "studio.template.navbar.links" },
     defaultStyle: { backgroundColor: "#FFFFFF", borderBottom: "1px solid #E5E7EB" },
     width: 800,
     height: 60,
   },
   {
     type: "hero",
-    label: "Hero / Destaque",
+    labelKey: "studio.template.hero.label",
     icon: "★",
-    defaultProps: { title: "Sua ideia, pronta em minutos", subtitle: "Monte, publique e evolua — tudo local.", cta: "Começar agora" },
+    defaultProps: {},
+    textProps: {
+      title: "studio.template.hero.title",
+      subtitle: "studio.template.hero.subtitle",
+      cta: "studio.template.hero.cta",
+    },
     defaultStyle: {},
     width: 800,
     height: 220,
   },
   {
     type: "image",
-    label: "Imagem",
+    labelKey: "studio.template.image.label",
     icon: "I",
-    defaultProps: { src: "", alt: "Descrição da imagem" },
+    defaultProps: { src: "" },
+    textProps: { alt: "studio.template.image.alt" },
     defaultStyle: {},
     width: 400,
     height: 240,
   },
   {
     type: "input",
-    label: "Campo de Formulário",
+    labelKey: "studio.template.input.label",
     icon: "F",
-    defaultProps: { label: "Seu e-mail", placeholder: "voce@exemplo.com" },
+    defaultProps: {},
+    textProps: {
+      label: "studio.template.input.sampleLabel",
+      placeholder: "studio.template.input.placeholder",
+    },
     defaultStyle: {},
     width: 320,
     height: 70,
   },
   {
     type: "link",
-    label: "Link",
+    labelKey: "studio.template.link.label",
     icon: "L",
-    defaultProps: { text: "Saiba mais", href: "https://" },
+    defaultProps: { href: "https://" },
+    textProps: { text: "studio.template.link.text" },
     defaultStyle: {},
     width: 160,
     height: 32,
   },
   {
     type: "list",
-    label: "Lista",
+    labelKey: "studio.template.list.label",
     icon: "≡",
-    defaultProps: { items: "Primeiro item, Segundo item, Terceiro item" },
+    defaultProps: {},
+    textProps: { items: "studio.template.list.items" },
     defaultStyle: {},
     width: 400,
     height: 120,
   },
   {
     type: "divider",
-    label: "Divisor",
+    labelKey: "studio.template.divider.label",
     icon: "—",
     defaultProps: {},
+    textProps: {},
     defaultStyle: {},
     width: 600,
     height: 20,
   },
   {
     type: "pricing",
-    label: "Plano / Preço",
+    labelKey: "studio.template.pricing.label",
     icon: "$",
-    defaultProps: { plan: "Plano Pro", price: "R$ 49/mês", features: "Tudo do Básico, Suporte prioritário, Sem limites", cta: "Assinar" },
+    defaultProps: {},
+    textProps: {
+      plan: "studio.template.pricing.plan",
+      price: "studio.template.pricing.price",
+      features: "studio.template.pricing.features",
+      cta: "studio.template.pricing.cta",
+    },
     defaultStyle: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB", borderRadius: "12px" },
     width: 280,
     height: 260,
   },
   {
     type: "testimonial",
-    label: "Depoimento",
+    labelKey: "studio.template.testimonial.label",
     icon: "“",
-    defaultProps: { quote: "Mudou completamente o nosso fluxo de trabalho.", author: "Cliente satisfeito" },
+    defaultProps: {},
+    textProps: {
+      quote: "studio.template.testimonial.quote",
+      author: "studio.template.testimonial.author",
+    },
     defaultStyle: {},
     width: 420,
     height: 110,
   },
   {
     type: "faq",
-    label: "FAQ (pergunta)",
+    labelKey: "studio.template.faq.label",
     icon: "?",
-    defaultProps: { question: "Pergunta frequente?", answer: "Resposta clara e objetiva para a dúvida." },
+    defaultProps: {},
+    textProps: {
+      question: "studio.template.faq.question",
+      answer: "studio.template.faq.answer",
+    },
     defaultStyle: { borderColor: "#E5E7EB", borderRadius: "8px" },
     width: 480,
     height: 90,
   },
   {
     type: "footer",
-    label: "Rodapé",
+    labelKey: "studio.template.footer.label",
     icon: "_",
-    defaultProps: { text: "© 2026 Minha Empresa", links: "Sobre, Contato, Privacidade" },
+    defaultProps: {},
+    textProps: {
+      text: "studio.template.footer.text",
+      links: "studio.template.footer.links",
+    },
     defaultStyle: {},
     width: 600,
     height: 60,
@@ -201,17 +247,28 @@ const COMPONENT_TEMPLATES: Array<{
 
 // Provedores de publicação: cada um exige a credencial correta no ambiente do
 // servidor (inclusive SSH). O slug é enviado ao Deploy Adapter real do backend.
-const DEPLOY_PROVIDERS: Array<{ label: string; slug: string; credential: string }> = [
-  { label: "Vercel", slug: "vercel", credential: "VERCEL_TOKEN" },
-  { label: "Cloudflare Pages", slug: "cloudflare", credential: "CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID" },
-  { label: "Netlify", slug: "netlify", credential: "NETLIFY_AUTH_TOKEN" },
-  { label: "SSH / Servidor Próprio", slug: "ssh", credential: "chave SSH e host (SSH_PRIVATE_KEY, SSH_HOST, SSH_USER)" },
+const DEPLOY_PROVIDERS: Array<{ labelKey: string; slug: string; credentialKey: string }> = [
+  { labelKey: "studio.deploy.provider.vercel", slug: "vercel", credentialKey: "studio.deploy.credential.vercel" },
+  { labelKey: "studio.deploy.provider.cloudflare", slug: "cloudflare", credentialKey: "studio.deploy.credential.cloudflare" },
+  { labelKey: "studio.deploy.provider.netlify", slug: "netlify", credentialKey: "studio.deploy.credential.netlify" },
+  { labelKey: "studio.deploy.provider.ssh", slug: "ssh", credentialKey: "studio.deploy.credential.ssh" },
 ];
 
+/** Resolve as chaves de texto do modelo no idioma activo, no momento de inserir. */
+function translateProps(
+  keys: Record<string, string>,
+  translate: (key: string) => string,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(keys).map(([prop, key]) => [prop, translate(key)]),
+  );
+}
+
 export function StudioCanvasPage() {
+  const { t } = useT();
   const [project, setProject] = useState<BuilderProject | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"canvas" | "preview">("canvas");
+  const [activeTab, setActiveTab] = useState<"canvas" | "preview" | "live">("canvas");
   const [selectedCompId, setSelectedCompId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -268,7 +325,7 @@ export function StudioCanvasPage() {
             {
               id: "comp_hero",
               type: "heading",
-              props: { text: "Bem-vindo ao Studio do Hades", level: "h1" },
+              props: { text: t("studio.seed.hero"), level: "h1" },
               x: 40,
               y: 40,
               width: 700,
@@ -277,7 +334,7 @@ export function StudioCanvasPage() {
             {
               id: "comp_lead",
               type: "paragraph",
-              props: { text: "Editor visual interativo de ponta a ponta com preview ao vivo, undo/redo e export rastreável." },
+              props: { text: t("studio.seed.lead") },
               x: 40,
               y: 120,
               width: 700,
@@ -286,7 +343,7 @@ export function StudioCanvasPage() {
             {
               id: "comp_cta",
               type: "button",
-              props: { label: "Experimentar Agora" },
+              props: { label: t("studio.seed.cta") },
               x: 40,
               y: 190,
               width: 180,
@@ -297,11 +354,11 @@ export function StudioCanvasPage() {
         setProject(created);
       }
     } catch (err: unknown) {
-      setNotice({ type: "error", message: `Erro ao carregar projeto: ${String(err)}` });
+      setNotice({ type: "error", message: t("studio.notice.loadError", { error: String(err) }) });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadProject();
@@ -326,14 +383,14 @@ export function StudioCanvasPage() {
       .catch((err: unknown) => {
         if (!cancelled) {
           setPreviewSrc(null);
-          setNotice({ type: "error", message: `Erro ao carregar preview autenticado: ${String(err)}` });
+          setNotice({ type: "error", message: t("studio.notice.previewAuthError", { error: String(err) }) });
         }
       });
     return () => {
       cancelled = true;
       if (objectURL) URL.revokeObjectURL(objectURL);
     };
-  }, [activeTab, project]);
+  }, [activeTab, project, t]);
 
   // Synchronize visual components with the real backend
   const syncComponents = async (newComponents: VisualComponent[]) => {
@@ -341,9 +398,9 @@ export function StudioCanvasPage() {
     try {
       const updated = await updateBuilderVisual(project.id, newComponents, project.version);
       setProject(updated);
-      setNotice({ type: "info", message: `Canvas atualizado (v${updated.version})` });
+      setNotice({ type: "info", message: t("studio.notice.canvasUpdated", { version: updated.version }) });
     } catch (err: unknown) {
-      setNotice({ type: "error", message: `Erro ao salvar canvas: ${String(err)}` });
+      setNotice({ type: "error", message: t("studio.notice.canvasSaveError", { error: String(err) }) });
     }
   };
 
@@ -373,7 +430,7 @@ export function StudioCanvasPage() {
   const handleGenerateAI = async () => {
     if (!project || !aiPrompt.trim() || aiGenerating) return;
     setAiGenerating(true);
-    setNotice({ type: "info", message: "Gerando componentes com o modelo local…" });
+    setNotice({ type: "info", message: t("studio.notice.generating") });
     try {
       const tags = await fetch(`${API_BASE}/api/tags`).then((r) => r.json());
       const names: string[] = (tags?.models ?? [])
@@ -382,7 +439,7 @@ export function StudioCanvasPage() {
       // Local-first: prefer a model that runs on the user's machine over a cloud one.
       const model = pickLocalFirstModel(names);
       if (!model) {
-        setNotice({ type: "error", message: "Nenhum modelo disponível. Baixe um modelo em Configurações primeiro." });
+        setNotice({ type: "error", message: t("studio.notice.noModel") });
         return;
       }
       const res = await fetch(`${API_BASE}/api/generate`, {
@@ -392,7 +449,7 @@ export function StudioCanvasPage() {
       }).then((r) => r.json());
       const generated = parseGeneratedComponents(String(res?.response ?? ""));
       if (generated.length === 0) {
-        setNotice({ type: "error", message: "A IA não retornou componentes válidos. Tente descrever de outro jeito." });
+        setNotice({ type: "error", message: t("studio.notice.invalidComponents") });
         return;
       }
       const base = aiReplace ? [] : project.components || [];
@@ -404,11 +461,16 @@ export function StudioCanvasPage() {
         height: 80,
       }));
       await syncComponents([...base, ...positioned]);
-      const how = aiReplace ? "gerados do zero" : "adicionados";
-      setNotice({ type: "success", message: `${generated.length} componentes ${how} pelo modelo local (${model}).` });
+      setNotice({
+        type: "success",
+        message: t(
+          aiReplace ? "studio.notice.generatedFresh" : "studio.notice.generatedAdded",
+          { count: generated.length, model },
+        ),
+      });
       setAiPrompt("");
     } catch (err: unknown) {
-      setNotice({ type: "error", message: `Falha ao gerar com IA: ${String(err)}` });
+      setNotice({ type: "error", message: t("studio.notice.generateError", { error: String(err) }) });
     } finally {
       setAiGenerating(false);
     }
@@ -422,7 +484,7 @@ export function StudioCanvasPage() {
     const newComponent: VisualComponent = {
       id: newId,
       type: tmpl.type,
-      props: { ...tmpl.defaultProps },
+      props: { ...tmpl.defaultProps, ...translateProps(tmpl.textProps, t) },
       style: { ...tmpl.defaultStyle },
       x: 40,
       y: 40 + current.length * 60,
@@ -512,7 +574,7 @@ export function StudioCanvasPage() {
     try {
       setInstantPreviewHtml(generateStudioHTML(project));
     } catch (err: unknown) {
-      setNotice({ type: "error", message: `Não foi possível gerar a prévia: ${String(err)}` });
+      setNotice({ type: "error", message: t("studio.notice.previewError", { error: String(err) }) });
     }
   };
 
@@ -531,9 +593,9 @@ export function StudioCanvasPage() {
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
-      setNotice({ type: "info", message: "HTML do app baixado." });
+      setNotice({ type: "info", message: t("studio.notice.downloaded") });
     } catch (err: unknown) {
-      setNotice({ type: "error", message: `Não foi possível baixar o HTML: ${String(err)}` });
+      setNotice({ type: "error", message: t("studio.notice.downloadError", { error: String(err) }) });
     }
   };
 
@@ -542,9 +604,9 @@ export function StudioCanvasPage() {
     try {
       const undone = await undoBuilder(project.id, project.version);
       setProject(undone);
-      setNotice({ type: "info", message: `Undo executado (v${undone.version})` });
+      setNotice({ type: "info", message: t("studio.notice.undo", { version: undone.version }) });
     } catch (err: unknown) {
-      setNotice({ type: "error", message: `Nada para desfazer: ${String(err)}` });
+      setNotice({ type: "error", message: t("studio.notice.undoError", { error: String(err) }) });
     }
   };
 
@@ -554,9 +616,9 @@ export function StudioCanvasPage() {
     try {
       const redone = await redoBuilder(project.id, project.version);
       setProject(redone);
-      setNotice({ type: "info", message: `Redo executado (v${redone.version})` });
+      setNotice({ type: "info", message: t("studio.notice.redo", { version: redone.version }) });
     } catch (err: unknown) {
-      setNotice({ type: "error", message: `Nada para refazer: ${String(err)}` });
+      setNotice({ type: "error", message: t("studio.notice.redoError", { error: String(err) }) });
     }
   };
 
@@ -567,9 +629,9 @@ export function StudioCanvasPage() {
       const res = await previewBuilder(project.id);
       setProject(res.project);
       setActiveTab("preview");
-      setNotice({ type: "success", message: "Preview ao vivo gerado no backend com sucesso!" });
+      setNotice({ type: "success", message: t("studio.notice.previewGenerated") });
     } catch (err: unknown) {
-      setNotice({ type: "error", message: `Erro ao gerar preview: ${String(err)}` });
+      setNotice({ type: "error", message: t("studio.notice.previewGenerateError", { error: String(err) }) });
     }
   };
 
@@ -582,7 +644,7 @@ export function StudioCanvasPage() {
       const checksum = res.checksum || res.sha256;
       setNotice({
         type: "success",
-        message: `Projeto exportado com sucesso (SHA-256 verificado)!`,
+        message: t("studio.notice.exported"),
         checksum: checksum,
       });
 
@@ -597,23 +659,24 @@ export function StudioCanvasPage() {
       document.body.removeChild(link);
       window.setTimeout(() => URL.revokeObjectURL(archiveURL), 0);
     } catch (err: unknown) {
-      setNotice({ type: "error", message: `Erro ao exportar: ${String(err)}` });
+      setNotice({ type: "error", message: t("studio.notice.exportError", { error: String(err) }) });
     }
   };
 
   // Criação a partir de modelo: confirma antes de substituir o projeto aberto e
   // trata erros (os botões antigos trocavam o projeto sem aviso e sem .catch).
-  const handleCreateTemplate = async (name: string, kind: BuilderProject["kind"]) => {
-    if (project && !(await confirmDialog(`Criar "${name}"? O projeto atualmente aberto no editor será substituído por um novo projeto em branco.`, { confirmLabel: "Criar" }))) {
+  const handleCreateTemplate = async (nameKey: string, kind: BuilderProject["kind"]) => {
+    const name = t(nameKey);
+    if (project && !(await confirmDialog(t("studio.create.confirm", { name }), { confirmLabel: t("studio.create.confirmLabel") }))) {
       return;
     }
     try {
       const created = await createBuilder({ name, kind });
       setProject(created);
       setSelectedCompId(null);
-      setNotice({ type: "success", message: `Novo projeto "${name}" criado.` });
+      setNotice({ type: "success", message: t("studio.create.success", { name }) });
     } catch (err: unknown) {
-      setNotice({ type: "error", message: `Erro ao criar projeto a partir do modelo: ${String(err)}` });
+      setNotice({ type: "error", message: t("studio.create.error", { error: String(err) }) });
     }
   };
 
@@ -622,7 +685,8 @@ export function StudioCanvasPage() {
   // credencial ausente), sempre citando a credencial correta do provedor.
   const handleDeployAttempt = async (provider: (typeof DEPLOY_PROVIDERS)[number]) => {
     if (!project) return;
-    setDeployStatus({ status: "Publicando…", message: `Enviando o projeto para ${provider.label} pelo Deploy Adapter…` });
+    const providerLabel = t(provider.labelKey);
+    setDeployStatus({ status: t("studio.deploy.publishing"), message: t("studio.deploy.sending", { provider: providerLabel }) });
     try {
       const result = await deployBuilder(project.id, provider.slug, {});
       const deployment = (result as { deployment?: { status?: string; url?: string }; status?: string; url?: string }).deployment ?? result;
@@ -630,18 +694,27 @@ export function StudioCanvasPage() {
       const rawStatus = deployment?.status ?? "";
       const humanStatus = missionStateLabel(rawStatus);
       if (url) {
-        setDeployStatus({ status: humanStatus || "Publicado", message: `Publicado em ${provider.label}. URL: ${url}` });
+        setDeployStatus({
+          status: humanStatus || t("studio.deploy.published"),
+          message: t("studio.deploy.publishedWithUrl", { provider: providerLabel, url }),
+        });
       } else {
         setDeployStatus({
-          status: humanStatus || "Em processamento",
-          message: `${provider.label}: solicitação de publicação aceita pelo runtime${humanStatus ? ` (estado: ${humanStatus})` : ""}. Acompanhe a conclusão e a URL final.`,
+          status: humanStatus || t("studio.deploy.processing"),
+          message: humanStatus
+            ? t("studio.deploy.acceptedWithStatus", { provider: providerLabel, status: humanStatus })
+            : t("studio.deploy.accepted", { provider: providerLabel }),
         });
       }
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
       setDeployStatus({
-        status: "Bloqueado (dependência externa)",
-        message: `Não foi possível publicar em ${provider.label}: ${reason}. Configure a credencial no ambiente do servidor: ${provider.credential}. O sistema não falsifica a publicação.`,
+        status: t("studio.deploy.blocked"),
+        message: t("studio.deploy.failed", {
+          provider: providerLabel,
+          reason,
+          credential: t(provider.credentialKey),
+        }),
       });
     }
   };
@@ -660,7 +733,7 @@ export function StudioCanvasPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-sm font-semibold text-neutral-900 dark:text-white sm:text-base">
-                  {project?.name || "Editor do Studio"}
+                  {project?.name || t("studio.header.title")}
                 </h1>
                 {project && (
                   <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-mono text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
@@ -673,7 +746,7 @@ export function StudioCanvasPage() {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-neutral-400">Monte um site ou app adicionando componentes com um clique e reordenando a lista; veja a prévia e exporte em ZIP.</p>
+              <p className="text-xs text-neutral-400">{t("studio.header.subtitle")}</p>
             </div>
           </div>
 
@@ -685,7 +758,7 @@ export function StudioCanvasPage() {
                 onClick={handleUndo}
                 disabled={!project || !project.undo_stack || project.undo_stack.length === 0}
                 className="rounded p-1.5 text-neutral-600 hover:bg-white hover:text-neutral-900 disabled:opacity-30 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-white"
-                title="Desfazer (Undo)"
+                title={t("studio.header.undo")}
               >
                 <ArrowUturnLeftIcon className="h-4 w-4" />
               </button>
@@ -694,7 +767,7 @@ export function StudioCanvasPage() {
                 onClick={handleRedo}
                 disabled={!project || !project.redo_stack || project.redo_stack.length === 0}
                 className="rounded p-1.5 text-neutral-600 hover:bg-white hover:text-neutral-900 disabled:opacity-30 dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-white"
-                title="Refazer (Redo)"
+                title={t("studio.header.redo")}
               >
                 <ArrowUturnRightIcon className="h-4 w-4" />
               </button>
@@ -712,7 +785,7 @@ export function StudioCanvasPage() {
                 }`}
               >
                 <PencilSquareIcon className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Editor</span>
+                <span className="hidden sm:inline">{t("studio.header.tabEditor")}</span>
               </button>
               <button
                 type="button"
@@ -724,7 +797,19 @@ export function StudioCanvasPage() {
                 }`}
               >
                 <EyeIcon className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Prévia</span>
+                <span className="hidden sm:inline">{t("studio.header.tabPreview")}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("live")}
+                className={`flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium ${
+                  activeTab === "live"
+                    ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-white"
+                    : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+                }`}
+              >
+                <BoltIcon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t("liveBuild.title")}</span>
               </button>
             </div>
 
@@ -733,10 +818,10 @@ export function StudioCanvasPage() {
               type="button"
               onClick={handleExport}
               className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 shadow-sm hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-750"
-              title="Exportar ZIP com checksum SHA-256"
+              title={t("studio.header.exportTitle")}
             >
               <ArrowDownTrayIcon className="h-4 w-4" />
-              <span className="hidden md:inline">Exportar ZIP</span>
+              <span className="hidden md:inline">{t("studio.header.export")}</span>
             </button>
 
             {/* Download the app as standalone HTML */}
@@ -744,10 +829,10 @@ export function StudioCanvasPage() {
               type="button"
               onClick={handleDownloadHTML}
               className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
-              title="Baixar o app como um arquivo HTML standalone"
+              title={t("studio.header.downloadHtmlTitle")}
             >
               <ArrowDownTrayIcon className="h-4 w-4" />
-              <span className="hidden md:inline">Baixar HTML</span>
+              <span className="hidden md:inline">{t("studio.header.downloadHtml")}</span>
             </button>
 
             {/* Instant client-side preview */}
@@ -755,10 +840,10 @@ export function StudioCanvasPage() {
               type="button"
               onClick={handleInstantPreview}
               className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
-              title="Ver o app agora em uma nova aba (prévia instantânea, sem servidor)"
+              title={t("studio.header.instantPreviewTitle")}
             >
               <EyeIcon className="h-4 w-4" />
-              <span className="hidden md:inline">Ver agora</span>
+              <span className="hidden md:inline">{t("studio.header.instantPreview")}</span>
             </button>
 
             {/* Deploy Adapter Button */}
@@ -768,7 +853,7 @@ export function StudioCanvasPage() {
               className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
             >
               <RocketLaunchIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Publicar</span>
+              <span className="hidden sm:inline">{t("studio.header.publish")}</span>
             </button>
           </div>
         </header>
@@ -816,12 +901,12 @@ export function StudioCanvasPage() {
             {/* Geração por IA local (descreva o app e o modelo monta os componentes) */}
             <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-2.5 dark:border-blue-900/60 dark:bg-blue-950/20">
               <label className="text-xs font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-300">
-                Gerar com IA
+                {t("studio.palette.ai.title")}
               </label>
               <textarea
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
-                placeholder="Descreva o app/site que você quer…"
+                placeholder={t("studio.palette.ai.placeholder")}
                 rows={2}
                 className="mt-1.5 w-full resize-none rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-xs dark:border-neutral-700 dark:bg-neutral-800"
               />
@@ -832,7 +917,7 @@ export function StudioCanvasPage() {
                   onChange={(e) => setAiReplace(e.target.checked)}
                   className="h-3 w-3"
                 />
-                Gerar do zero (substituir o canvas)
+                {t("studio.palette.ai.replace")}
               </label>
               <button
                 type="button"
@@ -840,11 +925,11 @@ export function StudioCanvasPage() {
                 disabled={aiGenerating || !aiPrompt.trim()}
                 className="mt-1.5 w-full rounded-lg bg-blue-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
               >
-                {aiGenerating ? "Gerando com modelo local…" : "Gerar componentes"}
+                {aiGenerating ? t("studio.palette.ai.generating") : t("studio.palette.ai.generate")}
               </button>
             </div>
             <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-              Componentes
+              {t("studio.palette.components")}
             </h2>
             <div className="mt-3 space-y-2">
               {COMPONENT_TEMPLATES.map((tmpl) => (
@@ -858,8 +943,8 @@ export function StudioCanvasPage() {
                     {tmpl.icon}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-semibold">{tmpl.label}</div>
-                    <div className="text-[10px] text-neutral-400">Clique para adicionar</div>
+                    <div className="truncate font-semibold">{t(tmpl.labelKey)}</div>
+                    <div className="text-[10px] text-neutral-400">{t("studio.palette.addHint")}</div>
                   </div>
                   <PlusIcon className="h-4 w-4 shrink-0 text-neutral-400" />
                 </button>
@@ -868,48 +953,48 @@ export function StudioCanvasPage() {
 
             <div className="mt-6 border-t border-neutral-100 pt-4 dark:border-neutral-800">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-                Modelos de Projeto
+                {t("studio.palette.templates")}
               </h3>
               <div className="mt-2 space-y-1 text-xs">
                 <button
                   type="button"
-                  onClick={() => void handleCreateTemplate("Novo Site Web", "website")}
+                  onClick={() => void handleCreateTemplate("studio.templateName.site", "website")}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <GlobeAltIcon className="h-4 w-4 text-emerald-500" />
-                  Site / Landing Page
+                  {t("studio.palette.template.site")}
                 </button>
                 <button
                   type="button"
-                  onClick={() => void handleCreateTemplate("Novo Dashboard", "dashboard")}
+                  onClick={() => void handleCreateTemplate("studio.templateName.dashboard", "dashboard")}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <ChartBarIcon className="h-4 w-4 text-blue-500" />
-                  Dashboard Analítico
+                  {t("studio.palette.template.dashboard")}
                 </button>
                 <button
                   type="button"
-                  onClick={() => void handleCreateTemplate("Nova Apresentação", "slides")}
+                  onClick={() => void handleCreateTemplate("studio.templateName.slides", "slides")}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <PresentationChartBarIcon className="h-4 w-4 text-violet-500" />
-                  Slides / Pitch Deck
+                  {t("studio.palette.template.slides")}
                 </button>
                 <button
                   type="button"
-                  onClick={() => void handleCreateTemplate("Novo Jogo Web", "game")}
+                  onClick={() => void handleCreateTemplate("studio.templateName.game", "game")}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <PuzzlePieceIcon className="h-4 w-4 text-amber-500" />
-                  Jogo 2D Interativo
+                  {t("studio.palette.template.game")}
                 </button>
                 <button
                   type="button"
-                  onClick={() => void handleCreateTemplate("Novo App Móvel", "app")}
+                  onClick={() => void handleCreateTemplate("studio.templateName.app", "app")}
                   className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   <DevicePhoneMobileIcon className="h-4 w-4 text-rose-500" />
-                  Aplicação Web App
+                  {t("studio.palette.template.app")}
                 </button>
               </div>
             </div>
@@ -919,7 +1004,7 @@ export function StudioCanvasPage() {
           <main className="flex-1 overflow-auto p-4 lg:p-6">
             {/* Mobile Component Strip */}
             <div className="md:hidden flex items-center gap-1.5 overflow-x-auto pb-3 mb-3 border-b border-neutral-200 dark:border-neutral-800">
-              <span className="text-[10px] uppercase font-bold text-neutral-400 shrink-0">Adicionar:</span>
+              <span className="text-[10px] uppercase font-bold text-neutral-400 shrink-0">{t("studio.palette.mobileAdd")}</span>
               {COMPONENT_TEMPLATES.map((tmpl) => (
                 <button
                   key={tmpl.type}
@@ -928,18 +1013,20 @@ export function StudioCanvasPage() {
                   className="flex items-center gap-1 shrink-0 rounded-lg border border-neutral-200 bg-white px-2 py-1 text-xs font-medium text-neutral-800 shadow-xs dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                 >
                   <span className="text-neutral-400">+</span>
-                  <span>{tmpl.label}</span>
+                  <span>{t(tmpl.labelKey)}</span>
                 </button>
               ))}
             </div>
-            {activeTab === "canvas" ? (
+            {activeTab === "live" ? (
+          <LiveBuildPanel />
+        ) : activeTab === "canvas" ? (
               <div className="mx-auto max-w-4xl">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="text-xs font-medium text-neutral-500">
-                    Área do Canvas ({project?.components?.length || 0} componentes)
+                    {t("studio.canvas.area", { count: project?.components?.length || 0 })}
                   </div>
                   <div className="text-xs text-neutral-400">
-                    Clique em um componente para editar suas propriedades
+                    {t("studio.canvas.hint")}
                   </div>
                 </div>
 
@@ -947,16 +1034,16 @@ export function StudioCanvasPage() {
                   {loading ? (
                     <div className="flex flex-col items-center justify-center py-20 text-center text-neutral-400">
                       <SparklesIcon className="h-8 w-8 animate-pulse text-neutral-400" />
-                      <p className="mt-2 text-xs">Carregando canvas do Studio...</p>
+                      <p className="mt-2 text-xs">{t("studio.canvas.loading")}</p>
                     </div>
                   ) : (!project?.components || project.components.length === 0) ? (
                     <div className="flex flex-col items-center justify-center py-20 text-center text-neutral-400">
                       <SparklesIcon className="h-10 w-10 text-neutral-300 dark:text-neutral-600" />
                       <p className="mt-3 text-sm font-medium text-neutral-600 dark:text-neutral-300">
-                        O canvas está vazio
+                        {t("studio.canvas.empty")}
                       </p>
                       <p className="mt-1 text-xs text-neutral-400">
-                        Clique em um componente na barra lateral esquerda para começar a montar.
+                        {t("studio.canvas.emptyHint")}
                       </p>
                     </div>
                   ) : (
@@ -988,7 +1075,7 @@ export function StudioCanvasPage() {
                               handleReorderDrop(comp.id);
                             }}
                             onDragEnd={() => setDragId(null)}
-                            title="Arraste para reordenar"
+                            title={t("studio.canvas.dragHint")}
                             className={`group relative rounded-xl border p-4 transition cursor-pointer ${dragId === comp.id ? "opacity-50 ring-2 ring-violet-400" : ""} ${
                               isSelected
                                 ? "border-neutral-900 bg-neutral-50/80 shadow-md ring-2 ring-neutral-900/10 dark:border-white dark:bg-neutral-800/80 dark:ring-white/10"
@@ -1009,7 +1096,7 @@ export function StudioCanvasPage() {
                                   }}
                                   disabled={idx === 0}
                                   className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-20 dark:hover:bg-neutral-800"
-                                  title="Mover para cima"
+                                  title={t("studio.canvas.moveUp")}
                                 >
                                   <ArrowUpIcon className="h-3.5 w-3.5" />
                                 </button>
@@ -1021,7 +1108,7 @@ export function StudioCanvasPage() {
                                   }}
                                   disabled={idx === (project?.components?.length ?? 0) - 1}
                                   className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-20 dark:hover:bg-neutral-800"
-                                  title="Mover para baixo"
+                                  title={t("studio.canvas.moveDown")}
                                 >
                                   <ArrowDownIcon className="h-3.5 w-3.5" />
                                 </button>
@@ -1032,7 +1119,7 @@ export function StudioCanvasPage() {
                                     handleDeleteComponent(comp.id);
                                   }}
                                   className="rounded p-1 text-neutral-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
-                                  title="Excluir"
+                                  title={t("studio.canvas.delete")}
                                 >
                                   <TrashIcon className="h-3.5 w-3.5" />
                                 </button>
@@ -1066,12 +1153,12 @@ export function StudioCanvasPage() {
                             {/* Render Component Content */}
                             {comp.type === "heading" && (
                               <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
-                                {comp.props?.text || "Título"}
+                                {comp.props?.text || t("studio.template.heading.label")}
                               </h2>
                             )}
                             {comp.type === "paragraph" && (
                               <p className="text-sm text-neutral-600 dark:text-neutral-300">
-                                {comp.props?.text || "Texto do parágrafo"}
+                                {comp.props?.text || t("studio.render.paragraphFallback")}
                               </p>
                             )}
                             {comp.type === "button" && (
@@ -1079,23 +1166,23 @@ export function StudioCanvasPage() {
                                 type="button"
                                 className="inline-flex rounded-lg bg-neutral-900 px-4 py-2 text-xs font-semibold text-white shadow-sm dark:bg-white dark:text-neutral-900"
                               >
-                                {comp.props?.label || "Botão"}
+                                {comp.props?.label || t("studio.render.buttonFallback")}
                               </button>
                             )}
                             {comp.type === "card" && (
                               <div className="rounded-lg border border-neutral-200 bg-neutral-50/50 p-3 dark:border-neutral-800 dark:bg-neutral-800/40">
                                 <h3 className="font-semibold text-neutral-900 dark:text-white">
-                                  {comp.props?.title || "Título do Card"}
+                                  {comp.props?.title || t("studio.render.cardTitleFallback")}
                                 </h3>
                                 <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                                  {comp.props?.body || "Corpo do card explicativo."}
+                                  {comp.props?.body || t("studio.render.cardBodyFallback")}
                                 </p>
                               </div>
                             )}
                             {comp.type === "metric" && (
                               <div className="rounded-lg bg-neutral-100 p-3 dark:bg-neutral-800">
                                 <div className="text-[11px] uppercase tracking-wider text-neutral-400">
-                                  {comp.props?.label || "Métrica"}
+                                  {comp.props?.label || t("studio.render.metricFallback")}
                                 </div>
                                 <div className="mt-1 text-2xl font-bold text-neutral-900 dark:text-white">
                                   {comp.props?.value || "0"}
@@ -1105,10 +1192,10 @@ export function StudioCanvasPage() {
                             {comp.type === "navbar" && (
                               <div className="flex items-center justify-between border-b border-neutral-200 pb-2 dark:border-neutral-800">
                                 <div className="font-bold text-neutral-900 dark:text-white">
-                                  {comp.props?.brand || "Brand"}
+                                  {comp.props?.brand || t("studio.render.navbarBrandFallback")}
                                 </div>
                                 <div className="flex gap-3 text-xs text-neutral-500">
-                                  {(comp.props?.links || "Link 1, Link 2").split(",").map((l, i) => (
+                                  {(comp.props?.links || t("studio.render.navbarLinksFallback")).split(",").map((l, i) => (
                                     <span key={i}>{l.trim()}</span>
                                   ))}
                                 </div>
@@ -1116,30 +1203,30 @@ export function StudioCanvasPage() {
                             )}
                             {comp.type === "hero" && (
                               <div className="rounded-xl bg-gradient-to-br from-neutral-900 to-neutral-700 p-6 text-center text-white dark:from-neutral-100 dark:to-neutral-300 dark:text-neutral-900">
-                                <h1 className="text-2xl font-bold">{comp.props?.title || "Título do Hero"}</h1>
-                                <p className="mt-2 text-sm opacity-80">{comp.props?.subtitle || "Subtítulo explicativo"}</p>
-                                <span className="mt-4 inline-flex rounded-lg bg-white px-4 py-2 text-xs font-semibold text-neutral-900 dark:bg-neutral-900 dark:text-white">{comp.props?.cta || "Ação"}</span>
+                                <h1 className="text-2xl font-bold">{comp.props?.title || t("studio.render.heroTitleFallback")}</h1>
+                                <p className="mt-2 text-sm opacity-80">{comp.props?.subtitle || t("studio.render.heroSubtitleFallback")}</p>
+                                <span className="mt-4 inline-flex rounded-lg bg-white px-4 py-2 text-xs font-semibold text-neutral-900 dark:bg-neutral-900 dark:text-white">{comp.props?.cta || t("studio.render.heroCtaFallback")}</span>
                               </div>
                             )}
                             {comp.type === "image" && (
                               comp.props?.src ? (
                                 <img src={comp.props.src} alt={comp.props?.alt || ""} className="max-w-full rounded-lg" />
                               ) : (
-                                <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-neutral-300 text-xs text-neutral-400 dark:border-neutral-700">Imagem (defina a URL nas propriedades)</div>
+                                <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-neutral-300 text-xs text-neutral-400 dark:border-neutral-700">{t("studio.render.imageEmpty")}</div>
                               )
                             )}
                             {comp.type === "input" && (
                               <label className="block text-xs">
-                                <span className="text-neutral-700 dark:text-neutral-300">{comp.props?.label || "Rótulo"}</span>
+                                <span className="text-neutral-700 dark:text-neutral-300">{comp.props?.label || t("studio.render.inputLabelFallback")}</span>
                                 <input type="text" disabled placeholder={comp.props?.placeholder || ""} className="mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm dark:border-neutral-700 dark:bg-neutral-900" />
                               </label>
                             )}
                             {comp.type === "link" && (
-                              <span className="text-sm font-medium text-blue-600 underline dark:text-blue-400">{comp.props?.text || "Link"}</span>
+                              <span className="text-sm font-medium text-blue-600 underline dark:text-blue-400">{comp.props?.text || t("studio.template.link.label")}</span>
                             )}
                             {comp.type === "list" && (
                               <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-700 dark:text-neutral-300">
-                                {(comp.props?.items || "Item 1, Item 2").split(",").map((it, i) => (
+                                {(comp.props?.items || t("studio.render.listFallback")).split(",").map((it, i) => (
                                   <li key={i}>{it.trim()}</li>
                                 ))}
                               </ul>
@@ -1149,33 +1236,33 @@ export function StudioCanvasPage() {
                             )}
                             {comp.type === "pricing" && (
                               <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-center dark:border-neutral-700 dark:bg-neutral-900">
-                                <div className="text-sm font-bold text-neutral-900 dark:text-white">{comp.props?.plan || "Plano Pro"}</div>
-                                <div className="my-1 text-2xl font-extrabold text-neutral-900 dark:text-white">{comp.props?.price || "R$ 49/mês"}</div>
+                                <div className="text-sm font-bold text-neutral-900 dark:text-white">{comp.props?.plan || t("studio.template.pricing.plan")}</div>
+                                <div className="my-1 text-2xl font-extrabold text-neutral-900 dark:text-white">{comp.props?.price || t("studio.template.pricing.price")}</div>
                                 <ul className="space-y-1 text-xs text-neutral-600 dark:text-neutral-400">
-                                  {(comp.props?.features || "Recurso 1, Recurso 2").split(",").map((f, i) => (
+                                  {(comp.props?.features || t("studio.render.pricingFeaturesFallback")).split(",").map((f, i) => (
                                     <li key={i}>{f.trim()}</li>
                                   ))}
                                 </ul>
-                                <span className="mt-3 inline-flex rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white dark:bg-white dark:text-neutral-900">{comp.props?.cta || "Assinar"}</span>
+                                <span className="mt-3 inline-flex rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white dark:bg-white dark:text-neutral-900">{comp.props?.cta || t("studio.template.pricing.cta")}</span>
                               </div>
                             )}
                             {comp.type === "testimonial" && (
                               <figure className="m-0 border-l-[3px] border-neutral-900 pl-4 dark:border-neutral-100">
-                                <blockquote className="m-0 text-sm italic text-neutral-800 dark:text-neutral-100">{comp.props?.quote || "Mudou completamente o nosso fluxo de trabalho."}</blockquote>
-                                <figcaption className="mt-2 text-xs font-semibold text-neutral-500">{comp.props?.author || "Cliente satisfeito"}</figcaption>
+                                <blockquote className="m-0 text-sm italic text-neutral-800 dark:text-neutral-100">{comp.props?.quote || t("studio.template.testimonial.quote")}</blockquote>
+                                <figcaption className="mt-2 text-xs font-semibold text-neutral-500">{comp.props?.author || t("studio.template.testimonial.author")}</figcaption>
                               </figure>
                             )}
                             {comp.type === "faq" && (
                               <details className="rounded-lg border border-neutral-200 p-3 dark:border-neutral-700">
-                                <summary className="cursor-pointer text-sm font-semibold text-neutral-800 dark:text-neutral-100">{comp.props?.question || "Pergunta frequente?"}</summary>
-                                <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">{comp.props?.answer || "Resposta clara e objetiva para a dúvida."}</p>
+                                <summary className="cursor-pointer text-sm font-semibold text-neutral-800 dark:text-neutral-100">{comp.props?.question || t("studio.template.faq.question")}</summary>
+                                <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">{comp.props?.answer || t("studio.template.faq.answer")}</p>
                               </details>
                             )}
                             {comp.type === "footer" && (
                               <div className="flex items-center justify-between border-t border-neutral-200 pt-3 text-xs text-neutral-500 dark:border-neutral-800">
-                                <span>{comp.props?.text || "© 2026 Minha Empresa"}</span>
+                                <span>{comp.props?.text || t("studio.template.footer.text")}</span>
                                 <div className="flex gap-3">
-                                  {(comp.props?.links || "Sobre, Contato").split(",").map((l, i) => (
+                                  {(comp.props?.links || t("studio.render.footerLinksFallback")).split(",").map((l, i) => (
                                     <span key={i}>{l.trim()}</span>
                                   ))}
                                 </div>
@@ -1192,20 +1279,20 @@ export function StudioCanvasPage() {
               /* Live Preview Mode (Real iframe to backend preview) */
               <div className="flex h-full flex-col">
                 <div className="mb-2 flex items-center justify-between text-xs text-neutral-500">
-                  <span>Prévia autenticada: carregada com a sua sessão; a URL interna é protegida e não é compartilhável.</span>
+                  <span>{t("studio.preview.authNote")}</span>
                   <button
                     type="button"
                     disabled={!previewSrc}
                     onClick={() => setPreviewExpanded(true)}
                     className={`font-medium text-blue-600 hover:underline dark:text-blue-400 ${previewSrc ? "" : "pointer-events-none opacity-50"}`}
                   >
-                    Expandir prévia &rarr;
+                    {t("studio.preview.expand")} &rarr;
                   </button>
                 </div>
                 <div className="flex-1 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
                   <iframe
                     src={previewSrc ?? undefined}
-                    title="Prévia ao vivo"
+                    title={t("studio.preview.frameTitle")}
                     sandbox="allow-scripts"
                     className="h-full w-full border-0 bg-white"
                   />
@@ -1219,7 +1306,7 @@ export function StudioCanvasPage() {
             <aside className="w-72 shrink-0 border-l border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 overflow-y-auto">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-                  Propriedades
+                  {t("studio.inspector.title")}
                 </h3>
                 <button
                   type="button"
@@ -1232,7 +1319,7 @@ export function StudioCanvasPage() {
 
               <div className="mt-4 space-y-3 text-xs">
                 <div>
-                  <label className="block text-neutral-500">Tipo</label>
+                  <label className="block text-neutral-500">{t("studio.inspector.type")}</label>
                   <input
                     type="text"
                     disabled
@@ -1243,7 +1330,7 @@ export function StudioCanvasPage() {
 
                 {selectedComponent.props?.text !== undefined && (
                   <div>
-                    <label className="block text-neutral-700 dark:text-neutral-300">Texto</label>
+                    <label className="block text-neutral-700 dark:text-neutral-300">{t("studio.inspector.text")}</label>
                     <textarea
                       rows={3}
                       value={selectedComponent.props.text}
@@ -1255,7 +1342,7 @@ export function StudioCanvasPage() {
 
                 {selectedComponent.props?.title !== undefined && (
                   <div>
-                    <label className="block text-neutral-700 dark:text-neutral-300">Título</label>
+                    <label className="block text-neutral-700 dark:text-neutral-300">{t("studio.inspector.titleField")}</label>
                     <input
                       type="text"
                       value={selectedComponent.props.title}
@@ -1267,7 +1354,7 @@ export function StudioCanvasPage() {
 
                 {selectedComponent.props?.body !== undefined && (
                   <div>
-                    <label className="block text-neutral-700 dark:text-neutral-300">Corpo</label>
+                    <label className="block text-neutral-700 dark:text-neutral-300">{t("studio.inspector.body")}</label>
                     <textarea
                       rows={3}
                       value={selectedComponent.props.body}
@@ -1279,7 +1366,7 @@ export function StudioCanvasPage() {
 
                 {selectedComponent.props?.label !== undefined && (
                   <div>
-                    <label className="block text-neutral-700 dark:text-neutral-300">Rótulo</label>
+                    <label className="block text-neutral-700 dark:text-neutral-300">{t("studio.inspector.label")}</label>
                     <input
                       type="text"
                       value={selectedComponent.props.label}
@@ -1291,7 +1378,7 @@ export function StudioCanvasPage() {
 
                 {selectedComponent.props?.value !== undefined && (
                   <div>
-                    <label className="block text-neutral-700 dark:text-neutral-300">Valor</label>
+                    <label className="block text-neutral-700 dark:text-neutral-300">{t("studio.inspector.value")}</label>
                     <input
                       type="text"
                       value={selectedComponent.props.value}
@@ -1303,7 +1390,7 @@ export function StudioCanvasPage() {
 
                 {selectedComponent.props?.brand !== undefined && (
                   <div>
-                    <label className="block text-neutral-700 dark:text-neutral-300">Marca</label>
+                    <label className="block text-neutral-700 dark:text-neutral-300">{t("studio.inspector.brand")}</label>
                     <input
                       type="text"
                       value={selectedComponent.props.brand}
@@ -1315,7 +1402,7 @@ export function StudioCanvasPage() {
 
                 {selectedComponent.props?.links !== undefined && (
                   <div>
-                    <label className="block text-neutral-700 dark:text-neutral-300">Links (separados por vírgula)</label>
+                    <label className="block text-neutral-700 dark:text-neutral-300">{t("studio.inspector.links")}</label>
                     <textarea
                       rows={2}
                       value={selectedComponent.props.links}
@@ -1327,7 +1414,7 @@ export function StudioCanvasPage() {
 
                 {selectedComponent.props?.change !== undefined && (
                   <div>
-                    <label className="block text-neutral-700 dark:text-neutral-300">Variação</label>
+                    <label className="block text-neutral-700 dark:text-neutral-300">{t("studio.inspector.change")}</label>
                     <input
                       type="text"
                       value={selectedComponent.props.change}
@@ -1339,7 +1426,7 @@ export function StudioCanvasPage() {
 
                 {selectedComponent.props?.action !== undefined && (
                   <div>
-                    <label className="block text-neutral-700 dark:text-neutral-300">Ação</label>
+                    <label className="block text-neutral-700 dark:text-neutral-300">{t("studio.inspector.action")}</label>
                     <input
                       type="text"
                       value={selectedComponent.props.action}
@@ -1355,7 +1442,7 @@ export function StudioCanvasPage() {
                     onClick={() => handleDeleteComponent(selectedComponent.id)}
                     className="flex-1 rounded-lg border border-red-200 bg-red-50 py-1.5 font-medium text-red-700 hover:bg-red-100 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
                   >
-                    Excluir
+                    {t("studio.canvas.delete")}
                   </button>
                 </div>
               </div>
@@ -1368,10 +1455,10 @@ export function StudioCanvasPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-neutral-900">
               <h3 className="text-base font-bold text-neutral-900 dark:text-white">
-                Publicar projeto
+                {t("studio.deploy.title")}
               </h3>
               <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                Selecione o provedor de nuvem para hospedar seu projeto. Sem credenciais ativas, o sistema mantém status honesto.
+                {t("studio.deploy.description")}
               </p>
 
               <div className="mt-4 space-y-2">
@@ -1382,9 +1469,9 @@ export function StudioCanvasPage() {
                     onClick={() => void handleDeployAttempt(prov)}
                     className="flex w-full items-center justify-between rounded-xl border border-neutral-200 p-3 text-left text-xs font-medium text-neutral-800 transition hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-800"
                   >
-                    <span>{prov.label}</span>
+                    <span>{t(prov.labelKey)}</span>
                     <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                      Requer credenciais
+                      {t("studio.deploy.requiresCredentials")}
                     </span>
                   </button>
                 ))}
@@ -1409,7 +1496,7 @@ export function StudioCanvasPage() {
                   }}
                   className="rounded-lg border border-neutral-300 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
                 >
-                  Fechar
+                  {t("studio.deploy.close")}
                 </button>
               </div>
             </div>
@@ -1421,7 +1508,7 @@ export function StudioCanvasPage() {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Prévia do app"
+            aria-label={t("studio.preview.dialogLabel")}
             className="fixed inset-0 z-50 flex flex-col bg-black/70 p-4"
             onClick={() => setInstantPreviewHtml(null)}
           >
@@ -1430,18 +1517,18 @@ export function StudioCanvasPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
-                <span className="text-sm font-semibold text-neutral-900 dark:text-white">Prévia — {project?.name || "app"}</span>
+                <span className="text-sm font-semibold text-neutral-900 dark:text-white">{t("studio.preview.dialogTitle", { name: project?.name || "app" })}</span>
                 <button
                   type="button"
                   onClick={() => setInstantPreviewHtml(null)}
-                  aria-label="Fechar prévia"
+                  aria-label={t("studio.preview.closeLabel")}
                   className="rounded-lg px-3 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
-                  Fechar ✕
+                  {t("studio.preview.close")}
                 </button>
               </div>
               <iframe
-                title="Prévia do app"
+                title={t("studio.preview.dialogLabel")}
                 srcDoc={instantPreviewHtml}
                 sandbox=""
                 className="h-full w-full flex-1 border-0 bg-white"
@@ -1453,7 +1540,7 @@ export function StudioCanvasPage() {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Prévia expandida"
+            aria-label={t("studio.preview.expandedDialogLabel")}
             className="fixed inset-0 z-50 flex flex-col bg-black/70 p-4"
             onClick={() => setPreviewExpanded(false)}
           >
@@ -1462,18 +1549,18 @@ export function StudioCanvasPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-2 dark:border-neutral-800">
-                <span className="text-sm font-semibold text-neutral-900 dark:text-white">Prévia autenticada — {project?.name || "app"}</span>
+                <span className="text-sm font-semibold text-neutral-900 dark:text-white">{t("studio.preview.expandedDialogTitle", { name: project?.name || "app" })}</span>
                 <button
                   type="button"
                   onClick={() => setPreviewExpanded(false)}
-                  aria-label="Fechar prévia"
+                  aria-label={t("studio.preview.closeLabel")}
                   className="rounded-lg px-3 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
-                  Fechar ✕
+                  {t("studio.preview.close")}
                 </button>
               </div>
               <iframe
-                title="Prévia autenticada expandida"
+                title={t("studio.preview.expandedFrameTitle")}
                 src={previewSrc}
                 sandbox="allow-scripts"
                 className="h-full w-full flex-1 border-0 bg-white"

@@ -1,0 +1,82 @@
+# HADES — MATRIZ DE PLATAFORMAS (medida)
+
+**Este ficheiro é gerado.** Não edite à mão: corrija a fonte e regenere com
+`python -X utf8 scripts/hades_platform_matrix.py`.
+
+## Porque este ficheiro existe
+
+O §ESTÁGIO 1 exige «atualizar inventário de **código, plataformas, workflows, pacotes e
+lacunas**», e o prompt exige distinguir **SOURCE, BUILD, PACKAGE, INSTALL, DEVICE_E2E,
+assinatura e hash** por plataforma.
+
+⇒ ***cross-compile não é teste nativo; bundle web não é aplicativo móvel; configuração EAS
+não é APK.***
+
+## A matriz
+
+| Plataforma | SOURCE | BUILD (workflow) | PACKAGE | Tamanho | Hash (SHA-256[:32]) | INSTALL | DEVICE_E2E | Assinatura |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **Windows** | `cmd/`, `app/`, `server/` (Go) | `dz23-windows-installer.yaml` | `dist\hades-installer-v3\HadesSetup-5cef8330f.exe` | 39.2 MB | `3a4f75981b2688a55df1d060e505522f` | NÃO MEDIDO (INSTALLED=NAO) | NÃO MEDIDO | não assinado (unsigned) |
+| **Linux** | `cmd/`, `app/`, `server/` (Go) | `dz23-linux-package.yaml` | `dist\hades-linux-amd64\hades-linux-amd64-UNSIGNED.tar.gz` | 16.2 MB | `fd84e33fc78ff77a16cc0a80531701e6` | NÃO MEDIDO (INSTALLED=NAO) | NÃO MEDIDO | não assinado (unsigned) |
+| **macOS** | `cmd/`, `app/`, `server/` (Go) | `dz23-macos-build.yaml` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | não assinado (unsigned) |
+| **Android** | `apps/mobile-agentic/` (Expo/RN + `android/`) | `dz23-e2e.yaml` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | APK de desenvolvimento (não publicável) |
+| **iOS** | `apps/mobile-agentic/` (Expo/RN) | `AUSENTE` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | não assinado (unsigned) |
+| **Web/PWA** | `app/ui/app/` (React+TS+Vite) | `dz23-e2e.yaml` | `app\ui\app\dist\index.html` | 9 KB | `e2dd04fc55f2cd267f6cdb79f23a4ad8` | N/A (build de produção) | NÃO MEDIDO (PWA_INSTALADO_NA_UI=NAO) | N/A |
+
+## Artefactos de COMPONENTE (nao sao uma das 6 plataformas)
+
+Pacotes que vivem em `dist/` e nao correspondem a um alvo de produto. *Sem esta seccao, um pacote que existe nao aparece em inventario nenhum.*
+
+| Componente | Pacote | Tamanho | Hash (SHA-256[:32]) | Proveniencia | Escrito em |
+| --- | --- | --- | --- | --- | --- |
+| `browser-bridge` | `dist\browser-bridge\hades-browser-bridge-0.1.0-unsigned.zip` | 112 KB | `1a02a55e1ddbc5a2ef0ea87bf4b8de49` | dc58be359643 | 2026-10-21 02:17 |
+| `browser-bridge-firefox` | `dist\browser-bridge-firefox\hades-browser-bridge-firefox-UNSIGNED.zip` | 108 KB | `bf39475e03ec9ff9bc431f140db83b18` | 0e158f3f58a4 | 2026-10-20 21:15 |
+
+
+## O que cada eixo significa, e o que NÃO conta
+
+| Eixo | Conta como MEDIDO | NÃO conta |
+| --- | --- | --- |
+| **SOURCE** | o código existe e compila | «o repositório menciona a plataforma» |
+| **BUILD** | um workflow **executou** o build | o workflow existir por si |
+| **PACKAGE** | o ficheiro **existe**, com tamanho e hash | «o workflow geraria» |
+| **INSTALL** | alguém **instalou** e abriu | o `dist/` ter o instalador |
+| **DEVICE_E2E** | teste em **dispositivo/emulador** | o Playwright no browser |
+| **Assinatura** | certificado + notarização | «não assinado durante o desenvolvimento» |
+
+## As lacunas, por plataforma
+
+- **Windows**: artefacto LEGADO: o PROVENIENCIA.txt nao confirma o SHA do candidato
+- **Linux**: artefacto de SOURCE_SHA 0e158f3f58a4 (declarado no PROVENIENCIA.txt DENTRO do tarball); cross-compile Windows→Linux com CGO=0; **NAO** e' build nativo, **NAO** foi instalado, e **NAO** e' byte-a-byte o artefacto do `dz23-linux-package.yaml` (que usa CGO=1)
+- **macOS**: **COMPILA sem cgo desde `42c184eb7`** (antes falhava com `undefined: GetCPUMem`). Falta o **artefacto empacotado** e assinado: o `dz23-macos-build.yaml` tem de correr num runner macOS para produzir o pacote (o cross-compile provado aqui nao empacota a app).
+- **Android**: **o `app.json`/`eas.json` existem; o APK não**
+- **iOS**: **BLOCKED_EXTERNAL**: exige macOS/Xcode + conta Apple
+- **Web/PWA**: bundle auto-coerente: 6/6 assets referenciados presentes; build de 2026-10-21 09:33 (sem SHA de fonte -- Vite nao o declara); servido por HTTP; o `manifest` existe
+
+## Os workflows, contados
+
+**16 workflows** em `.github/workflows/`:
+
+- `class-a-plus-integrity.yaml`
+- `dz23-agentic-quality.yaml`
+- `dz23-e2e.yaml`
+- `dz23-linux-package.yaml`
+- `dz23-macos-build.yaml`
+- `dz23-multi-provider.yaml`
+- `dz23-provider-smoke.yaml`
+- `dz23-windows-installer.yaml`
+- `latest.yaml`
+- `pr-gate.yaml`
+- `release-readiness.yaml`
+- `release.yaml`
+- `secret-scan.yaml`
+- `test-install.yaml`
+- `test-llamacpp-update.yaml`
+- `test.yaml`
+
+## A conclusão honesta
+
+⇒ ***o inventário é, sobretudo, uma lista do que falta:*** *nenhuma plataforma tem
+`INSTALL` medido, nenhuma tem `DEVICE_E2E`, e as que têm `PACKAGE` têm-no **não assinado**.
+Isso **não** é uma falha do produto: é o estado **medido**, e é o que impede
+`NOT_RELEASE_READY` de virar `RELEASE_READY` sem homologação real.

@@ -265,10 +265,23 @@ func (e *WorkflowEngine) Run(ctx context.Context, organizationID, workflowID str
 	}
 	org := e.porOrg[organizationID]
 
-	// IDEMPOTÊNCIA: a mesma chave devolve a MESMA execução — sem segundo efeito.
+	// IDEMPOTÊNCIA: a mesma chave **NO MESMO WORKFLOW** devolve a MESMA execução — sem segundo efeito.
+	//
+	// 🚨 E-461 (MEDIDO): a comparação exigia **só a chave** ✗, e ela é procurada **antes** de o workflow ser resolvido
+	// (`:284-293`, onde `workflowID` aparece pela primeira vez) ⇒ *`Run(org, wf-A, …, K)` e `Run(org, wf-B, …, K)`
+	// passavam pelo mesmo laço, e o segundo recebia um run do PRIMEIRO workflow* ✓. **E não era só pular**: era
+	// **devolver o resultado do outro workflow como se fosse deste**.
+	//
+	// ***A chave costuma vir do EVENTO (id de mensagem, id de transação), não do workflow*** ⇒ *dois workflows reagindo
+	// ao **mesmo evento** — o caso mais natural de todos — fariam o segundo **não executar*** ✓. É a **mesma classe** do
+	// ADV-75 (*E-460*): *comparar um identificador **sem o escopo a que ele pertence***. Lá o escopo era o **contacto**;
+	// aqui é o **workflow**.
+	//
+	// **O escopo de TENANT já estava garantido**: `org.Runs` é por organização ✓ — *e é por isso que o defeito não
+	// atravessava organizações.*
 	if chave := strings.TrimSpace(idempotencyKey); chave != "" {
 		for _, anterior := range org.Runs {
-			if anterior.IdempotencyKey == chave {
+			if anterior.IdempotencyKey == chave && anterior.WorkflowID == workflowID {
 				anterior.Replayed = true
 				return anterior, nil
 			}

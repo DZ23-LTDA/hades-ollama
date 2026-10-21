@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -672,9 +673,29 @@ func usesChatGPTBackend(header http.Header) bool {
 	return strings.TrimSpace(header.Get("ChatGPT-Account-ID")) != ""
 }
 
+// usesManagedAPIKey diz se o pedido apresenta a chave gerida do Codex Desktop.
+//
+// 🚨 E-465 (MEDIDO): a comparação era `parts[1] == CodexDesktopManagedAPIKey` ✗ — ***e é a MESMA classe do E-464*** (*o
+// token do webhook do WhatsApp comparado com `==`*). Aqui é ainda mais claro: **é autenticação por chave de API**, e a
+// comparação de strings em Go **sai no primeiro byte diferente** ⇒ *o tempo de resposta diz quantos bytes o atacante
+// acertou*.
+//
+// **E o repositório já conhece o padrão**: `subtle.ConstantTimeCompare`/`hmac.Equal` aparecem em
+// `auth.go` (TOTP, `:537`), `backup.go`, `mcp_remote_h5.go`, `omnichannel.go` e `postgres_key_rotation.go` ⇒
+// ***inconsistência, não desconhecimento*** — *e é o mesmo diagnóstico do E-464*.
+//
+// **VAZIO NUNCA CONFERE**: *uma chave gerida não configurada não pode autorizar nada.*
 func usesManagedAPIKey(header http.Header) bool {
 	parts := strings.Fields(header.Get("Authorization"))
-	return len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") && parts[1] == CodexDesktopManagedAPIKey
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		return false
+	}
+	presented := strings.TrimSpace(parts[1])
+	expected := strings.TrimSpace(CodexDesktopManagedAPIKey)
+	if presented == "" || expected == "" {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(presented), []byte(expected)) == 1
 }
 
 func copyOllamaRequestHeaders(dst, src http.Header) {

@@ -7,19 +7,55 @@
 
 Este é o fork público mantido por [DZ23-LTDA](https://github.com/DZ23-LTDA), baseado no Ollama e preservando a licença MIT e os avisos de atribuição upstream. O projeto adiciona superfícies agentic próprias; não é o instalador, serviço hospedado ou distribuição oficial do Ollama. O manual completo, os contratos, a configuração e a política de atualização estão em [`docs/CLASS_A_PLUS_GUIDE.md`](docs/CLASS_A_PLUS_GUIDE.md).
 
-![Hades em 20 segundos — hook, Home, Mission Console e o fecho local-first](docs/images/hades-demo.gif)
+## Estado verificável — 21 de outubro de 2026
 
-### Visão rápida — capturas reais atualizadas em 2026-10-01
+O Hades está em desenvolvimento ativo no PR #438 e continua **`NOT_RELEASE_READY`**.
 
-![Home atual do shell Hades](docs/images/screens/class-a-plus-home.png?v=3)
+**O que está provado, no CI e localmente** — evidências [`E-1522`](docs/mission/HADES_EVIDENCE_INDEX.md) e [`E-1523`](docs/mission/HADES_EVIDENCE_INDEX.md):
 
-![Agentic Console atual](docs/images/screens/class-a-plus-agentic.png?v=3)
+- job `Preserve Class A+ surfaces` **verde** com **43 verificações**: índice de evidências, janela de retomada, teto de lacunas de produto, guards de tenant em todos os handlers, eixos de segurança, hermeticidade dos testes, rastreabilidade requisito→evidência, e **28 instrumentos** que antes só corriam na máquina do autor;
+- suíte `internal/agent` no **Windows**: `ok`, **0 falhas**, 421 s — inclui os testes de travessia de caminho (`TestCaminhoAutorizadoRecusaTravessia`);
+- escrita no **vault governado**: exige permissão; sem concessão a recusa **não cria ficheiro**; a identidade vem da sessão e **nunca** do corpo do pedido; o escopo é por tenant — **31 testes**;
+- bateria local de gates: **81 de 81**, `exit 0`;
+- **pare de emergência** (parada global de execução): consultado em 4 caminhos, observável por `GET /build/pare`, durável ao reinício e adotado no arranque — **não acionável** por interface, por decisão pendente sobre quem pode acioná-lo.
 
-![Settings e Agentic Control Center atuais](docs/images/screens/class-a-plus-settings.png?v=3)
+**Limite desta secção:** o verde cobre os checks nomeados e a bateria local. **Não** é homologação independente; `release_state` continua **`NOT_RELEASE_READY`** e nenhum número aqui autoriza release. O motor padrão é Ollama local; provedores externos, publicação, contas e credenciais são opcionais e exigem configuração explícita. A fonte de verdade para estágio, evidência, bloqueios e limites é [`docs/mission/HADES_RELEASE_REPORT.md`](docs/mission/HADES_RELEASE_REPORT.md), não esta página de apresentação.
 
-![Company OS atual](docs/images/screens/class-a-plus-company.png?v=3)
+| Superfície | O que a implementação local demonstra | Limite atual importante |
+| --- | --- | --- |
+| **Home e comando** | Iniciar uma tarefa, escolher modo automático/manual, anexar ou importar contexto e usar comandos como `/goal`, `/plan`, `/test` e `/review`. | Uma captura local não prova conta externa, instalação distribuída ou execução em todos os sistemas operacionais. |
+| **Mission Control** | Criar missão, planejar, orquestrar agentes, acompanhar eventos, aprovar etapas e trabalhar com workspace/snapshot quando configurado. | Operações de escrita, deploy e conectores dependem de escopo, aprovação e ambiente autorizado. |
+| **Plugins, MCP e skills** | Catálogo, configuração governada, lifecycle e trilha de auditoria para integrações configuradas. | Cada integração externa precisa de credencial, conta e homologação real; não é considerada pronta somente por aparecer no catálogo. |
+| **Multi-provider** | Ollama local permanece padrão; opções externas aparecem somente quando o operador as configura. | Roteamento, custo e provedores externos ainda requerem homologação por serviço e credencial autorizada. |
+| **Builder e Company OS** | Há superfícies de criação, automação, dados e artefatos em ambiente local/sandbox. | Não representam publicação, pagamento, marketplace ou operação empresarial real sem teste e aprovação específicos. |
 
-As imagens acima foram recapturadas com Chromium contra o Vite dev e o servidor Ollama local em `127.0.0.1:3001`, sem provider externo. A captura mostra a implementação e dados sandbox locais; não comprova credenciais, contas, dispositivos, deploys ou integrações externas conectadas. A [galeria complementar](docs/CLASS_A_PLUS_GUIDE.md#telas-e-estado-visual) inclui Projetos, Biblioteca, Agendado, Skills, Plugins e Tarefas. Para conhecer a árvore completa, as telas planejadas de builder/mobile e os limites de cada integração, veja a [árvore de produto](docs/agentic/PRODUCT_TREE.md), a [matriz de paridade](docs/agentic/PARITY_MATRIX.md), a [integração HarnessRouter](docs/agentic/HARNESSROUTER.md) e a [documentação Company OS](docs/agentic/COMPANY_OS.md). Mockups conceituais são identificados como conceito dentro da própria imagem; eles não são apresentados como funcionalidades concluídas. A rodada mais recente também reforçou autenticação fail-closed, allowlists MCP, lifecycle de plugins/skills, contenção de symlink, approvals auditáveis e DLP.
+### Interface local documentada
+
+As capturas abaixo são do cliente real em ambiente local/sandbox e mostram as superfícies que existem no código. Elas não representam release, conta conectada, credencial válida, dispositivo físico, publicação, loja ou serviço externo homologado.
+
+![Home Hades: tarefa, modo automático/manual, ações rápidas e atalhos de contexto](docs/images/screens/class-a-plus-home.png?v=5)
+
+*Home local-first — tarefa em linguagem natural, modo de execução explícito, comandos e entradas para construir, criar, abrir um workspace ou conversar com modelo.*
+
+![Mission Console Hades: criação de missão, modelo, projeto, isolamento e permissões de escrita](docs/images/screens/class-a-plus-agentic.png?v=5)
+
+*Mission Control — plano, orquestração e ferramentas são governados; escrita e cópia isolada precisam ser solicitadas de forma explícita.*
+
+![Registro avançado Hades: conectores, MCP e skills com configuração segura](docs/images/screens/class-a-plus-plugins.png?v=5)
+
+*Registro avançado — conectores, MCPs e skills são configurados com escopo, aprovação e referências de credencial, sem expor o valor de segredos na interface.*
+
+### Galeria complementar — checkpoint local de 2026-09-22
+
+![Home atual do shell Hades](docs/images/screens/class-a-plus-home.png?v=5)
+
+![Agentic Console atual](docs/images/screens/class-a-plus-agentic.png?v=5)
+
+![Settings e Agentic Control Center atuais](docs/images/screens/class-a-plus-settings.png?v=5)
+
+![Company OS atual](docs/images/screens/class-a-plus-company.png?v=5)
+
+As imagens da galeria foram recapturadas com Chromium contra o Vite dev e o servidor Ollama local em `127.0.0.1:3001`, sem provider externo. A captura mostra a implementação e dados sandbox locais; não comprova credenciais, contas, dispositivos, deploys ou integrações externas conectadas. A [galeria complementar](docs/CLASS_A_PLUS_GUIDE.md#telas-e-estado-visual) inclui Projetos, Biblioteca, Agendado, Skills, Plugins e Tarefas. Para conhecer a árvore completa, as telas planejadas de builder/mobile e os limites de cada integração, veja a [árvore de produto](docs/agentic/PRODUCT_TREE.md), a [matriz de paridade](docs/agentic/PARITY_MATRIX.md), a [integração HarnessRouter](docs/agentic/HARNESSROUTER.md) e a [documentação Company OS](docs/agentic/COMPANY_OS.md). Mockups conceituais são identificados como conceito dentro da própria imagem; eles não são apresentados como funcionalidades concluídas. A rodada mais recente também reforçou autenticação fail-closed, allowlists MCP, lifecycle de plugins/skills, contenção de symlink, approvals auditáveis e DLP.
 
 | Recurso | Documento |
 |---|---|
@@ -183,7 +219,24 @@ This fork can expose explicitly configured API and CLI providers beside local mo
 
 ### DZ23 agentic runtime
 
-The fork now includes an agentic runtime with persistent missions, validated plans, approval-gated tools, workspace isolation, artifact manifests, event history, recovery-aware execution, a persistent queue with retries/dead-letter/replay, optional PostgreSQL persistence and Redis workers, SSE events, local and OTLP traces, a multiagent orchestrator with specialist roles and synthesis, deep research with citations/cache/robots policy/SSRF guard, Playwright Browser Operator, Linux/macOS/Windows Desktop companion pairing, TLS 1.3/mTLS WebSocket transport with reloadable server certificates, MCP stdio lifecycle, semantic memory, PDF/DOCX/XLSX ingestion, HTTP connectors, scheduler/webhooks, Prometheus metrics, MFA TOTP with recovery codes, OIDC discovery/userinfo provisioning, SAML SP metadata/AuthnRequest/ACS, optional encrypted OAuth credentials, organization/RBAC boundaries with forced PostgreSQL RLS, collaboration comments/presence, multimodal provider adapters, local OCR when Tesseract is installed, visual component canvas with bindings/events and persistent undo/redo, PDF/DOCX/PPTX exports, and builders for websites/apps/games/slides/dashboards. Deployment adapters for Vercel, Netlify and generic gateways are present with local fixtures and server-side approvals; real provider accounts, billing, health checks and rollback remain operator-owned and unhomologated. Configure `OLLAMA_AGENT_ROOT`, optionally set `OLLAMA_AGENT_STORE`, `OLLAMA_AGENT_DATABASE_URL`, `OLLAMA_AGENT_REDIS_URL`, `OLLAMA_AGENT_OTLP_ENDPOINT`, `OLLAMA_AGENT_MODEL`, `OLLAMA_AGENT_EMBED_MODEL`, `OLLAMA_AGENT_CONNECTORS`, `OLLAMA_AGENT_DEPLOYMENTS`, `OLLAMA_AGENT_MCP`, `OLLAMA_AGENT_AUTH_STORE`, `OLLAMA_AGENT_AUTH_REQUIRED`, `OLLAMA_AGENT_AUTH_SSO_PUBLIC`, `OLLAMA_AGENT_MEDIA_BASE_URL` and `OLLAMA_AGENT_MEDIA_API_KEY`, then use the API or the CLI:
+The fork now includes an agentic runtime with persistent missions, validated plans, approval-gated tools,
+workspace isolation, artifact manifests, event history, recovery-aware execution, a persistent queue with
+retries/dead-letter/replay, optional PostgreSQL persistence and Redis workers, SSE events, local and OTLP
+traces, a multiagent orchestrator with specialist roles and synthesis, deep research with
+citations/cache/robots policy/SSRF guard, Playwright Browser Operator, Linux/macOS/Windows Desktop companion
+pairing, TLS 1.3/mTLS WebSocket transport with reloadable server certificates, MCP stdio lifecycle, semantic
+memory, PDF/DOCX/XLSX ingestion, HTTP connectors, scheduler/webhooks, Prometheus metrics, MFA TOTP with
+recovery codes, OIDC discovery/userinfo provisioning, SAML SP metadata/AuthnRequest/ACS, optional encrypted
+OAuth credentials, organization/RBAC boundaries with forced PostgreSQL RLS, collaboration comments/presence,
+multimodal provider adapters, local OCR when Tesseract is installed, visual component canvas with
+bindings/events and persistent undo/redo, PDF/DOCX/PPTX exports, and builders for
+websites/apps/games/slides/dashboards. Deployment adapters for Vercel, Netlify and generic gateways are
+present with local fixtures and server-side approvals; real provider accounts, billing, health checks and
+rollback remain operator-owned and unhomologated. Configure `OLLAMA_AGENT_ROOT`, optionally set
+`OLLAMA_AGENT_STORE`, `OLLAMA_AGENT_DATABASE_URL`, `OLLAMA_AGENT_REDIS_URL`, `OLLAMA_AGENT_OTLP_ENDPOINT`,
+`OLLAMA_AGENT_MODEL`, `OLLAMA_AGENT_EMBED_MODEL`, `OLLAMA_AGENT_CONNECTORS`, `OLLAMA_AGENT_DEPLOYMENTS`,
+`OLLAMA_AGENT_MCP`, `OLLAMA_AGENT_AUTH_STORE`, `OLLAMA_AGENT_AUTH_REQUIRED`, `OLLAMA_AGENT_AUTH_SSO_PUBLIC`,
+`OLLAMA_AGENT_MEDIA_BASE_URL` and `OLLAMA_AGENT_MEDIA_API_KEY`, then use the API or the CLI:
 
 ```shell
 ./bin/ollama-full agent create --objective "inspecionar o workspace" --auto-run

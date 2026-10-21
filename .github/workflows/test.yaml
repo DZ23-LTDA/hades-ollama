@@ -492,7 +492,10 @@ jobs:
         if: always()
         # Smoke-run each benchmark once to catch panics and bit rot; this does
         # not assert timings. -benchtime without -bench is inert.
-        run: go test -count=1 -bench=. -benchtime=1x ./...
+        # E-1120: o `./...` INCLUI o `internal/agent` (353,4 s medidos com 1722 testes, e o maior
+        # teste so'zinho = 66,06 s porque enche 5 000 produtos). O default de 10 min nao cabe num
+        # runner 2-3x mais lento => `-timeout 25m`, dentro do `timeout-minutes` do job.
+        run: go test -count=1 -bench=. -benchtime=1x -timeout 25m ./...
 
       - name: go test app with live updater tag
         if: ${{ needs.changes.outputs.app_changed == 'True' && contains(fromJSON('["macos-latest","windows-latest"]'), matrix.os) }}
@@ -564,4 +567,9 @@ jobs:
         shell: bash
         run: find . -type d -name node_modules -prune -exec rm -rf {} +
       - name: go test -race
-        run: go test -race -count=1 ./...
+        # -timeout 20m: o padrao do Go e' 10m POR BINARIO, e o `internal/agent` sob -race no
+        # macOS ultrapassa os 600 s (medido: `panic: test timed out after 10m0s`, SEM nenhum
+        # "WARNING: DATA RACE" - nao ha' corrida, ha' orcamento de tempo). Elevar o limite NAO
+        # esconde uma travagem: um hang real continua a falhar, aos 20m. E o `-race` NAO se
+        # desliga: e' a unica rede contra corridas e sai reforcada por ter tempo para correr.
+        run: go test -race -count=1 -timeout 20m ./...

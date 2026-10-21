@@ -313,6 +313,26 @@ func (s *ContextStore) UpdateProject(id, name, root string) (Project, error) {
 	return project, nil
 }
 
+// Root devolve a raiz de dados do store, ou "" quando o store é só em memória.
+//
+// PORQUE EXISTE (E-577): o complemento de memória precisa de um sítio para o histórico
+// bruto, e a disciplina desta missão é REUTILIZAR o escopo que já é governado em vez de
+// criar um segundo regime de permissões. O isolamento por organização já vive nesta
+// raiz; o histórico vai para dentro dela, e não para um diretório novo com regras
+// próprias que pudessem divergir. Um acessor explícito é melhor do que o servidor
+// adivinhar o caminho a partir de constantes.
+//
+// Devolve cópia sob leitura: a raiz não muda depois da construção, mas a leitura passa
+// pelo mesmo mutex que tudo o resto para não introduzir uma corrida nova.
+func (s *ContextStore) Root() string {
+	if s == nil {
+		return ""
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.root
+}
+
 func (s *ContextStore) DeleteProject(id string) error {
 	id = strings.TrimSpace(id)
 	if id == "" {
@@ -323,8 +343,18 @@ func (s *ContextStore) DeleteProject(id string) error {
 	if _, ok := s.projects[id]; !ok {
 		return os.ErrNotExist
 	}
-	delete(s.projects, id)
-	delete(s.memories, id)
+	// ORDEM CORRIGIDA (E-565 / F5 da auditoria de segurança): o DISCO primeiro, a
+	// memória depois. Antes era o contrário — `delete()` nos mapas e só então
+	// `os.Remove` —, e uma falha no disco devolvia erro com o projeto já apagado da
+	// memória e os ficheiros ainda em disco: estado divergente, e o chamador a ver um
+	// erro que não correspondia a nada. Agora, se o disco falhar, a memória fica
+	// INTACTA (falha fechado: nada mudou) e o erro é verdadeiro.
+	//
+	// JANELA RESIDUAL, DECLARADA: são DOIS ficheiros e não há transação entre eles. Se
+	// o primeiro `os.Remove` passar e o segundo falhar, o ficheiro do projeto já não
+	// existe e a memória continua com o projeto. Fechar isto exigiria duas fases (mover
+	// para quarentena e só depois apagar) ou um diário — é um PR próprio, e prefiro
+	// declarar a janela a fingir que ela não existe.
 	if s.root != "" {
 		if err := os.Remove(filepath.Join(s.root, "projects", id+".json")); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return err
@@ -333,6 +363,8 @@ func (s *ContextStore) DeleteProject(id string) error {
 			return err
 		}
 	}
+	delete(s.projects, id)
+	delete(s.memories, id)
 	return nil
 }
 
@@ -806,6 +838,23 @@ func (s *ContextStore) registerSkill(manifest SkillManifest, organizationID stri
 	}
 	previous, existed := s.skills[manifest.ID]
 	previousPath := s.skillPaths[manifest.ID]
+	// HISTORICO DE VERSOES (E-629). O store guardava UMA versao por ID (`s.skills[id]`), logo a
+	// anterior perdia-se ao registar a seguinte. Antes de substituir, a versao que sai e'
+	// ARQUIVADA em `<root>/skills/<ID>.versions/<versao>.json`.
+	//
+	// FALHA AO ARQUIVAR REPROVA O REGISTO, e isso e' deliberado: e' coerente com o rollback logo
+	// abaixo, quando a propria escrita falha. *Se nao se consegue preservar a versao que sai, nao
+	// se substitui* — perder funcionalidade e' preferivel a perder historico em silencio, porque a
+	// perda silenciosa so' se descobre quando alguem precisa da versao antiga.
+	if existed && previous.Version != "" && previous.Version != manifest.Version && s.root != "" {
+		historico := filepath.Join(s.root, "skills", manifest.ID+".versions", previous.Version+".json")
+		if err := os.MkdirAll(filepath.Dir(historico), 0o700); err != nil {
+			return fmt.Errorf("arquivar versao anterior da skill: %w", err)
+		}
+		if err := writeJSONAtomic(historico, previous); err != nil {
+			return fmt.Errorf("arquivar versao anterior da skill: %w", err)
+		}
+	}
 	s.skills[manifest.ID] = manifest
 	if path != "" {
 		s.skillPaths[manifest.ID] = path
@@ -834,6 +883,88 @@ func (s *ContextStore) persistSkillLocked(id string) error {
 	manifest := s.skills[id]
 	manifest.Trusted = false
 	return writeJSONAtomic(path, manifest)
+}
+
+// versaoDeSkillSegura recusa versões que possam SAIR DA PASTA. A versão entra num caminho de
+// ficheiro, e o `validateSkillManifest` valida o ID para travessia mas NÃO a versão (só o
+// comprimento, em `:794`) — sem esta verificação, uma versão como `../../x` leria um ficheiro fora
+// da pasta de skills. *A validação tem de estar onde o valor é usado como caminho.*
+func versaoDeSkillSegura(versao string) bool {
+	versao = strings.TrimSpace(versao)
+	if versao == "" || len(versao) > 64 {
+		return false
+	}
+	if versao == "." || versao == ".." {
+		return false
+	}
+	return !strings.ContainsAny(versao, "/\\\x00\r\n")
+}
+
+func idDeSkillSeguro(id string) bool {
+	id = strings.TrimSpace(id)
+	return id != "" && len(id) <= 120 && !strings.ContainsAny(id, "/\\\x00\r\n")
+}
+
+// SkillVersionsForOrganization lista as versões ARQUIVADAS de uma skill (E-631), ordenadas.
+//
+// DUAS HONESTIDADES: (1) quando a pasta não existe devolve vazio, mas quando existe e não pode ser
+// lida devolve ERRO — *«não consegui olhar» e «não há versões» são afirmações diferentes*, e
+// devolver vazio nas duas faria a superfície mentir; (2) quando a skill não é da organização de
+// quem pergunta devolve vazio, e não um erro de escopo: distinguir «não existe» de «não é sua»
+// seria uma pista sobre a existência dela.
+func (s *ContextStore) SkillVersionsForOrganization(organizationID, id string) ([]string, error) {
+	if !idDeSkillSeguro(id) {
+		return nil, errors.New("skill id is invalid")
+	}
+	if s.root == "" {
+		return nil, errors.New("skill history requires a store root")
+	}
+	s.mu.Lock()
+	atual, existe := s.skills[id]
+	s.mu.Unlock()
+	if !existe {
+		return nil, nil
+	}
+	if organizationID != "" && !pluginOwnedByOrganization(atual.OrganizationID, organizationID) {
+		return nil, nil
+	}
+	pasta := filepath.Join(s.root, "skills", id+".versions")
+	entradas, err := os.ReadDir(pasta)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("ler historico de versoes: %w", err)
+	}
+	versoes := make([]string, 0, len(entradas))
+	for _, entrada := range entradas {
+		if entrada.IsDir() || !strings.HasSuffix(entrada.Name(), ".json") {
+			continue
+		}
+		versoes = append(versoes, strings.TrimSuffix(entrada.Name(), ".json"))
+	}
+	sort.Strings(versoes)
+	return versoes, nil
+}
+
+// RestoreSkillVersionForOrganization recupera uma versão ARQUIVADA (E-631).
+//
+// RESTAURAR É RECUPERAR CONTEÚDO, NÃO CONFIANÇA: passa pelo MESMO `registerSkill`, o que impõe
+// `Trusted=false` (`:817`) e a verificação de escopo de organização (`:824-828`). Uma versão
+// arquivada que alguma vez tenha sido promovida volta como NÃO confiável — e é isso que o teste
+// tem de provar, porque uma confiança herdada por restauro seria uma escalada silenciosa.
+func (s *ContextStore) RestoreSkillVersionForOrganization(organizationID, id, versao string) (SkillManifest, error) {
+	// A LEITURA — validação de id/versão, confirmação de travessia e descodificação — vive num
+	// sítio só (`lerManifestoArquivado`, E-648). *Duas cópias de uma verificação de caminho
+	// divergem, e a que fica a menos não se nota* (a lição do E-626).
+	manifesto, err := s.lerManifestoArquivado(id, versao)
+	if err != nil {
+		return SkillManifest{}, err
+	}
+	if err := s.registerSkill(manifesto, organizationID); err != nil {
+		return SkillManifest{}, err
+	}
+	return manifesto, nil
 }
 
 func (s *ContextStore) Skills() []SkillManifest {

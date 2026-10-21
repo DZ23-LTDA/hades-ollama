@@ -194,12 +194,14 @@ describe("filtros e coleções", () => {
 describe("prompts iniciais", () => {
   it("deriva um prompt por comando de barra", () => {
     const builtins = builtinPrompts(NOW);
-    expect(builtins).toHaveLength(4);
+    expect(builtins).toHaveLength(6); // E-975: 4 comandos + spark + cowork
     expect(builtins.map((prompt) => prompt.id)).toEqual([
       "builtin:goal",
       "builtin:plan",
       "builtin:test",
       "builtin:review",
+      "builtin:spark",
+      "builtin:cowork",
     ]);
     expect(builtins.every((prompt) => prompt.builtin)).toBe(true);
     expect(builtins[0].tags).toContain("builtin");
@@ -209,7 +211,7 @@ describe("prompts iniciais", () => {
     const edited = { ...builtinPrompts(NOW)[0], title: "Meu objetivo" };
     const library = libraryWith(edited);
     const merged = withBuiltins(library, NOW);
-    expect(merged.prompts).toHaveLength(4);
+    expect(merged.prompts).toHaveLength(6); // E-975
     const goal = merged.prompts.find((prompt) => prompt.id === "builtin:goal");
     expect(goal?.title).toBe("Meu objetivo");
     expect(withBuiltins(merged, NOW)).toBe(merged);
@@ -248,17 +250,17 @@ describe("persistência", () => {
     expect(savePromptLibrary(libraryWith(sample("p1")), storage)).toBe(true);
     expect(storage.snapshot()[PROMPT_STORAGE_KEY]).toContain("p1");
     const loaded = loadPromptLibrary(storage, NOW);
-    expect(loaded.prompts).toHaveLength(5);
+    expect(loaded.prompts).toHaveLength(7); // E-975: os 6 + 1 editado
     expect(loaded.prompts.map((prompt) => prompt.id)).toContain("p1");
   });
 
   it("degrada para os prompts iniciais quando o armazenamento é negado", () => {
-    expect(loadPromptLibrary(deniedStorage, NOW).prompts).toHaveLength(4);
+    expect(loadPromptLibrary(deniedStorage, NOW).prompts).toHaveLength(6); // E-975
     expect(savePromptLibrary(libraryWith(sample("p1")), deniedStorage)).toBe(false);
   });
 
   it("funciona sem armazenamento disponível", () => {
-    expect(loadPromptLibrary(undefined, NOW).prompts).toHaveLength(4);
+    expect(loadPromptLibrary(undefined, NOW).prompts).toHaveLength(6); // E-975
     expect(savePromptLibrary(libraryWith(sample("p1")))).toBe(false);
   });
 });

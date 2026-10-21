@@ -47,6 +47,8 @@ import {
 } from "@/api";
 import { applySettingsDefaults } from "./settingsUtils";
 import { getStoredInterfaceMode, persistInterfaceMode, type InterfaceMode } from "@/lib/interfaceMode";
+import { useT } from "@/i18n";
+import { SettingsLanguageControl } from "./SettingsLanguage";
 
 function AnimatedDots() {
   return (
@@ -63,16 +65,17 @@ function AnimatedDots() {
 }
 
 function InterfaceModeControl({ mode, onChange }: { mode: InterfaceMode; onChange: (mode: InterfaceMode) => void }) {
+  const { t } = useT();
   return (
     <section aria-labelledby="interface-mode-heading" className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/60 dark:bg-blue-950/20">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 id="interface-mode-heading" className="text-sm font-semibold text-blue-950 dark:text-blue-100">Modo da interface</h2>
-          <p className="mt-1 text-xs leading-5 text-blue-800 dark:text-blue-200">Simples mostra só o essencial. Avançado também mostra MCP, diagnósticos e detalhes técnicos.</p>
+          <h2 id="interface-mode-heading" className="text-sm font-semibold text-blue-950 dark:text-blue-100">{t("settings.interfaceMode.title")}</h2>
+          <p className="mt-1 text-xs leading-5 text-blue-800 dark:text-blue-200">{t("settings.interfaceMode.description")}</p>
         </div>
-        <div className="inline-flex rounded-lg border border-blue-200 bg-white p-1 dark:border-blue-800 dark:bg-neutral-900" role="group" aria-label="Modo da interface">
-          <button type="button" aria-pressed={mode === "simple"} onClick={() => onChange("simple")} className={`min-h-9 rounded-md px-3 text-xs font-medium ${mode === "simple" ? "bg-blue-700 text-white" : "text-blue-800 dark:text-blue-200"}`}>Simples</button>
-          <button type="button" aria-pressed={mode === "advanced"} onClick={() => onChange("advanced")} className={`min-h-9 rounded-md px-3 text-xs font-medium ${mode === "advanced" ? "bg-blue-700 text-white" : "text-blue-800 dark:text-blue-200"}`}>Avançado</button>
+        <div className="inline-flex rounded-lg border border-blue-200 bg-white p-1 dark:border-blue-800 dark:bg-neutral-900" role="group" aria-label={t("settings.interfaceMode.title")}>
+          <button type="button" aria-pressed={mode === "simple"} onClick={() => onChange("simple")} className={`min-h-9 rounded-md px-3 text-xs font-medium ${mode === "simple" ? "bg-blue-700 text-white" : "text-blue-800 dark:text-blue-200"}`}>{t("settings.interfaceMode.simple")}</button>
+          <button type="button" aria-pressed={mode === "advanced"} onClick={() => onChange("advanced")} className={`min-h-9 rounded-md px-3 text-xs font-medium ${mode === "advanced" ? "bg-blue-700 text-white" : "text-blue-800 dark:text-blue-200"}`}>{t("settings.interfaceMode.advanced")}</button>
         </div>
       </div>
     </section>
@@ -88,6 +91,7 @@ let latestCloudRequestId = 0;
 const savedConfirmationDuration = 3000;
 
 export default function Settings() {
+  const { t } = useT();
   const queryClient = useQueryClient();
   const [showSalvo, setShowSalvo] = useState(false);
   const [restartMessage, setRestartMessage] = useState(false);
@@ -107,7 +111,7 @@ export default function Settings() {
   const savedConfirmationTimeoutRef = useRef<number | null>(null);
   useBlocker({
     shouldBlockFn: async () =>
-      !(await confirmDialog("Descartar as alterações de modelos dos apps que ainda não foram aplicadas?", { confirmLabel: "Descartar" })),
+      !(await confirmDialog(t("settings.discardDrafts.message"), { confirmLabel: t("settings.discardDrafts.confirm") })),
     enableBeforeUnload: hasClaudeDraftChanges || hasCodexDraftChanges,
     disabled: !hasClaudeDraftChanges && !hasCodexDraftChanges,
   });
@@ -171,9 +175,9 @@ export default function Settings() {
     email: string;
     plan: string;
   }>({
-    name: "Operador local",
+    name: t("settings.operator.defaultName"),
     email: "local@localhost",
-    plan: "Modo Local-first",
+    plan: t("settings.operator.defaultPlan"),
   });
 
   useEffect(() => {
@@ -181,14 +185,14 @@ export default function Settings() {
       .then((data) => {
         if (data && (data.name || data.email)) {
           setOperatorProfile({
-            name: data.name || "Operador local",
+            name: data.name || t("settings.operator.defaultName"),
             email: data.email || "local@localhost",
-            plan: data.plan || "Modo Local-first",
+            plan: data.plan || t("settings.operator.defaultPlan"),
           });
         }
       })
       .catch(() => {});
-  }, []);
+  }, [t]);
 
   const defaultContextLength = inferenceComputeResponse?.defaultContextLength;
 
@@ -403,9 +407,7 @@ export default function Settings() {
       });
     } catch (error) {
       console.error("Failed to reset settings:", error);
-      setResetError(
-        "Não foi possível restaurar todas as configurações. Confira as opções acima e tente novamente.",
-      );
+      setResetError(t("settings.reset.failed"));
     } finally {
       setResettingToDefaults(false);
     }
@@ -432,7 +434,7 @@ export default function Settings() {
           }, 5000);
           setPollingInterval(interval);
         } else {
-          setConnectionError("Failed to get connect URL");
+          setConnectionError(t("settings.error.connectUrl"));
         }
       }
     } catch (error) {
@@ -440,7 +442,7 @@ export default function Settings() {
       setConnectionError(
         error instanceof Error
           ? error.message
-          : "Failed to connect to Ollama account",
+          : t("settings.error.connectFailed"),
       );
       setIsAwaitingConnection(false);
     }
@@ -452,7 +454,7 @@ export default function Settings() {
       await disconnectUser();
       window.location.reload();
     } catch {
-      setConnectionError("Failed to disconnect Ollama account");
+      setConnectionError(t("settings.error.disconnectFailed"));
     }
   };
 
@@ -463,13 +465,14 @@ export default function Settings() {
           <div className="mx-auto max-w-4xl space-y-4">
             <HealthCenter />
             <InterfaceModeControl mode={interfaceMode} onChange={changeInterfaceMode} />
+            <SettingsLanguageControl />
             {interfaceMode === "advanced" && <AgenticControlCenter />}
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
               <div className="font-medium">
-                {loading ? "Consultando configuração nativa…" : "Configuração nativa indisponível neste momento"}
+                {loading ? t("settings.native.loading") : t("settings.native.unavailable")}
               </div>
               <p className="mt-1 text-xs leading-5 opacity-80">
-                O painel agentic acima continua disponível para diagnóstico sanitizado; inicie o servidor Ollama para editar as preferências nativas.
+                {t("settings.native.unavailableHint")}
               </p>
             </div>
           </div>
@@ -490,6 +493,7 @@ export default function Settings() {
         >
           <HealthCenter />
           <InterfaceModeControl mode={interfaceMode} onChange={changeInterfaceMode} />
+          <SettingsLanguageControl />
           {interfaceMode === "advanced" && <AgenticControlCenter />}
           {/* Connect Ollama Account */}
           <div className="overflow-hidden rounded-xl bg-white dark:bg-neutral-800">
@@ -526,7 +530,7 @@ export default function Settings() {
                             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 via-purple-500/20 to-green-500/20 opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out"></div>
                             <span className="relative z-10 flex items-center space-x-2">
-                              <span>Fazer upgrade</span>
+                              <span>{t("settings.account.upgrade")}</span>
                             </span>
                           </Button>
                         )}
@@ -536,7 +540,7 @@ export default function Settings() {
                           className="px-3 py-2 text-sm"
                           onClick={() => openExternal("https://ollama.com/settings")}
                         >
-                          Gerenciar
+                          {t("settings.account.manage")}
                         </Button>
                         <Button
                           type="button"
@@ -544,7 +548,7 @@ export default function Settings() {
                           className="px-3 py-2 text-sm"
                           onClick={() => void handleDisconnectOllamaAccount()}
                         >
-                          Desconectar
+                          {t("settings.account.disconnect")}
                         </Button>
                       </div>
                     </div>
@@ -563,9 +567,9 @@ export default function Settings() {
                 ) : (
                   <div className="flex items-center justify-between">
                     <div>
-                      <Label>Conta Ollama</Label>
+                      <Label>{t("settings.account.label")}</Label>
                       <Description>
-                        Não conectada · entre para usar modelos na nuvem e busca na web
+                        {t("settings.account.notConnected")}
                       </Description>
                     </div>
                     <Button
@@ -577,7 +581,7 @@ export default function Settings() {
                       {isRefreshing || isAwaitingConnection ? (
                         <AnimatedDots />
                       ) : (
-                        "Entrar"
+                        t("settings.account.connect")
                       )}
                     </Button>
                   </div>
@@ -600,11 +604,11 @@ export default function Settings() {
                   <div className="flex items-start space-x-3 flex-1">
                     <CloudIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                     <div>
-                      <Label>Nuvem</Label>
+                      <Label>{t("settings.cloud.label")}</Label>
                       <Description>
                         {cloudOverriddenByEnv
-                          ? "A variável de ambiente OLLAMA_NO_CLOUD está forçando a nuvem desligada."
-                          : "Ativar modelos na nuvem e busca na web."}
+                          ? t("settings.cloud.forcedOff")
+                          : t("settings.cloud.description")}
                       </Description>
                     </div>
                   </div>
@@ -629,9 +633,9 @@ export default function Settings() {
                     <div className="flex flex-1 items-start space-x-3">
                       <Squares2X2Icon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                       <div>
-                        <Label>Mostrar apps no menu</Label>
+                        <Label>{t("settings.appsMenu.label")}</Label>
                         <Description>
-                          Exibir os apps conectados no topo do menu do Ollama.
+                          {t("settings.appsMenu.description")}
                         </Description>
                       </div>
                     </div>
@@ -652,11 +656,11 @@ export default function Settings() {
                   <div className="flex items-start space-x-3 flex-1">
                     <ArrowDownTrayIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                     <div>
-                      <Label>Baixar atualizações automaticamente</Label>
+                      <Label>{t("settings.autoUpdate.label")}</Label>
                       <Description>
                         {settings.AutoUpdateEnabled
-                          ? "Baixar atualizações automaticamente quando disponíveis."
-                          : "As atualizações não serão baixadas automaticamente."}
+                          ? t("settings.autoUpdate.on")
+                          : t("settings.autoUpdate.off")}
                       </Description>
                     </div>
                   </div>
@@ -677,9 +681,9 @@ export default function Settings() {
                   <div className="flex items-start space-x-3 flex-1">
                     <WifiIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                     <div>
-                      <Label>Expor o Hades na rede</Label>
+                      <Label>{t("settings.expose.label")}</Label>
                       <Description>
-                        Permitir que outros dispositivos ou serviços acessem o Hades.
+                        {t("settings.expose.description")}
                       </Description>
                     </div>
                   </div>
@@ -697,8 +701,8 @@ export default function Settings() {
                 <div className="flex items-start space-x-3">
                   <FolderIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                   <div className="w-full">
-                    <Label>Local dos modelos</Label>
-                    <Description>Local onde os modelos são armazenados.</Description>
+                    <Label>{t("settings.modelsDir.label")}</Label>
+                    <Description>{t("settings.modelsDir.description")}</Description>
                     <div className="mt-2 flex items-center space-x-2">
                       <Input
                         value={settings.Models || ""}
@@ -727,7 +731,7 @@ export default function Settings() {
                         }}
                       >
                         <FolderIcon className="w-4 h-4 mr-1" />
-                        Procurar
+                        {t("settings.modelsDir.browse")}
                       </Button>
                     </div>
                   </div>
@@ -739,11 +743,9 @@ export default function Settings() {
                 <div className="flex items-start space-x-3">
                   <CogIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                   <div className="w-full">
-                    <Label>Tamanho do contexto</Label>
+                    <Label>{t("settings.context.label")}</Label>
                     <Description>
-                      O tamanho do contexto define quanto da conversa o modelo consegue
-                      lembrar e usar para gerar as respostas. Valores maiores mantêm mais
-                      histórico, mas consomem mais memória.
+                      {t("settings.context.description")}
                     </Description>
                     <div className="mt-3">
                       <Slider
@@ -780,7 +782,7 @@ export default function Settings() {
                 id="apps-settings-heading"
                 className="px-1 text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500"
               >
-                Apps
+                {t("settings.apps.heading")}
               </h2>
               <ClaudeDesktopModelsSettings
                 ref={claudeModelsSettingsRef}
@@ -807,9 +809,9 @@ export default function Settings() {
                     <div className="flex items-start space-x-3">
                       <BoltIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                       <div>
-                        <Label>Ativar modo agente</Label>
+                        <Label>{t("settings.agentMode.label")}</Label>
                         <Description>
-                          Usar ferramentas em múltiplas etapas para cumprir solicitações
+                          {t("settings.agentMode.description")}
                         </Description>
                       </div>
                     </div>
@@ -826,9 +828,9 @@ export default function Settings() {
                     <div className="flex items-start space-x-3">
                       <WrenchIcon className="mt-1 h-5 w-5 flex-shrink-0 text-black dark:text-neutral-100" />
                       <div>
-                        <Label>Ativar modo ferramentas</Label>
+                        <Label>{t("settings.toolsMode.label")}</Label>
                         <Description>
-                          Usar ferramentas em uma única etapa para cumprir solicitações
+                          {t("settings.toolsMode.description")}
                         </Description>
                       </div>
                     </div>
@@ -850,28 +852,29 @@ export default function Settings() {
               </div>
               <div>
                 <h3 className="text-base font-bold text-neutral-900 dark:text-white">
-                  Personalização
+                  {t("settings.personalization.title")}
                 </h3>
                 <p className="text-xs text-neutral-500">
-                  Instruções personalizadas e memória de longo prazo para orientar o comportamento do agente.
+                  {t("settings.personalization.description")}
                 </p>
               </div>
             </div>
 
             <div className="mt-5 space-y-4">
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs leading-5 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-200">
-                <strong className="font-semibold">Idioma:</strong> o Hades responde
-                sempre em <strong>português do Brasil</strong> por padrão (a menos que
-                você peça outro idioma na conversa). Isso já está ativo.
+                <strong className="font-semibold">{t("settings.personalization.languageLabel")}</strong>{" "}
+                {t("settings.personalization.languageBefore")}{" "}
+                <strong>{t("settings.personalization.languageName")}</strong>{" "}
+                {t("settings.personalization.languageAfter")}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200">
-                  Instruções personalizadas
+                  {t("settings.personalization.instructionsLabel")}
                 </label>
                 <p className="mt-0.5 text-xs text-neutral-500">
-                  Anote preferências de estilo/resposta. Estas instruções são salvas
-                  neste computador e <strong>enviadas ao modelo em toda conversa</strong>,
-                  junto com o comportamento padrão do Hades.
+                  {t("settings.personalization.instructionsBefore")}{" "}
+                  <strong>{t("settings.personalization.instructionsStrong")}</strong>
+                  {t("settings.personalization.instructionsAfter")}
                 </p>
                 <textarea
                   rows={3}
@@ -882,7 +885,7 @@ export default function Settings() {
                     }
                   }}
                   onBlur={() => showSalvoConfirmation()}
-                  placeholder="Ex.: respostas curtas e diretas; sempre com exemplos."
+                  placeholder={t("settings.personalization.instructionsPlaceholder")}
                   className="mt-2 w-full rounded-xl border border-neutral-300 bg-white p-3 text-xs leading-relaxed text-neutral-900 focus:border-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-900 dark:text-white"
                 />
               </div>
@@ -890,17 +893,17 @@ export default function Settings() {
               <div className="flex items-center justify-between border-t border-neutral-100 pt-4 dark:border-neutral-800">
                 <div>
                   <div className="text-xs font-semibold text-neutral-900 dark:text-white">
-                    Memória de Longo Prazo
+                    {t("settings.personalization.memoryTitle")}
                   </div>
                   <div className="text-[11px] text-neutral-500">
-                    Consulta de contexto entre sessões ainda não está configurada neste ambiente.
+                    {t("settings.personalization.memoryDescription")}
                   </div>
                 </div>
                 <span
                   className="rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
                   role="status"
                 >
-                  Indisponível
+                  {t("settings.personalization.memoryUnavailable")}
                 </span>
               </div>
             </div>
@@ -914,7 +917,7 @@ export default function Settings() {
               </div>
               <div>
                 <h3 className="text-base font-bold text-neutral-900 dark:text-white">
-                  Conta & Operador ({operatorProfile.name})
+                  {t("settings.account.title", { name: operatorProfile.name })}
                 </h3>
                 <p className="text-xs text-neutral-500">
                   {operatorProfile.email} • {operatorProfile.plan}
@@ -924,16 +927,16 @@ export default function Settings() {
 
             <div className="mt-5 divide-y divide-neutral-100 text-xs dark:divide-neutral-800">
               <div className="flex items-center justify-between py-2.5">
-                <span className="text-neutral-500">Armazenamento Local:</span>
-                <span className="font-mono text-neutral-800 dark:text-neutral-200">{settings?.WorkingDir || "Workspace local ativo"}</span>
+                <span className="text-neutral-500">{t("settings.account.storageLabel")}</span>
+                <span className="font-mono text-neutral-800 dark:text-neutral-200">{settings?.WorkingDir || t("settings.account.storageFallback")}</span>
               </div>
               <div className="flex items-center justify-between py-2.5">
-                <span className="text-neutral-500">Banco de Dados:</span>
-                <span className="text-neutral-800 dark:text-neutral-200">SQLite (armazenamento local)</span>
+                <span className="text-neutral-500">{t("settings.account.databaseLabel")}</span>
+                <span className="text-neutral-800 dark:text-neutral-200">{t("settings.account.databaseValue")}</span>
               </div>
               <div className="flex items-center justify-between py-2.5">
-                <span className="text-neutral-500">Modo:</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Local-first (sem dependência de nuvem)</span>
+                <span className="text-neutral-500">{t("settings.account.modeLabel")}</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">{t("settings.account.modeValue")}</span>
               </div>
             </div>
           </section>}
@@ -963,7 +966,7 @@ export default function Settings() {
               {resettingToDefaults && (
                 <ArrowPathIcon data-slot="icon" className="animate-spin" />
               )}
-              {resettingToDefaults ? "Restaurando…" : "Restaurar padrões"}
+              {resettingToDefaults ? t("settings.reset.restoring") : t("settings.reset.action")}
             </Button>
           </div>
         </fieldset>
@@ -975,7 +978,7 @@ export default function Settings() {
               color="green"
               className="!bg-green-500 !text-white dark:!bg-green-600"
             >
-              Salvo
+              {t("settings.saved")}
             </Badge>
           </div>
         )}

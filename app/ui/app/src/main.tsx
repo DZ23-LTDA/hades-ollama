@@ -7,9 +7,14 @@ import { fetchUser } from "./api";
 import { StreamingProvider } from "./contexts/StreamingProvider";
 import { ConfirmHost } from "./lib/confirmDialog";
 import { bootstrapTheme } from "./lib/theme";
+import { registarServiceWorker } from "./lib/registarServiceWorker";
+import { bootstrapLanguage } from "./i18n/persistencia";
 
 // Aplica a preferência de tema salva (Claro/Escuro/Automático) antes do render.
 bootstrapTheme();
+// Mesmo princípio para o idioma: a escolha guardada vale ANTES do primeiro
+// render, para não haver um flash em pt-BR quando o utilizador escolheu inglês.
+bootstrapLanguage();
 import { RouteErrorFallback } from "./components/RouteErrorFallback";
 
 const queryClient = new QueryClient({
@@ -55,4 +60,7 @@ if (!rootElement.innerHTML) {
       </QueryClientProvider>
     </StrictMode>,
   );
+  // E-1061: o service worker regista-se DEPOIS do render -- *offline e' um extra; abrir
+  // e' o requisito.* Em desenvolvimento nem tenta (ver `registarServiceWorker`).
+  registarServiceWorker();
 }

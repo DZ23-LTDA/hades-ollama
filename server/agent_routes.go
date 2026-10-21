@@ -30,6 +30,7 @@ import (
 	"github.com/ollama/ollama/envconfig"
 	"github.com/ollama/ollama/internal/agent"
 	"github.com/ollama/ollama/internal/grok"
+	"github.com/ollama/ollama/internal/multillm"
 	"github.com/ollama/ollama/version"
 )
 
@@ -229,6 +230,14 @@ type agentAPI struct {
 	auth         *agent.AuthStore
 	oauthClients *agent.OAuthClientStore
 	authRequired bool
+
+	// FASE 28.7: o store dos builds iniciados por `build.start`.
+	//
+	// E' por instancia e com lazy init: um singleton de package seria estado partilhado entre
+	// testes e esconderia o facto de dois servidores nao partilharem builds. O zero value de
+	// `sync.Once` funciona, por isso `&agentAPI{}` nos testes continua valido.
+	builds       *agent.BuildStore
+	buildsOnce   sync.Once
 	push         *agent.PushService
 	grok         *grok.Client
 	samlMu       sync.Mutex
@@ -239,6 +248,16 @@ type agentAPI struct {
 	chatHandlers []gin.HandlerFunc
 	// activeStreams bounds concurrent long-lived SSE/WS connections (SEC-13).
 	activeStreams atomic.Int64
+	// E-449 (ADV-65): o MOTOR DE AGENDAMENTO ligado à superfície. **Ate' aqui ele nao era construido fora dos testes**
+	// - *o motor existia, era testado, e nao estava ligado a nada*. Nulo significa "sem superficie ligada", e as rotas
+	// **falham fechado** em vez de devolver lista vazia (*que pareceria "nao ha servicos" em vez de "nao ha motor"*).
+	scheduling *agent.SchedulingStore
+
+	// FASE 30: o ledger de personas do Agent Center. Nulo significa "sem superficie ligada", e as rotas
+	// falham fechado em vez de devolver lista vazia -- *que pareceria "nao ha agentes" em vez de "nao ha
+	// armazenamento"*. Mesmo `storeRoot` do registro de plugins: nao se cria uma segunda raiz de dados.
+	personas   *agent.PersonaLedger
+	quarantine *agent.QuarantineStore
 }
 
 var errAgentForbidden = errors.New("object is outside the active organization")
@@ -277,11 +296,22 @@ func newAgentAPI(runtime *agent.Runtime) (*agentAPI, error) {
 	// Registro de plugins (estágio 8): manifesto versionado, atualização
 	// otimista e rollback. A confiança continua sendo decidida pelo servidor,
 	// pela chave autorizada em OLLAMA_AGENT_PLUGIN_TRUSTED_KEYS.
+	personaLedger, err := agent.NewPersonaLedger(storeRoot)
+	if err != nil {
+		return nil, err
+	}
+	quarantineStore, err := agent.NewQuarantineStore(storeRoot)
+	if err != nil {
+		return nil, err
+	}
 	pluginRegistry, err := agent.NewPluginRegistry(storeRoot)
 	if err != nil {
 		return nil, err
 	}
-	return &agentAPI{runtime: runtime, context: runtime.Context(), plugins: pluginRegistry, auth: auth, oauthClients: oauthClients, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}}, nil
+	// E-449 (ADV-65): o motor de agendamento passa a ser CONSTRUIDO em producao. *Em E-441 a busca ampla mostrou que as
+	// duas ocorrencias de `NewSchedulingStore` fora dos testes eram o **comentario** e a **definicao**.* Sob `storeRoot`,
+	// como os outros stores - *um diretorio por preocupacao, e persistencia herdada.*
+	return &agentAPI{runtime: runtime, context: runtime.Context(), plugins: pluginRegistry, personas: personaLedger, quarantine: quarantineStore, auth: auth, oauthClients: oauthClients, authRequired: required, push: runtime.Push(), grok: grokClient, samlServices: map[string]*agent.SAMLService{}, scheduling: agent.NewSchedulingStore(filepath.Join(storeRoot, "scheduling"))}, nil
 }
 
 func newAgentGrokClient() (*grok.Client, error) {
@@ -429,14 +459,20 @@ func newDefaultAgentRuntime() (*agent.Runtime, error) {
 		}
 	}
 	var planner agent.Planner = agent.RulePlanner{}
+	// E-667: o MESMO cliente de chat do planejador e' injetado como executor de INFERENCIA POR PASSO. *Criar um
+	// segundo cliente aqui contornaria o controle de egresso (`newServerEgressClient`, auditado) e daria dois
+	// caminhos para falar com modelo - a classe de defeito que o E-658 varreu do roteador.* Sem `OLLAMA_AGENT_MODEL`
+	// nao ha cliente, e o kind `model.infer` **nao se registra**: o passo e' recusado no planejamento.
+	var inferenceClient agent.InferenceChatClient
 	if model := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_MODEL")); model != "" {
+		inferenceClient = api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.agent.ollama_local", true))
 		planner = &agent.OllamaPlanner{
-			Client: api.NewClient(envconfig.ConnectableHost(), newServerEgressClient("server.agent.ollama_local", true)),
+			Client: inferenceClient,
 			Model:  model,
 			Price:  agent.LocalModelPrice(),
 		}
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: store, Context: contextStore, Company: companyStore, Planner: planner, WorkspaceRoot: workspaceRoot, DataRoot: storeRoot, Connectors: connectors, MCP: mcp, RemoteMCP: remoteMCP, Media: media, RedisQueue: redisQueue, Telemetry: telemetry, Push: push, Deployments: deployments})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{Store: store, Context: contextStore, Company: companyStore, Planner: planner, InferenceChatClient: inferenceClient, WorkspaceRoot: workspaceRoot, DataRoot: storeRoot, Connectors: connectors, MCP: mcp, RemoteMCP: remoteMCP, Media: media, RedisQueue: redisQueue, Telemetry: telemetry, Push: push, Deployments: deployments})
 	if err != nil {
 		return nil, err
 	}
@@ -589,12 +625,18 @@ func (a *agentAPI) register(r *gin.Engine) {
 	// contexto canônico injetado pelo middleware (estágio 5). O /api/chat de
 	// sempre permanece intocado para CLI e clientes compatíveis.
 	if len(a.chatHandlers) > 0 {
-		chatRoute := append([]gin.HandlerFunc{withAgentChatContext()}, a.chatHandlers...)
+		chatRoute := append([]gin.HandlerFunc{withAgentChatContext(a, a.context.Root())}, a.chatHandlers...)
 		group.POST("/chat", chatRoute...)
 	}
 	// Comandos slash (§6/§11.1): descoberta e execução pelo registro canônico.
 	group.GET("/commands", a.commandDiscovery)
 	group.POST("/commands", a.runCommand)
+	// Memoria governada do vault: identidade e organizacao vem do `authMiddleware`,
+	// nunca do corpo. Sem `HADES_VAULT_ROOT` a rota fica desligada (503).
+	group.POST("/memory/vault/append", a.appendMemoriaNoVault)
+	group.GET("/memory/vault/read", a.lerMemoriaDoVault)
+	group.DELETE("/memory/vault/note", a.apagarDoVaultGovernado)
+	group.POST("/memory/vault/compact", a.compactarOVaultGovernado)
 	group.GET("/grok/status", a.grokStatus)
 	group.GET("/config/safe", a.safeConfig)
 	group.GET("/diagnostics", a.diagnostics)
@@ -667,6 +709,26 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/oauth-clients/:provider", a.saveOAuthClient)
 	group.GET("/browser/environment", a.browserEnvironment)
 	group.POST("/browser/environment/setup", a.browserEnvironmentSetup)
+	// E-449 (ADV-65): a SUPERFICIE do motor de agendamento. *Um motor sem superficie nao e' capacidade: e' biblioteca.*
+	// Para OFERECER horario usa-se `/scheduling/slots`, que chama `OpenSlots` - **nao** `Availability` (ADV-60).
+	group.GET("/scheduling/services", a.schedulingServices)
+	group.GET("/scheduling/slots", a.schedulingSlots)
+	group.POST("/scheduling/book", a.schedulingBook)
+	// E-456: a JORNADA DO CLIENTE COMPLETA. *Um cliente que agenda e nao consegue cancelar nem remarcar nao tem um
+	// produto: tem uma demonstracao.* E `reschedule/slots` responde ANTES de o cliente escolher.
+	group.GET("/scheduling/appointments", a.schedulingAppointments)
+	group.POST("/scheduling/cancel", a.schedulingCancel)
+	group.GET("/scheduling/reschedule/slots", a.schedulingRescheduleSlots)
+	group.POST("/scheduling/reschedule", a.schedulingReschedule)
+	// E-457: FILA DE ESPERA e NO-SHOW - *o motor tinha as quatro funcoes e nenhuma porta.*
+	group.GET("/scheduling/waitlist", a.schedulingWaitlist)
+	group.POST("/scheduling/waitlist", a.schedulingWaitlistAdd)
+	group.POST("/scheduling/waitlist/offer", a.schedulingWaitlistOffer)
+	group.POST("/scheduling/waitlist/confirm", a.schedulingWaitlistConfirm)
+	group.POST("/scheduling/no-show", a.schedulingNoShow)
+	// E-479: os LEMBRETES - *quem deve ser avisado, e o registo de que foi. O motor ja' tinha as duas metades.*
+	group.GET("/scheduling/reminders/due", a.schedulingDueReminders)
+	group.POST("/scheduling/reminders/sent", a.schedulingMarkReminderSent)
 	group.GET("/mcp", a.mcp)
 	group.POST("/mcp", a.registerMCP)
 	group.POST("/mcp/:id/enable", a.enableMCP)
@@ -678,6 +740,8 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/remote-mcp", a.registerRemoteMCP)
 	group.GET("/jobs", a.jobs)
 	group.POST("/jobs/:id/replay", a.replayJob)
+	// E-654: §9 — a VERDADE de capacidade por modelo, na superficie (o registo existia e era invisivel).
+	group.GET("/capabilities", a.capabilities)
 	group.GET("/skills", a.skills)
 	group.GET("/skills/active", a.activeSkills)
 	group.POST("/skills/:id/activate", a.activateSkill)
@@ -685,7 +749,36 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/skills", a.registerSkill)
 	group.POST("/skills/:id/enable", a.enableSkill)
 	group.POST("/skills/:id/disable", a.disableSkill)
+	// REPOSTO NO E-650. Esta rota foi APAGADA POR ENGANO no E-642: usei a linha do `DELETE` como
+	// ANCORA de edicao e substitui-a pelas rotas novas SEM A REPOR. A consequencia nao foi um erro
+	// de compilacao (nada a referencia) mas uma FUNCIONALIDADE A MENOS: apagar skill deixou de
+	// existir, e o cliente da UI continuava a chamar a rota.
+	//
+	// *Quem apanhou foi o CI* (`node scripts/verify-contracts.mjs`, dentro de "Preserve Class A+
+	// surfaces"), a comparar o caminho do frontend com as rotas do backend. A minha bateria local
+	// de 16 verificadores NAO o via, porque nenhum deles e' esse script - a mesma classe de falha
+	// do E-636: *a bateria nao continha o gate que o CI continha.* O verificador de contrato passa
+	// a fazer parte dela.
 	group.DELETE("/skills/:id", a.removeSkill)
+	// E-966: a rota de EXECUCAO. *O lifecycle ja' existia (13 handlers); executar nao.*
+	group.POST("/plugins/:plugin_id/execute", a.executePlugin)
+	// E-976: a rota do FORMATO ABERTO. *O formato existia e instalava; faltava a superficie.*
+	group.POST("/plugins/format", a.installHadesPlugin)
+	group.GET("/plugins/format", a.hadesPluginFormat)
+	// E-642: HISTORICO de versoes de skill. As rotas de skills ja' existiam; o que faltava era
+	// expor o arquivo que o E-629 passou a guardar e o restauro do E-631.
+	//
+	// PREFIXO PROPRIO DE PROPOSITO: `GET /skills/active` usa um LITERAL na segunda posicao, e um
+	// `:id` no mesmo nivel arriscaria conflito na arvore de rotas do gin (o servidor pode recusar
+	// arrancar). `/skill-versions/...` nao tem irmao literal - *e' melhor um nome menos bonito do
+	// que uma colisao que so' aparece ao subir o servidor.*
+	group.GET("/skill-versions/:id", a.skillVersions)
+	group.POST("/skill-versions/:id/restore/:version", a.restoreSkillVersion)
+	// E-649: comparar duas revisoes (§9 Paperclip). `from`/`to` sao versoes; uma delas pode ser a
+	// ACTIVA, que nao esta' no arquivo (so' as superadas ficam la').
+	group.GET("/skill-versions/:id/compare", a.compararVersoesDeSkill)
+	// E-647: TRANSPORTE do servidor MCP — a memoria do Hades exposta pelo protocolo.
+	group.POST("/mcp/rpc", a.mcpRPC)
 	group.GET("/companies", a.companies)
 	group.POST("/companies", a.createCompany)
 	group.GET("/companies/:id", a.getCompany)
@@ -781,16 +874,118 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.GET("/collab/:project_id/stream", a.collabStream)
 	group.POST("/collab/:project_id/comments", a.collabComment)
 	group.POST("/collab/:project_id/presence", a.collabPresence)
+	// Complemento 48 / FASE 2 — a SALA e os MEMBROS passam a ser alcançáveis.
+	// *Sem estas rotas, o domínio (sala, membros humanos e agentes) existia e **ninguém** o podia usar* - e a
+	// superfície de UI ficaria a chamar um caminho que não existe. Mesma forma dos vizinhos: autorização de
+	// projeto primeiro (`projectForRequestID`), depois o store, e erro sempre por `writeAgentError`.
+	group.GET("/collab/:project_id/members", a.collabMembers)
+	group.POST("/collab/:project_id/members", a.collabJoinProject)
+	group.GET("/collab/:project_id/rooms", a.collabRooms)
+	group.POST("/collab/:project_id/rooms", a.collabCreateRoom)
+	group.GET("/collab/:project_id/rooms/:room_id/members", a.collabRoomMembers)
+	group.POST("/collab/:project_id/rooms/:room_id/members", a.collabJoinRoom)
 	group.POST("/missions", a.createMission)
 	group.GET("/missions", a.missions)
+	// E-625: relatorio de desempenho das missoes visiveis para o chamador (Paperclip §10).
+	group.GET("/performance", a.performance)
+	// FASE 21 + FASE 24: a telemetria AGREGADA (latencia/p50/p95/p99, custo previsto vs
+	// realizado) dos eventos REAIS. Nome distinto de `/metrics` de proposito: a rota
+	// existente devolve CONTADORES (`runtime.Metrics()`), nao agregados. *Duas rotas com
+	// o mesmo nome e conteudos diferentes seriam duas verdades sobre a mesma pergunta.*
+	group.GET("/metrics/telemetry", a.agentTelemetry)
+	// FASE 23 do adendo V3: catalogo de presets de MISSAO. Fica em `/presets` e nao em
+	// `/missions/presets` de proposito: `/missions/:id` ja' existe, e um literal ao lado de um
+	// parametro na mesma posicao e' ambiguidade de roteador, nao funcionalidade.
+	group.GET("/presets", a.missionPresets)
+	// FASE 19 + FASE 24: a decisao de roteamento com as ALTERNATIVAS. *Escolher bem quando ha'
+	// um vencedor claro e' facil; escolher quando nao ha' e' que precisa de ser explicado.*
+	group.GET("/routing", a.routing)
+	// FASE 28.7 do adendo V3: preflight de toolchain por alvo de build. Todas LEITURA -- nenhuma
+	// instala, altera ou executa trabalho de utilizador. *Um preflight que muda o sistema nao e'
+	// preflight: e' instalacao disfarcada.*
+	// FASE 28.7: project.detect -- a porta do ProjectDetector. Le' HADES_RAIZ_PROJECTO.
+	group.POST("/project/detect", a.detectarProjecto)
+	group.GET("/toolchain/targets", a.toolchainTargets)
+	group.GET("/toolchain/doctor", a.toolchainDoctor)
+	group.GET("/toolchain/plan/:alvo", a.toolchainPlan)
+	// FASE 28.6-A / 28.7: instalador modular. Superficie de LEITURA: planeia, nao instala.
+	// FASE 2: superficie de worktrees (E-1226..E-1231). So' leitura: remover exige decisao
+	// explicita sobre trabalho nao integrado, nunca um efeito lateral de um GET.
+	group.GET("/worktrees", a.worktreeInventario)
+	group.GET("/worktrees/diagnose", a.worktreeDiagnostico)
+	// FASE 2 (E-1236): a UNICA rota mutante de worktree. Aceita suspender/retomar/arquivar --
+	// transicoes REVERSIVEIS. `removido` NAO e' aceite aqui: *remover exige uma decisao sobre
+	// trabalho nao integrado, e essa decisao nao cabe num clique que o painel nao sabe explicar.*
+	group.POST("/worktrees/state", a.worktreeMudarEstado)
+
+	// FASE 3 (E-1240): comparacao objectiva de solucoes. POST porque o corpo pode ser grande;
+	// NAO muta nada e diz isso na resposta (`somente_leitura`).
+	group.POST("/solutions/compare", a.comparacaoDeSolucoes)
+	// FASE 28.6/28.7: o plano de release do projection. Le' e sonda; nao instala nem constroi.
+	group.GET("/build/plan", a.planoDeRelease)
+	// FASE 28.7 do adendo V3: `artifact.checksum` e `artifact.verify`. A primeira MEDE, a segunda
+	// COMPARA com uma referencia. Nenhuma escreve, assina ou instala.
+	group.GET("/build/artifact/checksum", a.checksumDeArtefacto)
+	group.GET("/build/artifact/verify", a.verificarArtefacto)
+	// FASE 28.9 passo 7: `build.verify`. Verifica o LOTE de artefactos de um build contra os
+	// SHA-256 que o build mediu. POST porque a lista nao cabe num URL sem limites arbitrarios.
+	group.POST("/build/start", a.iniciarBuild)
+	// So' LEITURA: nao ha' rota para acionar o pare -- essa exige a decisao de autorizacao.
+	group.GET("/build/pare", a.estadoDoPare)
+	// Acionar e rearmar o pare: o MECANISMO vive aqui; a AUTORIDADE (quem pode)
+	// vive em HADES_PARE_AUTORIDADE e e' decisao humana. Sem a variavel, as rotas
+	// respondem 403 com o motivo -- nunca autorizam por omissao.
+	group.POST("/build/pare", a.acionarOPare)
+	group.POST("/build/pare/rearmar", a.rearmarOPare)
+	// CALCULO, nao medicao: o servidor NAO mede a VRAM do cliente -- quem a mede passa-a.
+	group.GET("/systems/recomendacao", a.recomendacaoPorVRAM)
+	// PROPOE, nao cria: o corpo traz a conversa, a identidade vem da sessao.
+	group.POST("/goals/proposta", a.propostaDeGoal)
+	group.POST("/build/verify", a.verificarBuild)
+	group.POST("/build/smoke", a.executarSmoke)
+	// FASE 28.7 do adendo V3: o estado do build. O E-1306 recusou-se a inventar estas rotas
+	// porque nao havia store; agora ha'. Nenhuma delas escreve, assina ou publica.
+	group.GET("/build/status/:id", a.estadoDeBuild)
+	group.GET("/build/logs/:id", a.saidaDoBuild)
+	group.GET("/build/artifacts/:id", a.artefactosDoBuild)
+	group.GET("/build/registos", a.registosDeBuild)
+	group.POST("/build/cancel/:id", a.cancelarBuild)
+	group.POST("/publish/rollback", a.planearRollback)
+	group.POST("/publish/preflight/:canal", a.preflightDePublicacao)
+	group.POST("/sbom/generate", a.gerarSBOM)
+	// FASE 28.7: `sign.plan`. AVALIA se a identidade serve para o tipo pedido; nao assina, nao le' a
+	// chave privada e nao valida cadeia criptografica.
+	group.POST("/sign/plan", a.planearAssinatura)
+	group.GET("/credentials/status", a.inventariarCredenciais)
+	group.GET("/install/profiles", a.installProfiles)
+	group.GET("/install/plan/:perfil", a.installPlan)
+	// FASE 28.5 do adendo V3: o Signing Identity Center. Le METADADOS de um ficheiro fora do
+	// repositorio (ao lado do broker de credenciais) e nunca devolve valor privado. Leitura
+	// apenas: criar/importar/revogar identidade exige confirmacao humana no momento da accao.
+	group.GET("/signing/identities", a.signingIdentities)
+	group.GET("/signing/summary", a.signingIdentitySummary)
+	// E-638: despertares coalescidos por agente, com enfileiramento do que precisa de execucao.
+	group.POST("/wakeups", a.wakeups)
 	group.GET("/notifications", a.notifications)
 	group.GET("/notifications/stream", a.notificationStream)
 	group.GET("/creations", a.creations)
 	group.GET("/missions/:id", a.getMission)
 	group.GET("/missions/:id/events", a.events)
 	group.GET("/missions/:id/events/stream", a.eventStream)
+	// Estado REAL do Companion para uma missao (complemento 48 / item 46). Reutiliza o
+	// mesmo escopo das rotas acima: *nao inventa autorizacao nova.*
+	group.GET("/missions/:id/companion", a.companion)
 	group.GET("/missions/:id/traces", a.traces)
 	group.GET("/missions/:id/artifacts/:artifact_id", a.artifact)
+	// ESTAGIO 47: a superficie de VERSOES. *O dominio (historico/comparar/restaurar) existia
+	// e testado em `internal/agent` e nao tinha rota nenhuma - a capacidade era inalcancavel.*
+	// Leitura sem CAS; escrita (`restore`) passa pelo `missionVersionMatches`, como todas.
+	group.GET("/missions/:id/artifacts/:artifact_id/versions", a.artifactVersions)
+	group.POST("/missions/:id/artifacts/:artifact_id/restore", a.artifactRestore)
+	group.PUT("/missions/:id/artifacts/:artifact_id", a.artifactEdit)
+	// FATIA 1: publicar devolve um URL servido por esta API (mesma sessao do chamador).
+	group.POST("/missions/:id/artifacts/:artifact_id/publish", a.publishArtifact)
+	group.GET("/published/:chave/:nome", a.publishedFile)
 	group.POST("/missions/:id/run", a.runMission)
 	group.POST("/missions/:id/cancel", a.cancelMission)
 	group.DELETE("/missions/:id", a.deleteMission)
@@ -801,6 +996,7 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/whatsapp/webhook", a.whatsappWebhook)
 	group.GET("/whatsapp/webhook", a.whatsappWebhookVerify)
 	group.GET("/whatsapp/status", a.whatsappStatus)
+	group.GET("/whatsapp/qr", a.whatsappQR)
 	group.POST("/whatsapp/send", a.whatsappSend)
 	group.GET("/whatsapp/dlq", a.whatsappDLQ)
 	group.DELETE("/whatsapp/dlq", a.whatsappClearDLQ)
@@ -884,6 +1080,25 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/plugins/:plugin_id/promote", a.promotePlugin)
 	group.POST("/plugins/:plugin_id/rollback", a.rollbackPlugin)
 	group.POST("/plugins/bundle", a.installPluginBundle)
+
+	// FASE 30 -- Agent Center. O painel consome as tres no mesmo commit: *uma rota que existe e nao e'
+	// consumida e' uma promessa do backend, nao uma funcionalidade do produto.*
+	group.GET("/agents", a.listAgentPersonas)
+	group.GET("/agents/catalog", a.listAgentCatalog)
+	group.GET("/agents/evaluation", a.listAgentEvaluation)
+	group.GET("/agents/teams", a.listAgentTeams)
+	group.POST("/agents/backup", a.backupAgentPersonas)
+	group.GET("/agents/backups", a.listAgentBackups)
+	group.POST("/agents/restore", a.restoreAgentPersonas)
+	group.POST("/agents/import", a.importAgentPersona)
+	group.POST("/agents/quarantine", a.holdAgentPersona)
+	group.GET("/agents/quarantine", a.listAgentQuarantine)
+	group.POST("/agents/quarantine/release", a.releaseAgentPersona)
+	group.POST("/agents/evaluation/run", a.runAgentEvaluation)
+	group.GET("/agents/drift", a.agentPersonaDrift)
+	group.POST("/agents/install", a.installAgentPersona)
+	group.POST("/agents/remove", a.removeAgentPersona)
+	group.POST("/agents/update", a.updateAgentPersona)
 }
 
 func (a *agentAPI) authMiddleware(c *gin.Context) {
@@ -1433,6 +1648,45 @@ func (a *agentAPI) authLogout(c *gin.Context) {
 	c.AbortWithStatus(http.StatusNoContent)
 }
 
+// verifySecondFactorBeforeCredentialChange exige a prova de posse do SEGUNDO factor antes de uma operacao
+// que o altera. Sem isto, um bearer token valido desativava o MFA e gerava codigos novos com um pedido
+// vazio -- e um segundo factor que qualquer portador do primeiro pode remover nao e' um segundo factor.
+func (a *agentAPI) verifySecondFactorBeforeCredentialChange(c *gin.Context, user agent.User) bool {
+	if !user.MFAEnabled {
+		// Sem MFA ligado nao ha' segundo factor para provar. A operacao pedida e' recusada pelo handler.
+		return true
+	}
+	code := strings.TrimSpace(c.GetHeader("X-Ollama-MFA-Code"))
+	recovery := strings.TrimSpace(c.GetHeader("X-Ollama-MFA-Recovery-Code"))
+	key := throttleHostKey(c.Request.RemoteAddr)
+	now := time.Now().UTC()
+	var err error
+	if recovery != "" {
+		err = a.auth.VerifyRecoveryCodeWithThrottle(user.ID, recovery, key, now)
+	} else {
+		err = a.auth.VerifyMFAWithThrottle(user.ID, code, key, now)
+	}
+	if err == nil {
+		return true
+	}
+	var throttle *agent.MFAThrottleError
+	if errors.As(err, &throttle) {
+		retryAfter := int64(throttle.RetryAfter / time.Second)
+		if throttle.RetryAfter%time.Second != 0 {
+			retryAfter++
+		}
+		c.Header("Retry-After", strconv.FormatInt(retryAfter, 10))
+		c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+			"error": "too many mfa attempts",
+		})
+		return false
+	}
+	c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+		"error": "changing mfa requires proof of the second factor (X-Ollama-MFA-Code)",
+	})
+	return false
+}
+
 func (a *agentAPI) enableMFA(c *gin.Context) {
 	value, ok := c.Get("agent.user")
 	user, userOK := value.(agent.User)
@@ -1462,6 +1716,9 @@ func (a *agentAPI) disableMFA(c *gin.Context) {
 		writeAgentError(c, http.StatusUnauthorized, errors.New("authenticated user is required"))
 		return
 	}
+	if !a.verifySecondFactorBeforeCredentialChange(c, user) {
+		return
+	}
 	updated, err := a.auth.DisableMFA(user.ID)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
@@ -1475,6 +1732,14 @@ func (a *agentAPI) generateRecoveryCodes(c *gin.Context) {
 	user, userOK := value.(agent.User)
 	if !ok || !userOK {
 		writeAgentError(c, http.StatusUnauthorized, errors.New("authenticated user is required"))
+		return
+	}
+	// Gerar codigos novos de um segundo factor que esta' desligado nao producao nada: recusa.
+	if !user.MFAEnabled {
+		writeAgentError(c, http.StatusBadRequest, errors.New("mfa is not enabled for this user"))
+		return
+	}
+	if !a.verifySecondFactorBeforeCredentialChange(c, user) {
 		return
 	}
 	updated, codes, err := a.auth.GenerateRecoveryCodes(user.ID)
@@ -1521,9 +1786,18 @@ func (a *agentAPI) devToken(c *gin.Context) {
 		return
 	}
 	var input struct {
-		Email        string `json:"email"`
-		Name         string `json:"name"`
+		Email string `json:"email"`
+		Name  string `json:"name"`
+		// Organization cria uma organizacao NOVA (comportamento antigo).
 		Organization string `json:"organization"`
+		// OrganizationID entra num tenant JA' EXISTENTE, com o papel minimo (viewer).
+		//
+		// PORQUE ISTO EXISTE: sem isto, cada chamada criava uma organizacao propria e nao havia
+		// forma de pôr dois utilizadores no MESMO tenant -- o que bloqueava as jornadas de
+		// "duas identidades leem a mesma memoria permitida" e "sem scope, nega e nao infere".
+		// O papel e' `viewer` de proposito: a rota de desenvolvimento serve para TESTAR
+		// isolamento, nao para conceder poder.
+		OrganizationID string `json:"organization_id"`
 	}
 	if err := decodeJSON(c, &input); err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
@@ -1534,11 +1808,39 @@ func (a *agentAPI) devToken(c *gin.Context) {
 		writeAgentError(c, http.StatusBadRequest, err)
 		return
 	}
-	organization, _, err := a.auth.CreateOrganization(input.Organization, user)
-	if err != nil {
-		writeAgentError(c, http.StatusBadRequest, err)
-		return
+	var organization agent.Organization
+	if entrada := strings.TrimSpace(input.OrganizationID); entrada != "" {
+		// Entrar num tenant existente exige que a organizacao exista: `AddMembership` falha
+		// fechado se nao existir (`os.ErrNotExist`), e o erro vira 400 -- nunca um tenant novo
+		// criado por engano com o id que o chamador pediu.
+		// Idempotente SEM REBAIXAR: quem ja' e' membro mantem o papel que tem.
+		if _, jaMembro := a.auth.AdesaoExistente(user.ID, entrada); jaMembro {
+			organization = agent.Organization{ID: entrada}
+			goto emitir
+		}
+		if _, errMembro := a.auth.AddMembership(user.ID, entrada, agent.RoleViewer); errMembro != nil {
+			// Adesao IDEMPOTENTE: se a organizacao existe mas o utilizador JA' e' membro, a rota
+			// continua -- e' o que permite RE-LOGIN (token novo para o mesmo utilizador no mesmo
+			// tenant) sem duplicar conta. Se a organizacao nao existe, falha fechado.
+			if !errors.Is(errMembro, os.ErrNotExist) {
+				if _, errAutor := a.auth.Authorize(user.ID, entrada, "read"); errAutor == nil {
+					organization = agent.Organization{ID: entrada}
+					goto emitir
+				}
+			}
+			writeAgentError(c, http.StatusBadRequest, errMembro)
+			return
+		}
+		organization = agent.Organization{ID: entrada}
+	} else {
+		criada, _, errCriacao := a.auth.CreateOrganization(input.Organization, user)
+		if errCriacao != nil {
+			writeAgentError(c, http.StatusBadRequest, errCriacao)
+			return
+		}
+		organization = criada
 	}
+emitir:
 	raw, token, err := a.auth.IssueToken(user.ID, organization.ID, 24*time.Hour)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
@@ -1599,6 +1901,85 @@ func (a *agentAPI) replayJob(c *gin.Context) {
 
 func (a *agentAPI) tools(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"tools": a.runtime.ListTools()})
+}
+
+// skillVersions lista as versões ARQUIVADAS de uma skill (E-642).
+//
+// O escopo é aplicado DENTRO do store (E-631): a skill que não é da organização de quem pergunta
+// devolve VAZIO, e não um erro — *distinguir «não existe» de «não é sua» seria uma pista sobre a
+// existência dela.* E «não consegui olhar» é ERRO, não vazio: as duas coisas são diferentes.
+func (a *agentAPI) skillVersions(c *gin.Context) {
+	versoes, err := a.context.SkillVersionsForOrganization(agentOrganizationID(c), c.Param("id"))
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"versions": versoes})
+}
+
+// compararVersoesDeSkill compara duas revisoes de uma skill (E-649).
+//
+// `from` e `to` vem por QUERY e uma delas pode ser a versao ACTIVA — o historico guarda so' as
+// superadas, e o nucleo (`CompararVersoesDeSkill`, E-648) sabe resolver isso com o manifesto vivo.
+//
+// A comparacao NAO mostra `trusted`/`enabled` como mudanca de conteudo: sao estado derivado, e
+// apresenta-los sugeriria que uma versao antiga e' mais confiavel do que e'.
+func (a *agentAPI) compararVersoesDeSkill(c *gin.Context) {
+	diferenca, err := a.context.CompararVersoesDeSkill(agentOrganizationID(c), c.Param("id"), c.Query("from"), c.Query("to"))
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"difference": diferenca})
+}
+
+// restoreSkillVersion restaura uma versão arquivada (E-642).
+//
+// ***RESTAURAR É RECUPERAR CONTEÚDO, NÃO CONFIANÇA***: o caminho passa pelo mesmo `registerSkill`,
+// que impõe `Trusted=false` e verifica o escopo de organização (E-631). Promover a confiança
+// continua a exigir `PromoteSkillTrustedForOrganization` com política.
+func (a *agentAPI) restoreSkillVersion(c *gin.Context) {
+	manifesto, err := a.context.RestoreSkillVersionForOrganization(agentOrganizationID(c), c.Param("id"), c.Param("version"))
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"skill": manifesto})
+}
+
+// mcpRPC responde a pedidos MCP (JSON-RPC 2.0) na organizacao DA SESSAO (E-647).
+//
+// SEM ISTO, O RESPONDEDOR NAO SERVIA NINGUEM: o E-646 implementou os metodos e a ferramenta, mas
+// nenhum cliente MCP real se ligava. Este e' o transporte.
+//
+// O VERIFICADOR DE PROJETO USA O MESMO GUARD DO RESTO (`projectForRequestID`): um projeto que nao
+// pertence a organizacao da sessao nao e' projeto - e o servidor responde o mesmo para "nao existe"
+// e "nao e' seu", para nao dar pistas sobre o que existe noutra organizacao.
+//
+// E OS ERROS SAO DO PROTOCOLO, NAO DO HTTP: um metodo desconhecido devolve 200 com corpo de erro
+// JSON-RPC. *Quem fala MCP le JSON-RPC - responder 4xx obrigaria o cliente a adivinhar.*
+func (a *agentAPI) mcpRPC(c *gin.Context) {
+	var pedido struct {
+		JSONRPC string          `json:"jsonrpc"`
+		ID      json.RawMessage `json:"id"`
+		Method  string          `json:"method"`
+		Params  json.RawMessage `json:"params"`
+	}
+	if err := c.ShouldBindJSON(&pedido); err != nil {
+		c.JSON(http.StatusOK, gin.H{"jsonrpc": "2.0", "id": nil, "error": gin.H{"code": -32700, "message": "parse error"}})
+		return
+	}
+	verificarProjeto := func(projectID string) bool {
+		_, err := a.projectForRequestID(c, projectID)
+		return err == nil
+	}
+	servidor := agent.NovoServidorMCP(a.context, agentOrganizationID(c), verificarProjeto)
+	resultado, erro := servidor.Responder(c.Request.Context(), pedido.Method, pedido.Params)
+	if erro != nil {
+		c.JSON(http.StatusOK, gin.H{"jsonrpc": "2.0", "id": pedido.ID, "error": gin.H{"code": erro.Codigo, "message": erro.Mensagem}})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"jsonrpc": "2.0", "id": pedido.ID, "result": resultado})
 }
 
 func (a *agentAPI) skills(c *gin.Context) {
@@ -2193,6 +2574,119 @@ func (a *agentAPI) collabPresence(c *gin.Context) {
 	c.JSON(http.StatusOK, presence)
 }
 
+// collabMembers devolve os MEMBROS do projeto — humanos e agentes na MESMA lista (complemento 48, FASE 2).
+func (a *agentAPI) collabMembers(c *gin.Context) {
+	if _, err := a.projectForRequestID(c, c.Param("project_id")); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"membros": a.runtime.Collaboration().Participants(c.Param("project_id"))})
+}
+
+// collabJoinProject põe um humano OU um agente na lista de membros. A ORIGEM é o ator autenticado da requisição
+// - *não se aceita do corpo: quem declara é quem está a chamar, e isso o cliente não escolhe.*
+func (a *agentAPI) collabJoinProject(c *gin.Context) {
+	if _, err := a.projectForRequestID(c, c.Param("project_id")); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	var request struct {
+		ID   string `json:"id"`
+		Tipo string `json:"tipo"`
+		Nome string `json:"nome"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	membro, err := a.runtime.Collaboration().JoinProject(
+		c.Param("project_id"), request.ID, agent.ParticipantKind(request.Tipo), request.Nome, a.collabActor(c),
+	)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusCreated, membro)
+}
+
+// collabRooms lista as salas do projeto.
+func (a *agentAPI) collabRooms(c *gin.Context) {
+	if _, err := a.projectForRequestID(c, c.Param("project_id")); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"salas": a.runtime.Collaboration().Rooms(c.Param("project_id"))})
+}
+
+// collabCreateRoom cria a sala. O criador tem de ser membro do projeto - *a regra vive no domínio, e a rota não
+// a contorna: quem não é membro recebe 400 com o motivo.*
+func (a *agentAPI) collabCreateRoom(c *gin.Context) {
+	if _, err := a.projectForRequestID(c, c.Param("project_id")); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	var request struct {
+		ID   string `json:"id"`
+		Nome string `json:"nome"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	sala, err := a.runtime.Collaboration().CreateRoom(c.Param("project_id"), request.ID, request.Nome, a.collabActor(c))
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusCreated, sala)
+}
+
+// collabRoomMembers devolve os membros de UMA sala.
+//
+// SALA INEXISTENTE ⇒ **404**, e não uma lista vazia: *«não há ninguém» e «essa sala não existe» são coisas
+// diferentes* - a mesma distinção que a superfície de UI testa. **Uma lista vazia só significa sala vazia.**
+func (a *agentAPI) collabRoomMembers(c *gin.Context) {
+	if _, err := a.projectForRequestID(c, c.Param("project_id")); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	projectID := c.Param("project_id")
+	roomID := c.Param("room_id")
+	existe := false
+	for _, sala := range a.runtime.Collaboration().Rooms(projectID) {
+		if sala.ID == roomID {
+			existe = true
+			break
+		}
+	}
+	if !existe {
+		writeAgentError(c, http.StatusNotFound, agent.ErrRoomNotFound)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"membros": a.runtime.Collaboration().RoomMembers(projectID, roomID)})
+}
+
+// collabJoinRoom põe um MEMBRO DO PROJETO na sala. O domínio recusa quem não é membro; a rota devolve o motivo.
+func (a *agentAPI) collabJoinRoom(c *gin.Context) {
+	if _, err := a.projectForRequestID(c, c.Param("project_id")); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	var request struct {
+		ID string `json:"id"`
+	}
+	if err := decodeJSON(c, &request); err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	sala, err := a.runtime.Collaboration().JoinRoom(c.Param("project_id"), c.Param("room_id"), request.ID)
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	c.JSON(http.StatusOK, sala)
+}
+
 func (a *agentAPI) collabStream(c *gin.Context) {
 	if _, err := a.projectForRequestID(c, c.Param("project_id")); err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
@@ -2653,22 +3147,100 @@ func (a *agentAPI) pruneProjectMemories(c *gin.Context) {
 	})
 }
 
-func (a *agentAPI) missions(c *gin.Context) {
+// missoesDoChamador devolve as missoes que a ORGANIZACAO DA SESSAO pode ver (E-626).
+//
+// Existe porque o filtro estava DUPLICADO no `missions` e no `performance`, e duplicacao de guard
+// de inquilino e' a que sai mais caro: uma mudanca num dos sitios deixa o outro a filtrar a menos
+// — e uma rota que filtra a menos NAO SE NOTA, porque continua a responder 200 com dados de outro
+// inquilino. Agora ha' um sitio so'. (A versao anterior reutilizava `missions[:0]` no proprio
+// slice; esta aloca o resultado, para nao deixar aliasing a quem chame.)
+func (a *agentAPI) missoesDoChamador(c *gin.Context) ([]agent.Mission, error) {
 	missions, err := a.scopedRuntime(c).ListMissions()
+	if err != nil {
+		return nil, err
+	}
+	return missoesDaOrganizacao(missions, agentOrganizationID(c)), nil
+}
+
+// missoesDaOrganizacao e' a REGRA, separada da ligacao HTTP de proposito (E-627): assim o
+// isolamento entre inquilinos e' PROVADO por um teste puro, sem harness de servidor, e nao fica
+// dependente de um teste de rota que ninguem escreveu. Organizacao vazia devolve tudo — e' o
+// comportamento anterior e esta' fixado por teste, para nao mudar por acidente.
+func missoesDaOrganizacao(missions []agent.Mission, organizationID string) []agent.Mission {
+	if organizationID == "" {
+		return missions
+	}
+	filtered := make([]agent.Mission, 0, len(missions))
+	for _, mission := range missions {
+		if mission.OrganizationID == organizationID {
+			filtered = append(filtered, mission)
+		}
+	}
+	return filtered
+}
+
+func (a *agentAPI) missions(c *gin.Context) {
+	missions, err := a.missoesDoChamador(c)
 	if err != nil {
 		writeAgentError(c, http.StatusInternalServerError, err)
 		return
 	}
-	if organizationID := agentOrganizationID(c); organizationID != "" {
-		filtered := missions[:0]
-		for _, mission := range missions {
-			if mission.OrganizationID == organizationID {
-				filtered = append(filtered, mission)
-			}
-		}
-		missions = filtered
-	}
 	c.JSON(http.StatusOK, gin.H{"missions": missions})
+}
+
+// performance agrega o desempenho das missoes QUE O CHAMADOR PODE VER (E-625).
+//
+// O FILTRO POR ORGANIZACAO E' O MESMO DO `missions` ACIMA, E E' OBRIGATORIO. Sem ele o relatorio
+// contaria missoes de outro inquilino: uma rota que PARECE governada e filtra a menos e' pior do
+// que uma rota ausente, porque a ausente sabe-se que falta (foi a licao do D-5, quando a
+// identidade de missao no chat usava a funcao errada e um teste negativo passava por o recurso
+// nunca funcionar).
+func (a *agentAPI) performance(c *gin.Context) {
+	missions, err := a.missoesDoChamador(c)
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	// O relatorio DECLARA o escopo: um agregado apresentado sem escopo e' lido como global.
+	c.JSON(http.StatusOK, gin.H{
+		"performance": agent.AvaliarDesempenho(missions),
+		"scope":       "missoes visiveis para o chamador (organizacao da sessao)",
+	})
+}
+
+// wakeups calcula os despertares COALESCIDOS por agente e ENFILEIRA o que precisa de execucao
+// (E-638). E' a ligacao entre a regra pura (E-633) e a fila duravel que ja' existe.
+//
+// O QUE VAI A' FILA: so' as missoes cujo motivo e' `missao pronta a executar`, decidido por
+// `agent.MissoesAExecutar` (funcao pura, testada). Aprovacao pendente e recuperacao produzem
+// despertar INFORMATIVO: *enfileirar uma missao que espera aprovacao seria executa-la sem a
+// decisao que ela propria pediu.*
+//
+// NAO DUPLICA: `EnqueueMission` e' idempotente por missao (ha' teste no pacote do agente) - logo
+// repetir o despertar nao cria job novo. E' o que torna esta rota segura de chamar periodicamente.
+//
+// FALHA DE UMA MISSAO NAO ESCONDE AS OUTRAS: é reportada em `failed`, e se NADA foi enfileirado a
+// resposta e' 500 — *sucesso parcial declarado nao e' sucesso, e silencio nao e' desfecho.*
+func (a *agentAPI) wakeups(c *gin.Context) {
+	missions, err := a.missoesDoChamador(c)
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	// UMA implementacao, dois chamadores (E-639): a MESMA operacao que o tique do agendador usa.
+	// Duplicar aqui a decisao de enfileirar deixaria um lado a agir a menos sem se notar.
+	resultado := a.scopedRuntime(c).DespertarAgentes(missions, time.Now().UTC())
+	resposta := gin.H{
+		"wakeups":  resultado.Despertares,
+		"enqueued": resultado.Enfileiradas,
+		"failed":   resultado.Falhas,
+		"scope":    "missoes visiveis para o chamador (organizacao da sessao)",
+	}
+	if len(resultado.Enfileiradas) == 0 && len(resultado.Falhas) > 0 {
+		c.JSON(http.StatusInternalServerError, resposta)
+		return
+	}
+	c.JSON(http.StatusOK, resposta)
 }
 
 func (a *agentAPI) notifications(c *gin.Context) {
@@ -2864,7 +3436,18 @@ func (a *agentAPI) missionContext(c *gin.Context) {
 		}
 		memories = found
 	}
+	// HANDOFF (§4): derivado da missão para que objetivo, plano, capacidades concedidas e o
+	// que EXIGE APROVAÇÃO cheguem ao contexto entregue. Derivar é mais seguro do que anexar.
+	// O erro NÃO derruba o contexto: uma missão sem handoff possível continua a ter contexto
+	// — entregar sem handoff é degradação declarada; falhar por causa dele seria pior.
+	// O bloco que vai aqui é o REDIGIDO (`handoff_preambulo.go`), porque este documento
+	// alimenta o preâmbulo que vai ao modelo (vazamento medido em mission_context_test.go:118).
+	var handoff *agent.Handoff
+	if derivado, handoffErr := agent.HandoffDaMissao(mission); handoffErr == nil {
+		handoff = &derivado
+	}
 	bootstrap, err := agent.BuildContextBootstrap(agent.ContextBootstrapInput{
+		Handoff:             handoff,
 		Version:             version.Version,
 		OrganizationID:      mission.OrganizationID,
 		ProjectID:           mission.ProjectID,
@@ -2912,6 +3495,42 @@ func (a *agentAPI) events(c *gin.Context) {
 		events = events[len(events)-limit:]
 	}
 	c.JSON(http.StatusOK, gin.H{"mission_id": c.Param("id"), "events": events, "total": total})
+}
+
+// companion devolve o estado que o Companion PODE dizer sobre uma missao (item 46).
+//
+// O que isto NAO faz, de proposito:
+//
+//   - **Nao inventa estado.** O estado sai de `agent.DerivarEstadoCompanion` sobre os
+//     eventos PERSISTIDOS da missao. Sem eventos, a derivacao responde o estado honesto
+//     ("ausente") com a razao - *nao um "a trabalhar" de cortesia.*
+//   - **Nao transporta detalhe de evento.** `Event.Payload` nao tem sanitizacao
+//     garantida neste caminho, e o nucleo exige detalhe *ja' sanitizado a montante*;
+//     por isso o detalhe vai vazio (ver `internal/agent/companion_eventos.go`).
+//   - **Nao inventa autorizacao.** O escopo e' o que `missionForRequest` ja' prova; a
+//     resposta DECLARA esse escopo, porque um agregado sem escopo e' lido como global.
+func (a *agentAPI) companion(c *gin.Context) {
+	if _, err := a.missionForRequest(c); err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	missaoID := c.Param("id")
+	eventos, err := a.scopedRuntime(c).Events(missaoID)
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	estado, razao, err := agent.DerivarEstadoCompanion(missaoID, agent.EventosDoCompanionDaMissao(missaoID, eventos, nil))
+	if err != nil {
+		writeAgentError(c, statusForAgentError(err), err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"mission_id": missaoID,
+		"estado":     estado,
+		"razao":      razao,
+		"scope":      "missao do chamador (organizacao da sessao)",
+	})
 }
 
 func (a *agentAPI) eventStream(c *gin.Context) {
@@ -3007,6 +3626,21 @@ func (a *agentAPI) createOrchestration(c *gin.Context) {
 		return
 	}
 	organizationID := agentOrganizationID(c)
+	// F1 DA AUDITORIA DE SEGURANÇA (P1): `Workspace` e `ProjectID` vêm do CORPO do
+	// pedido, e ate' aqui iam direto para `PlanForOrganization` SEM verificar se
+	// pertencem à organização autenticada. O guard que todos os outros caminhos usam
+	// (`projectForRequestID`) estava AUSENTE precisamente aqui — e o runner do
+	// orquestrador é o runtime BASE (`organizationScope == ""`), logo a checagem de
+	// dono que existe no runtime também não corria. Um membro de outra organização
+	// podia apontar o job a um projeto alheio e LER o workspace dele.
+	// A correcção reusa o guard existente em vez de criar uma segunda regra que
+	// pudesse divergir (o defeito do "irmão esquecido").
+	if strings.TrimSpace(request.ProjectID) != "" {
+		if _, err := a.projectForRequestID(c, request.ProjectID); err != nil {
+			writeAgentError(c, statusForAgentError(err), err)
+			return
+		}
+	}
 	job, err := a.runtime.Orchestrator().PlanForOrganization(organizationID, request.Objective, request.Workspace, request.ProjectID, request.Roles, request.Budget)
 	if err != nil {
 		writeAgentError(c, http.StatusBadRequest, err)
@@ -3815,7 +4449,44 @@ func (a *agentAPI) artifact(c *gin.Context) {
 	defer os.Remove(path)
 	defer agent.CloseArtifactSnapshot(path)
 	c.Header("X-Artifact-SHA256", manifest.SHA256)
+	// I1a: o painel "Construcao ao vivo" precisa de EXECUTAR o artefacto gerado, nao de o
+	// descarregar. FileAttachment manda Content-Disposition: attachment, e um iframe apontado
+	// a essa URL descarrega o ficheiro em vez de o renderizar (era por isso que a UI tinha de
+	// usar um blob temporario). Com ?inline=1 servimos INLINE, com o content-type do ficheiro,
+	// mantendo o SHA256. O comportamento por omissao continua a ser download -- nenhum cliente
+	// existente muda.
+	if strings.EqualFold(c.Query("inline"), "1") {
+		c.Header("Content-Disposition", "inline")
+		c.Header("Content-Type", inlineContentType(manifest.Name))
+		// Sem cache: o preview acompanha a construcao e precisa de bytes frescos.
+		c.Header("Cache-Control", "no-store")
+		c.File(path)
+		return
+	}
 	c.FileAttachment(path, manifest.Name)
+}
+
+// inlineContentType devolve o content-type pelo sufixo do nome do artefacto.
+// O `default` e' text/html porque o alvo do preview e' uma app web gerada.
+func inlineContentType(name string) string {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".json":
+		return "application/json; charset=utf-8"
+	case ".css":
+		return "text/css; charset=utf-8"
+	case ".js", ".mjs":
+		return "text/javascript; charset=utf-8"
+	case ".svg":
+		return "image/svg+xml"
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".txt", ".md":
+		return "text/plain; charset=utf-8"
+	default:
+		return "text/html; charset=utf-8"
+	}
 }
 
 func (a *agentAPI) runMission(c *gin.Context) {
@@ -4013,11 +4684,17 @@ func statusForAgentError(err error) int {
 	if errors.Is(err, errAgentForbidden) || errors.Is(err, agent.ErrPluginOrganizationScope) || errors.Is(err, agent.ErrBuilderForbidden) || errors.Is(err, agent.ErrOrchestrationForbidden) || errors.Is(err, agent.ErrDeviceForbidden) || errors.Is(err, agent.ErrQueueJobForbidden) {
 		return http.StatusForbidden
 	}
-	if errors.Is(err, agent.ErrApprovalVersionConflict) || errors.Is(err, agent.ErrBuilderVersionConflict) || errors.Is(err, agent.ErrDeploymentApprovalNonce) || errors.Is(err, agent.ErrDeploymentApprovalConflict) || errors.Is(err, agent.ErrDeploymentApprovalExpired) || errors.Is(err, agent.ErrReembedJobRunning) {
+	// `ErrRestauroConflitante` entra aqui: a restauracao de versao de artefacto usa o CAS
+	// (`expectedVersion`) e um conflito e' 409 - *nao* 500. Sem isto, o cliente nao distingue
+	// «alguem escreveu entretanto» de «o servidor avariou».
+	if errors.Is(err, agent.ErrApprovalVersionConflict) || errors.Is(err, agent.ErrBuilderVersionConflict) || errors.Is(err, agent.ErrDeploymentApprovalNonce) || errors.Is(err, agent.ErrDeploymentApprovalConflict) || errors.Is(err, agent.ErrDeploymentApprovalExpired) || errors.Is(err, agent.ErrReembedJobRunning) || errors.Is(err, agent.ErrRestauroConflitante) {
 		return http.StatusConflict
 	}
 	// Job de re-embed desconhecido é 404: o recurso não existe (ou se perdeu com o reinício do processo).
-	if errors.Is(err, agent.ErrReembedJobNotFound) {
+	// `ErrVersaoInexistente` junta-se ao mesmo 404: *o erro e' PARTILHADO entre artefactos
+	// (`ArtefactoCompararVersoes`) e skills (`CompararVersoesDeSkill`)* - mapear aqui serve as duas
+	// funcionalidades; mapear na rota do artefacto deixaria as skills a devolver 500.
+	if errors.Is(err, agent.ErrReembedJobNotFound) || errors.Is(err, agent.ErrVersaoInexistente) {
 		return http.StatusNotFound
 	}
 	if errors.Is(err, agent.ErrBuilderExportExpired) {
@@ -4142,4 +4819,220 @@ func statusForAgentError(err error) int {
 
 func agentTenantContextKeyVersionFromEnv() (int, error) {
 	return agent.TenantContextKeyVersionFromEnv()
+}
+
+// missionPresets devolve o catalogo de presets de MISSAO (FASE 23 do adendo V3).
+//
+// O catalogo e' o mesmo que `agent.BuiltInMissionPresets()` serve ao `/preset`: uma unica fonte,
+// dois acessos. *Uma segunda copia do catalogo para a API seria uma segunda verdade com o mesmo
+// nome -- e a que ficasse para tras mentiria sem aviso.*
+//
+// Nao expoe nada por tenant: presets sao configuracao de PRODUTO, nao dado de utilizador. O que
+// cada preset PEDE (`permissions`) e' o que o policy engine depois avalia; esta rota nao concede.
+func (a *agentAPI) missionPresets(c *gin.Context) {
+	presets := agent.BuiltInMissionPresets()
+	c.JSON(http.StatusOK, gin.H{
+		"presets": presets,
+		"count":   len(presets),
+	})
+}
+
+// routing expoe a decisao de roteamento de modelo com os candidatos E a fronteira de Pareto
+// (FASE 19 do adendo V3). E' a superficie que faltava: a fronteira existia no motor e no
+// evento interno, mas nao havia como o Mission Control mostrar ALTERNATIVAS.
+//
+// Parameters (todos opcionais):
+//
+//	capabilities= coding,vision   capacidades obrigatorias (repetivel ou separado por virgula)
+//	preference=   quality         auto (vazio) | fastest | quality | cheapest | private
+//	local_only=   true            RESTRICAO rigida: recusa o que nao for local
+//	max_cost_cents=10             tecto de custo por 1k tokens
+//	path=         /api/chat       caminho de inferencia (default /api/chat)
+//
+// Devolve `winner`, `candidates` (com os factors que SOMAM o score) e `pareto_frontier`.
+// Sem registry de modelos devolve 503 -- *nunca 200 com lista vazia: uma lista vazia
+// pareceria "nao ha' modelos" em vez de "nao ha' motor de modelos ligado".*
+func (a *agentAPI) routing(c *gin.Context) {
+	if a == nil || a.runtime == nil || a.runtime.Models() == nil {
+		writeAgentError(c, http.StatusServiceUnavailable,
+			errors.New("model registry unavailable: o runtime de agente nao tem motor de modelos ligado; "+
+				"a rota nao devolve lista vazia porque uma lista vazia pareceria a resposta"))
+		return
+	}
+	capabilities := make([]string, 0, 4)
+	for _, bruto := range c.QueryArray("capabilities") {
+		for _, parte := range strings.Split(bruto, ",") {
+			if limpo := strings.TrimSpace(parte); limpo != "" {
+				capabilities = append(capabilities, limpo)
+			}
+		}
+	}
+	preference, err := preferenciaDeRota(c.Query("preference"))
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, err)
+		return
+	}
+	localOnly, err := boolDeQuery(c.Query("local_only"))
+	if err != nil {
+		writeAgentError(c, http.StatusBadRequest, fmt.Errorf("local_only: %w", err))
+		return
+	}
+	maxCost := int64(0)
+	if bruto := strings.TrimSpace(c.Query("max_cost_cents")); bruto != "" {
+		valor, convErr := strconv.ParseInt(bruto, 10, 64)
+		if convErr != nil || valor < 0 {
+			writeAgentError(c, http.StatusBadRequest, errors.New("max_cost_cents tem de ser um inteiro >= 0"))
+			return
+		}
+		maxCost = valor
+	}
+	caminho := strings.TrimSpace(c.Query("path"))
+	if caminho == "" {
+		caminho = "/api/chat"
+	}
+
+	registro := a.runtime.Models()
+	pedido := multillm.RouteRequest{
+		RequiredCapabilities: capabilities,
+		Path:                 caminho,
+		Preference:           preference,
+		LocalOnly:            localOnly,
+		MaxCostCents:         maxCost,
+	}
+	candidatos, err := registro.RouteCandidates(pedido)
+	if err != nil {
+		if errors.Is(err, multillm.ErrNoRoute) {
+			// A recusa e' o resultado honesto, e vem com o pedido que a produziu.
+			writeAgentError(c, http.StatusUnprocessableEntity, fmt.Errorf(
+				"nenhum modelo satisfaz as restricoes (capabilities=%v local_only=%v max_cost_cents=%d path=%q): %w",
+				capabilities, localOnly, maxCost, caminho, err))
+			return
+		}
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	localDe := func(decisao multillm.RouteDecision) bool {
+		provider, existe := registro.Provider(decisao.Model.Provider)
+		return existe && provider.AllowPrivate
+	}
+	trilha := make([]gin.H, 0, len(candidatos))
+	for indice, candidato := range candidatos {
+		trilha = append(trilha, gin.H{
+			"rank":              indice + 1,
+			"model":             candidato.Model.ID,
+			"provider":          candidato.Model.Provider,
+			"score":             candidato.Score,
+			"cost_cents_per_1k": candidato.Model.CostPer1KInputCents + candidato.Model.CostPer1KOutputCents,
+			"quality_score":     candidato.Model.QualityScore,
+			"reason":            candidato.Reason,
+			// Os factors SOMAM o score. *Um score sem os componentes que o somam obriga
+			// quem o le' a confiar em quem o escreveu.*
+			"factors": candidato.Factors,
+		})
+	}
+	fronteira := make([]gin.H, 0, len(candidatos))
+	for _, alternativa := range multillm.ParetoResumo(candidatos, localDe) {
+		fronteira = append(fronteira, gin.H{
+			"model":   alternativa.ModelID,
+			"score":   alternativa.Score,
+			"quality": alternativa.Eixos.Quality,
+			"cost":    alternativa.Eixos.Cost,
+			"latency": alternativa.Eixos.Latency,
+			"privacy": alternativa.Eixos.Privacy,
+		})
+	}
+
+	vencedor := candidatos[0]
+	c.JSON(http.StatusOK, gin.H{
+		"winner": gin.H{
+			"model":    vencedor.Model.ID,
+			"provider": vencedor.Model.Provider,
+			"score":    vencedor.Score,
+			"reason":   vencedor.Reason,
+		},
+		"candidates": trilha,
+		// `pareto_frontier` sao as alternativas NAO-DOMINADAS. Um cliente que so' leia
+		// `winner` nao sabe que existia uma escolha melhor noutro eixo.
+		"pareto_frontier": fronteira,
+		// Declarar os eixos que NAO foram medidos e' parte do contrato: *inventar energia ou
+		// VRAM quando a plataforma nao os fornece seria um numero falso num relatorio.*
+		"axes_measured":     []string{"quality", "cost", "latency", "privacy"},
+		"axes_not_measured": []string{"energy", "vram"},
+		"request": gin.H{
+			"capabilities":   capabilities,
+			"preference":     string(preference),
+			"local_only":     localOnly,
+			"max_cost_cents": maxCost,
+			"path":           caminho,
+		},
+	})
+}
+
+// preferenciaDeRota traduz o parametro de query. Vazio = Auto (o default do motor).
+func preferenciaDeRota(bruto string) (multillm.RoutePreference, error) {
+	switch strings.ToLower(strings.TrimSpace(bruto)) {
+	case "":
+		return multillm.RoutePreferenceAuto, nil
+	case "fastest":
+		return multillm.RoutePreferenceFastest, nil
+	case "quality", "best_quality":
+		return multillm.RoutePreferenceBestQuality, nil
+	case "cheapest":
+		return multillm.RoutePreferenceCheapest, nil
+	case "private", "most_private":
+		return multillm.RoutePreferenceMostPrivate, nil
+	default:
+		return "", fmt.Errorf("preference invalida %q: use auto, fastest, quality, cheapest ou private", bruto)
+	}
+}
+
+// boolDeQuery aceita os valores que um cliente HTTP realmente envia; recusa o resto em vez de
+// adivinhar. *Adivinhar `local_only` para "yes please" seria escolher seguranca por conta propria.*
+func boolDeQuery(bruto string) (bool, error) {
+	switch strings.ToLower(strings.TrimSpace(bruto)) {
+	case "", "false", "0", "no":
+		return false, nil
+	case "true", "1", "yes":
+		return true, nil
+	default:
+		return false, fmt.Errorf("valor booleano invalido %q", bruto)
+	}
+}
+
+// agentTelemetry devolve a telemetria AGREGADA das missoes visiveis ao chamador (FASE 21).
+//
+// PORQUE NAO SE CHAMA `/metrics`: essa rota JA' EXISTE e devolve `runtime.Metrics()`, que sao
+// CONTADORES (stepsStarted, toolCalls, retries). *Dois conteudos diferentes com o mesmo nome
+// seriam duas verdades sobre a mesma pergunta* -- o consumidor pediria `/metrics` e nao
+// saberia qual das duas recebeu.
+//
+// A colheita vem dos eventos `step.succeeded`/`step.failed`, que passam a trazer `duration_ms`
+// medido em volta do `tool.Execute`. *Sem essa medicao no runtime, a agregacao seria decorativa:
+// somaria zeros bonitos.*
+//
+// O QUE A ROTA **NAO** INVENTA: tokens, custo realizado, energia e VRAM. O `step.model.route`
+// traz custo ESTIMADO por 1k tokens -- que nao e' custo realizado e nao se soma como se fosse.
+// Esses eixos saem em `axes_not_measured`, e isso e' o contrato, nao uma omissao.
+func (a *agentAPI) agentTelemetry(c *gin.Context) {
+	missions, err := a.missoesDoChamador(c)
+	if err != nil {
+		writeAgentError(c, http.StatusInternalServerError, err)
+		return
+	}
+	runtime := a.scopedRuntime(c)
+	resumo, ilegiveis := agent.MetricasDasMissoes(missions, runtime.Events)
+	c.JSON(http.StatusOK, gin.H{
+		"metrics": resumo,
+		// A comparacao por modelo ordena por p95, nao pela media: *a cauda e' o que o
+		// utilizador sente.*
+		"by_model": agent.ComparacaoPorModeloAmostras(missions, runtime.Events),
+		// Declarar o escopo e' parte do contrato: um agregado sem escopo le-se como global.
+		"scope": "missoes visiveis para o chamador (organizacao da sessao)",
+		// Uma leitura que falhou nao pode apagar as metricas das outras missoes -- mas
+		// tambem nao pode desaparecer. *Uma falha silenciosa faria o relatorio parecer mais
+		// completo do que e'.*
+		"missions_unreadable": ilegiveis,
+		"percentiles_method":  agent.MetodoDosPercentis,
+	})
 }

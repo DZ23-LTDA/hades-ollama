@@ -317,3 +317,39 @@ func (a *agentAPI) whatsappConfig(c *gin.Context) {
 
 	c.JSON(http.StatusOK, a.runtime.WhatsApp().StatusSummary())
 }
+
+// whatsappQR devolve o estado de emparelhamento e o QR da instancia Evolution.
+//
+// I0b: antes desta rota a UI nao tinha como mostrar o QR (nao existia endpoint nenhum), e o
+// utilizador ficava sem forma de ligar o WhatsApp. O QR e' do servidor Evolution configurado
+// pelo proprio utilizador -- o Hades apenas o pede e o repassa.
+//
+// Seguranca: exige admin (igual as outras operacoes), recusa quando o backend activo nao e'
+// Evolution, e devolve SOMENTE {state, qr, pairing_code} -- nunca base_url/api_key/webhook_secret.
+func (a *agentAPI) whatsappQR(c *gin.Context) {
+	if !a.requireWhatsAppAdmin(c) {
+		return
+	}
+	if a.runtime == nil || a.runtime.WhatsApp() == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "whatsapp gateway not available"})
+		return
+	}
+	resumo := a.runtime.WhatsApp().StatusSummary()
+	backend := ""
+	if v, ok := resumo["active_backend"]; ok {
+		if s, ok := v.(string); ok {
+			backend = s
+		}
+	}
+	if backend != "" && backend != string(agent.WhatsAppBackendEvolution) {
+		c.JSON(http.StatusConflict, gin.H{"error": "backend activo nao e' Evolution API", "active_backend": backend})
+		return
+	}
+	estado, err := a.runtime.WhatsApp().EvolutionConnect(c.Request.Context())
+	if err != nil {
+		// Erro explicito com o motivo. Nao ha QR falso: melhor uma mensagem do que um quadrado vazio.
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error(), "state": estado.State})
+		return
+	}
+	c.JSON(http.StatusOK, estado)
+}

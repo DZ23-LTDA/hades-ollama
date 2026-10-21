@@ -10,6 +10,34 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/agenticClient", () => ({
   agentFetch: mocks.agentFetch,
   listProjects: mocks.listProjects,
+  // E-641: o console passou a montar o `PerformanceCard`, que chama isto NO ARRANQUE (ao
+  // contrário do `getMissionContext`, que só corria ao abrir as <details>). Sem esta entrada,
+  // o mock parcial deixava de representar o módulo e a chamada rebentava com `undefined`.
+  // *Um mock parcial tem de crescer quando o módulo cresce — senão mente sobre o contrato.*
+  getPerformance: vi.fn().mockResolvedValue({
+    performance: {
+      missions: 0,
+      completed: 0,
+      failed: 0,
+      cancelled: 0,
+      running: 0,
+      recovering: 0,
+      completion_rate: 0,
+      steps: 0,
+      steps_with_rework: 0,
+      extra_attempts: 0,
+      rework_rate: 0,
+      pending_approvals: 0,
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      model_calls: 0,
+      known_cost_cents: 0,
+      missions_with_known_cost: 0,
+      missions_with_unknown_cost: 0,
+      not_measured: [],
+    },
+    scope: "teste",
+  }),
 }));
 
 vi.mock("@/api", () => ({

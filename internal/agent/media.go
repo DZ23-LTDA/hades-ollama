@@ -41,6 +41,20 @@ type MediaResult struct {
 	Text      string           `json:"text,omitempty"`
 }
 
+// 🚨 E-535 (Estagio 45, o `E-430` da matriz): as recusas de modalidade.
+//
+// *A distincao entre as duas e' o que as torna uteis para quem depura:* uma e' sobre **ausencia** (nao ha modelo
+// nenhum), a outra sobre **incoerencia** (ha um modelo, e o nome dele desmente o pedido). *Juntar as duas num
+// «modelo invalido» generico obrigaria a ler a mensagem para saber qual dos dois casos aconteceu.*
+var (
+	// ErrMediaModelRequired recusa a geracao quando nao ha modelo: *nao existe caminho que chame o provider com um
+	// modelo vazio «para ver no que da» - o provider nao decide no nosso lugar.*
+	ErrMediaModelRequired = errors.New("media generation requires an explicit model")
+	// ErrMediaModalityMismatch recusa quando o nome do modelo afirma outra modalidade: *um pedido de video a um modelo
+	// chamado `llama` nao e' arriscado, e' impossivel - e a resposta honesta e' recusar, nao tentar.*
+	ErrMediaModalityMismatch = errors.New("model does not declare the requested modality")
+)
+
 func (p MediaProvider) Validate() error {
 	if strings.TrimSpace(p.BaseURL) == "" {
 		return errors.New("media provider base URL is required")
@@ -410,7 +424,21 @@ func (m *MediaManager) GenerateImage(ctx context.Context, workspace, prompt, mod
 	if model == "" {
 		model = m.Provider.ImageModel
 	}
+	// 🚨 E-535 + E-553: ***A ORDEM É `symlink` → `modalidade` → `provider`*** - e a primeira versão desta guarda errou-a.
+	//
+	// *O E-535 acrescentou `recusarModalidadeDeMidia` **ANTES** de `validateMediaOutputDirectory`, e eu declarei isso
+	// como vitória («a recusa vem antes de qualquer disco ou rede»).* ⇒ ***Mas dois testes já existentes -
+	// `TestMediaOutputsRejectInternalSymlinkBeforeProvider` e `TestMediaProcessDoesNotCallProviderBeforeApproval` -
+	// verificam que a recusa do **symlink** vem primeiro*** ⇒ *e passaram a receber **outro** erro* ⇒ *e o CI ficou
+	// vermelho em três testes, por eu ter mudado a **ordem** de guardas que já existiam* ✗.
+	//
+	// ⇒ ***A modalidade não é o provider.*** *O symlink é o **disco** (primeiro), a modalidade é o **modelo** (depois), e
+	// o provider é a **rede** (por último).* **A guarda da modalidade continua ANTES do `postJSON`** - que é o que o
+	// `E-535` queria garantir, e que este `E-553` preserva.
 	if err := validateMediaOutputDirectory(workspace, ".agent-media", pinnedRoots...); err != nil {
+		return MediaResult{}, err
+	}
+	if err := recusarModalidadeDeMidia("image", model); err != nil {
 		return MediaResult{}, err
 	}
 	payload, err := m.postJSON(ctx, "/images/generations", map[string]any{"model": model, "prompt": prompt, "n": 1, "response_format": "b64_json"})
@@ -442,7 +470,19 @@ func (m *MediaManager) GenerateVideo(ctx context.Context, workspace, prompt, mod
 	if model == "" {
 		model = m.Provider.VideoModel
 	}
+	// 🚨 E-535 + E-553: **é aqui que «vídeo para modelo textual» deixa de ser possível** - *e a ordem é
+	// `symlink` → `modalidade` → `provider`.* A versão anterior seguia para a rede com `model` vazio quando o
+	// `VideoModel` não estava configurado — e o resultado passava a ser «vídeo» por **AFIRMAÇÃO**, não por capacidade.
+	// *Um pedido de vídeo atendido por um motor que não o declara, com sucesso devolvido, é a mesma traição de uma
+	// aprovação que nunca foi dada — só muda o objecto.*
+	//
+	// ⇒ ***Mas o `E-553` corrige a **posição** desta guarda*** ✗: *ela estava **antes** do `validateMediaOutputDirectory`,
+	// e dois testes existentes exigem que o **symlink** seja recusado primeiro* ⇒ *a modalidade não é o provider: o
+	// symlink é o **disco** (primeiro), a modalidade é o **modelo** (depois), o provider é a **rede** (por último).*
 	if err := validateMediaOutputDirectory(workspace, ".agent-media", pinnedRoots...); err != nil {
+		return MediaResult{}, err
+	}
+	if err := recusarModalidadeDeMidia("video", model); err != nil {
 		return MediaResult{}, err
 	}
 	payload, err := m.postJSON(ctx, "/videos/generations", map[string]any{"model": model, "prompt": prompt})

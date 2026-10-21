@@ -97,6 +97,20 @@ type BuilderService struct {
 	mu       sync.Mutex
 	root     string
 	projects map[string]BuilderProject
+	// pare e' o travao consultado antes de arrancar um ambiente de staging. Nil = sem travao (o
+	// comportamento anterior), para nao partir chamadores existentes.
+	pare *PareDeEmergencia
+}
+
+// ComPareDeEmergencia liga o travao de mao a este servico. Devolve o proprio servico para encadear.
+//
+// Sem isto, `StageFullstack` arrancava um ambiente -- e o staging corre um binario gerado -- mesmo com
+// o pare acionado.
+func (b *BuilderService) ComPareDeEmergencia(p *PareDeEmergencia) *BuilderService {
+	if b != nil {
+		b.pare = p
+	}
+	return b
 }
 
 func NewBuilderService(root string) (*BuilderService, error) {
@@ -216,6 +230,12 @@ func (b *BuilderService) applyVisualComponents(ctx context.Context, id string, c
 	if expectedVersion != nil && project.Version != *expectedVersion {
 		return BuilderProject{}, &BuilderVersionConflictError{ProjectID: id, Expected: *expectedVersion, Current: project.Version}
 	}
+	// E-1243: este caminho escrevia o canvas SEM validar nada -- um dos dois que escapavam ao
+	// `validateVisualComponents` da criacao. Validar aqui e' o que separa "o projection foi criado
+	// com seguranca" de "o projection e'' seguro".
+	if err := validateVisualComponents(components, 0); err != nil {
+		return BuilderProject{}, err
+	}
 	indexPath := filepath.Join(project.Root, filepath.FromSlash(project.Entry))
 	if err := os.WriteFile(indexPath, []byte(renderVisualHTML(project.Name, components)), 0o600); err != nil {
 		return BuilderProject{}, err
@@ -326,6 +346,12 @@ func (b *BuilderService) redo(ctx context.Context, id string, expectedVersion *i
 }
 
 func (b *BuilderService) writeVisualProject(project BuilderProject) error {
+	// E-1243: terceiro caminho que renderizava sem validar. Um projection PERSISTIDO pode ter sido
+	// escrito antes desta regra existir; revalidar ao reescrever impede que um projection antigo
+	// contamine o canvas novo.
+	if err := validateVisualComponents(project.Components, 0); err != nil {
+		return err
+	}
 	indexPath := filepath.Join(project.Root, filepath.FromSlash(project.Entry))
 	if err := os.WriteFile(indexPath, []byte(renderVisualHTML(project.Name, project.Components)), 0o600); err != nil {
 		return err
@@ -627,7 +653,11 @@ func validateVisualComponents(components []VisualComponent, depth int) error {
 			return err
 		}
 	}
-	return nil
+	// SEGURANCA (E-1243): estrutura nao e' seguranca. `validateVisualComponents` pergunta "tem id
+	// e type?"; esta pergunta "pode o renderer executar o que esta'' aqui dentro?".
+	//
+	//	*Um componente com id e type e'' um componente bem formado. Nao e'' um componente seguro.*
+	return ValidarSegurancaDosComponentes(components, depth)
 }
 
 func cloneComponents(input []VisualComponent) []VisualComponent {

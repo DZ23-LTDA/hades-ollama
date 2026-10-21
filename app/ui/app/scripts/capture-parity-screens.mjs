@@ -133,12 +133,19 @@ async function waitForStablePage(page, diagnostics, route) {
 
 function expectedHTTPFailure(url, status) {
   const pathname = new URL(url).pathname;
+  // 404 = endpoint ausente neste build. 501 = endpoint ausente POR DECISAO: o servidor
+  // local responde `501 Not Implemented` no `POST /api/v1/settings` enquanto nao houver
+  // persistencia, e ha' um ratchet a garantir isso (server/desktop_local_settings_ratchet_test.go,
+  // E-ratchet de 2026-10-15). A ferramenta de captura tem de conhecer as duas grafias da
+  // mesma ausencia -- recusar 501 aqui obrigaria a "implementar" um endpoint so' para tirar
+  // uma fotografia.
   const expected = {
     "/api/me": new Set([401, 403]),
-    "/api/v1/settings": new Set([404]),
+    "/api/v1/settings": new Set([404, 501]),
     "/api/v1/chats": new Set([404]),
     "/api/v1/cloud": new Set([404]),
     "/api/v1/inference-compute": new Set([404]),
+    "/api/v1/model/upstream": new Set([404, 405, 501]),
   }[pathname];
   return expected?.has(status) ?? false;
 }
@@ -148,8 +155,17 @@ function expectedRequestFailure(url, errorText) {
 }
 
 function attachDiagnostics(page) {
-  const diagnostics = { pageErrors: [], consoleErrors: [], requestFailures: [], expectedRequestFailures: [], httpFailures: [], expectedHTTPFailures: [], unexpectedHTTPFailures: [] };
-  page.on("pageerror", (error) => diagnostics.pageErrors.push(String(error)));
+  const diagnostics = { pageErrors: [], expectedPageErrors: [], consoleErrors: [], requestFailures: [], expectedRequestFailures: [], httpFailures: [], expectedHTTPFailures: [], unexpectedHTTPFailures: [] };
+  // A UI lanca (e o browser reporta como pageerror) o corpo do 501 deliberado de
+  // `POST /api/v1/settings` -- ver `expectedHTTPFailure` acima e o ratchet em
+  // server/desktop_local_settings_ratchet_test.go. Separá-lo evita que a ferramenta de
+  // captura confunda "servidor local nao persiste configuracao" com "pagina avariada".
+  const DELIBERATE_LOCAL_SETTINGS_ERROR = /atendido pelo aplicativo desktop/i;
+  page.on("pageerror", (error) => {
+    const text = String(error);
+    if (DELIBERATE_LOCAL_SETTINGS_ERROR.test(text)) diagnostics.expectedPageErrors.push(text);
+    else diagnostics.pageErrors.push(text);
+  });
   page.on("console", (message) => {
     if (message.type() === "error" && !message.text().startsWith("Failed to load resource:")) diagnostics.consoleErrors.push(message.text());
   });
@@ -223,6 +239,10 @@ const manifest = {
   viewport,
   expectedHTTPFailurePolicy: "Only local no-account / known base-UI bridge gaps and aborted auth probes are classified as expected; assets, JavaScript, other request failures and agentic API failures remain fatal.",
   outputDir,
+  // `files` e' o contrato lido por `scripts/validate-capture-manifest.mjs` (e o que o
+  // manifesto commitado sempre teve): caminho RELATIVO a esta pasta + bytes + sha256.
+  // `captures` fica como detalhe por rota; o validador exige o primeiro.
+  files: captures.map((c) => ({ path: c.screenshot.split(/[\\/]/).pop(), bytes: c.bytes, sha256: c.sha256 })),
   captures,
   limitations: [
     "A capture proves only the observed local UI state and does not validate external providers, accounts, devices, deployment, or store review.",

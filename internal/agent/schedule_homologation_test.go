@@ -88,7 +88,7 @@ func TestScheduleFlowHomologationFailureRetryAndWorkerRestart(t *testing.T) {
 		Store:         flaky,
 		Context:       contextStore,
 		Planner:       RulePlanner{},
-		WorkspaceRoot: workspace,
+		WorkspaceRoot: workspace, DataRoot: t.TempDir(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -143,7 +143,7 @@ func TestScheduleFlowHomologationFailureRetryAndWorkerRestart(t *testing.T) {
 		Store:         restartedStore,
 		Context:       restartedContext,
 		Planner:       RulePlanner{},
-		WorkspaceRoot: workspace,
+		WorkspaceRoot: workspace, DataRoot: t.TempDir(),
 	})
 	if err != nil {
 		t.Fatal(err)

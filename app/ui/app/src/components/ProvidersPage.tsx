@@ -7,6 +7,7 @@ import {
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { SettingsTabs } from "@/components/SettingsTabs";
+import { useT } from "@/i18n";
 import { humanizeApiError } from "@/lib/userFacingError";
 import {
   createProvider,
@@ -39,6 +40,7 @@ function ModelPicker({
   const [filter, setFilter] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useT();
 
   useEffect(() => {
     listProviderModels(name)
@@ -58,16 +60,16 @@ function ModelPicker({
         setError(
           humanizeApiError(
             err,
-            "Não foi possível consultar os modelos deste provedor.",
+            t("providers.models.queryError"),
           ).message,
         ),
       );
-  }, [name]);
+  }, [name, t]);
 
   if (!models && !error) {
     return (
       <p className="mt-3 text-xs text-neutral-500">
-        Consultando modelos do provedor…
+        {t("providers.models.loading")}
       </p>
     );
   }
@@ -83,12 +85,12 @@ function ModelPicker({
     <div className="mt-3 rounded-xl bg-neutral-50 p-3 dark:bg-neutral-900">
       {models?.error && (
         <p role="alert" className="text-xs text-amber-700 dark:text-amber-300">
-          Não foi possível listar os modelos: {models.error}
+          {t("providers.models.listError", { message: models.error })}
         </p>
       )}
       {stale.length > 0 && (
         <p className="text-xs text-amber-700 dark:text-amber-300">
-          Não existem mais no provedor e foram desmarcados: {stale.join(", ")}
+          {t("providers.models.stale", { models: stale.join(", ") })}
         </p>
       )}
       {models && models.available.length > 0 && (
@@ -96,8 +98,10 @@ function ModelPicker({
           type="search"
           value={filter}
           onChange={(event) => setFilter(event.target.value)}
-          placeholder={`Filtrar ${models.available.length} modelos`}
-          aria-label="Filtrar modelos"
+          placeholder={t("providers.models.filterPlaceholder", {
+            count: models.available.length,
+          })}
+          aria-label={t("providers.models.filterAria")}
           className="mt-2 w-full rounded-lg border border-neutral-300 bg-transparent px-3 py-1.5 text-xs outline-none dark:border-neutral-700"
         />
       )}
@@ -139,7 +143,7 @@ function ModelPicker({
               setError(
                 humanizeApiError(
                   err,
-                  "Não foi possível salvar os modelos selecionados.",
+                  t("providers.models.saveError"),
                 ).message,
               );
             } finally {
@@ -148,14 +152,16 @@ function ModelPicker({
           }}
           className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
         >
-          {busy ? "Salvando…" : `Usar ${selected.size} modelo(s)`}
+          {busy
+            ? t("providers.common.saving")
+            : t("providers.models.use", { count: selected.size })}
         </button>
         <button
           type="button"
           onClick={onClose}
           className="rounded-lg px-3 py-1.5 text-xs text-neutral-500"
         >
-          Fechar
+          {t("providers.common.close")}
         </button>
       </div>
     </div>
@@ -174,6 +180,7 @@ function ProviderCard({
   const [key, setKey] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useT();
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);
@@ -201,19 +208,26 @@ function ProviderCard({
             {provider.base_url}
           </p>
           <p className="mt-1 text-[11px] text-neutral-400">
-            {provider.models} {provider.models === 1 ? "modelo" : "modelos"} ·{" "}
-            {provider.type}
+            {provider.models}{" "}
+            {t(
+              provider.models === 1
+                ? "providers.card.model.one"
+                : "providers.card.model.other",
+            )}{" "}
+            · {provider.type}
             {provider.api_key_env ? ` · ${provider.api_key_env}` : ""}
           </p>
         </div>
         {provider.configured ? (
           <span className="flex shrink-0 items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
             <CheckCircleIcon className="h-4 w-4" />
-            {provider.needs_key ? "Chave configurada" : "Sem chave necessária"}
+            {provider.needs_key
+              ? t("providers.card.keyConfigured")
+              : t("providers.card.noKeyNeeded")}
           </span>
         ) : (
           <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-            Sem chave
+            {t("providers.card.noKey")}
           </span>
         )}
       </div>
@@ -226,7 +240,9 @@ function ProviderCard({
             className="flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
           >
             <KeyIcon className="h-4 w-4" />
-            {provider.configured ? "Trocar chave" : "Adicionar chave"}
+            {provider.configured
+              ? t("providers.card.replaceKey")
+              : t("providers.card.addKey")}
           </button>
           {provider.configured && (
             <button
@@ -234,7 +250,7 @@ function ProviderCard({
               onClick={() => setPickingModels((value) => !value)}
               className="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
             >
-              Modelos ({provider.models})
+              {t("providers.card.models", { count: provider.models })}
             </button>
           )}
           {provider.configured && (
@@ -244,7 +260,7 @@ function ProviderCard({
               onClick={() => void run(() => removeProviderKey(provider.name))}
               className="rounded-lg px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-950/30"
             >
-              Remover chave
+              {t("providers.card.removeKey")}
             </button>
           )}
         </div>
@@ -264,8 +280,10 @@ function ProviderCard({
             spellCheck={false}
             value={key}
             onChange={(event) => setKey(event.target.value)}
-            placeholder={`Cole a chave de ${provider.name}`}
-            aria-label={`Chave de API de ${provider.name}`}
+            placeholder={t("providers.card.keyPlaceholder", {
+              provider: provider.name,
+            })}
+            aria-label={t("providers.card.keyAria", { provider: provider.name })}
             className="min-w-0 flex-1 rounded-lg border border-neutral-300 bg-transparent px-3 py-1.5 text-xs text-neutral-900 outline-none dark:border-neutral-700 dark:text-neutral-100"
           />
           <button
@@ -273,7 +291,7 @@ function ProviderCard({
             disabled={busy || !key.trim()}
             className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
           >
-            {busy ? "Salvando…" : "Salvar"}
+            {busy ? t("providers.common.saving") : t("providers.card.save")}
           </button>
           <button
             type="button"
@@ -283,7 +301,7 @@ function ProviderCard({
             }}
             className="rounded-lg px-3 py-1.5 text-xs text-neutral-500"
           >
-            Cancelar
+            {t("providers.common.cancel")}
           </button>
         </form>
       )}
@@ -326,6 +344,7 @@ function AddProviderForm({
   const [apiKey, setApiKey] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useT();
 
   const ids = useId();
 
@@ -347,15 +366,15 @@ function AddProviderForm({
     event.preventDefault();
     setError(null);
     if (!name.trim()) {
-      setError("Dê um nome ao provedor.");
+      setError(t("providers.form.nameRequired"));
       return;
     }
     if (!baseUrl.trim()) {
-      setError("Informe o endpoint (base URL) do provedor.");
+      setError(t("providers.form.urlRequired"));
       return;
     }
     if (models.length === 0) {
-      setError("Informe ao menos um ID de modelo.");
+      setError(t("providers.form.modelsRequired"));
       return;
     }
     setBusy(true);
@@ -370,7 +389,7 @@ function AddProviderForm({
       onCreated(name.trim());
     } catch (err) {
       setError(
-        humanizeApiError(err, "Não foi possível cadastrar o provedor.").message,
+        humanizeApiError(err, t("providers.form.createError")).message,
       );
     } finally {
       setBusy(false);
@@ -386,21 +405,19 @@ function AddProviderForm({
     <form
       onSubmit={submit}
       className="mt-6 rounded-2xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-950"
-      aria-label="Adicionar provedor de IA"
+      aria-label={t("providers.form.aria")}
     >
       <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">
-        Adicionar provedor
+        {t("providers.form.title")}
       </h3>
       <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-        Escolha um modelo de serviço compatível ou use
-        &quot;Personalizado&quot;. O preço e a cota dependem sempre do provedor
-        escolhido; o cadastro aqui não torna o serviço gratuito.
+        {t("providers.form.intro")}
       </p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor={`${ids}-preset`} className={labelClass}>
-            Serviço
+            {t("providers.form.service")}
           </label>
           <select
             id={`${ids}-preset`}
@@ -420,13 +437,13 @@ function AddProviderForm({
         </div>
         <div>
           <label htmlFor={`${ids}-name`} className={labelClass}>
-            Nome
+            {t("providers.form.name")}
           </label>
           <input
             id={`${ids}-name`}
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="ex.: openai"
+            placeholder={t("providers.form.namePlaceholder")}
             className={field}
             autoComplete="off"
             spellCheck={false}
@@ -436,59 +453,57 @@ function AddProviderForm({
 
       <div className="mt-4">
         <label htmlFor={`${ids}-url`} className={labelClass}>
-          Endpoint (base URL)
+          {t("providers.form.endpoint")}
         </label>
         <input
           id={`${ids}-url`}
           value={baseUrl}
           onChange={(event) => setBaseUrl(event.target.value)}
-          placeholder="https://api.exemplo.com/v1 ou http://localhost:1234/v1"
+          placeholder={t("providers.form.urlPlaceholder")}
           className={field}
           autoComplete="off"
           spellCheck={false}
           inputMode="url"
         />
         <p className="mt-1 text-[11px] text-neutral-400">
-          Serviços externos exigem HTTPS. HTTP é aceito apenas para serviços
-          locais (localhost / 127.0.0.1), como LM Studio ou llama.cpp.
+          {t("providers.form.urlHint")}
         </p>
       </div>
 
       <div className="mt-4">
         <label htmlFor={`${ids}-models`} className={labelClass}>
-          IDs de modelos
+          {t("providers.form.models")}
         </label>
         <textarea
           id={`${ids}-models`}
           value={modelsText}
           onChange={(event) => setModelsText(event.target.value)}
-          placeholder="Um por linha ou separados por vírgula. Ex.: gpt-4o, gpt-4o-mini"
+          placeholder={t("providers.form.modelsPlaceholder")}
           rows={3}
           className={field}
           spellCheck={false}
         />
         <p className="mt-1 text-[11px] text-neutral-400">
-          {models.length} modelo(s) reconhecido(s).
+          {t("providers.form.modelsCount", { count: models.length })}
         </p>
       </div>
 
       <div className="mt-4">
         <label htmlFor={`${ids}-key`} className={labelClass}>
-          Chave de API (opcional)
+          {t("providers.form.key")}
         </label>
         <input
           id={`${ids}-key`}
           type="password"
           value={apiKey}
           onChange={(event) => setApiKey(event.target.value)}
-          placeholder="Cole aqui a chave do provedor, se necessária"
+          placeholder={t("providers.form.keyPlaceholder")}
           className={field}
           autoComplete="off"
           spellCheck={false}
         />
         <p className="mt-1 text-[11px] text-neutral-400">
-          A chave é guardada protegida no seu usuário do sistema e nunca volta
-          para esta tela. Serviços locais geralmente não precisam de chave.
+          {t("providers.form.keyHint")}
         </p>
       </div>
 
@@ -504,7 +519,7 @@ function AddProviderForm({
           disabled={busy}
           className="rounded-lg bg-neutral-900 px-4 py-2 text-xs font-medium text-white disabled:opacity-40 dark:bg-white dark:text-neutral-900"
         >
-          {busy ? "Cadastrando…" : "Cadastrar provedor"}
+          {busy ? t("providers.form.submitting") : t("providers.form.submit")}
         </button>
         <button
           type="button"
@@ -512,7 +527,7 @@ function AddProviderForm({
           disabled={busy}
           className="rounded-lg px-4 py-2 text-xs text-neutral-500 disabled:opacity-40"
         >
-          Cancelar
+          {t("providers.common.cancel")}
         </button>
       </div>
     </form>
@@ -520,6 +535,7 @@ function AddProviderForm({
 }
 
 export function ProvidersPage() {
+  const { t } = useT();
   const [providers, setProviders] = useState<ProviderStatus[]>([]);
   const [configPath, setConfigPath] = useState("");
   const [loading, setLoading] = useState(true);
@@ -553,19 +569,17 @@ export function ProvidersPage() {
 
   return (
     <SidebarLayout
-      title="Configurações"
+      title={t("providers.page.configTitle")}
       sidebar={<AppSidebar current="providers" />}
     >
       <SettingsTabs current="providers" />
       <div className="min-h-0 flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-900">
         <div className="mx-auto w-full max-w-6xl px-6 pb-14 pt-10 lg:px-12">
           <h2 className="font-rounded text-3xl font-semibold tracking-tight text-neutral-950 dark:text-white">
-            Provedores de IA
+            {t("providers.page.title")}
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-500 dark:text-neutral-400">
-            Modelos de outros provedores usados pelo roteador, ao lado dos
-            modelos locais e do Ollama Cloud. As chaves ficam protegidas no seu
-            usuário do sistema e nunca voltam para esta tela.
+            {t("providers.page.intro")}
           </p>
           {!loading && !error && !adding && (
             <button
@@ -577,7 +591,7 @@ export function ProvidersPage() {
               className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 px-3 py-2 text-xs font-medium text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
             >
               <PlusIcon className="h-4 w-4" />
-              Adicionar provedor
+              {t("providers.page.add")}
             </button>
           )}
           {adding && (
@@ -586,16 +600,17 @@ export function ProvidersPage() {
               onCancel={() => setAdding(false)}
               onCreated={(name) => {
                 setAdding(false);
-                setNotice(
-                  `${name}: provedor cadastrado. O runtime aplicará a configuração na próxima inicialização.`,
-                );
+                setNotice(t("providers.page.created", { name }));
                 void load();
               }}
             />
           )}
           {!loading && !error && (
             <p className="mt-3 text-xs text-neutral-500">
-              {ready} de {providers.length} provedores prontos
+              {t("providers.page.ready", {
+                ready,
+                total: providers.length,
+              })}
               {configPath ? ` · ${configPath}` : ""}
             </p>
           )}
@@ -618,26 +633,20 @@ export function ProvidersPage() {
                 onClick={() => void load()}
                 className="mt-3 rounded-lg border border-current px-3 py-1.5 text-xs"
               >
-                Tentar novamente
+                {t("providers.page.retry")}
               </button>
             </div>
           )}
           {loading && (
             <p className="mt-8 text-sm text-neutral-500">
-              Carregando provedores…
+              {t("providers.page.loading")}
             </p>
           )}
           {!loading && !error && !adding && providers.length === 0 && (
             <div className="mt-8 max-w-2xl rounded-2xl border border-dashed border-neutral-300 p-6 text-sm leading-6 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300">
-              <p>
-                Você ainda não cadastrou nenhum provedor externo. Use o botão
-                &quot;Adicionar provedor&quot; acima para cadastrar um serviço
-                compatível (como OpenAI, Groq ou OpenRouter) colando a chave de
-                API — não é preciso editar nenhum arquivo.
-              </p>
+              <p>{t("providers.page.empty.intro")}</p>
               <p className="mt-2 text-neutral-500 dark:text-neutral-400">
-                Os modelos locais e o Ollama Cloud (com login) continuam
-                funcionando normalmente, sem precisar de nenhum provedor aqui.
+                {t("providers.page.empty.local")}
               </p>
             </div>
           )}
@@ -647,9 +656,7 @@ export function ProvidersPage() {
                 key={provider.name}
                 provider={provider}
                 onChanged={() => {
-                  setNotice(
-                    `${provider.name}: alteração salva. As alterações foram salvas; o runtime aplicará a configuração na próxima inicialização.`,
-                  );
+                  setNotice(t("providers.page.changed", { name: provider.name }));
                   void load();
                 }}
               />

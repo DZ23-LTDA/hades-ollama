@@ -346,19 +346,36 @@ func (w *Webview) Run(path string) unsafe.Pointer {
 					if ext == "zip" {
 						// Archives become one text attachment per supported file
 						// inside; reading is bounded by attachments.DefaultZipLimits.
-						report, err := attachments.ReadZipText(filename, textExts, attachments.DefaultZipLimits)
-						if err != nil {
-							slog.Warn("zip attachment rejected", "filename", filepath.Base(filename), "error", err)
-						}
-						for _, skipped := range report.Skipped {
+						// I0a: o erro do arquivo deixou de ser engolido. Antes, um zip acima
+						// dos limites (ou sem ficheiros de texto) produzia ZERO anexos e apenas
+						// um slog.Warn -- o utilizador concluia que "o zip quebrou". Agora o
+						// motivo vai no proprio payload, para a UI o mostrar em fileErrors.
+						resultado, err := attachments.BuildZipAttachments(filename, textExts, attachments.DefaultZipLimits)
+						for _, skipped := range resultado.Skipped {
 							slog.Debug("zip entry skipped", "filename", filepath.Base(filename), "entry", skipped)
 						}
-						for _, entry := range report.Entries {
+						if err != nil {
+							slog.Warn("zip attachment rejected", "filename", filepath.Base(filename), "error", err)
+							motivo := err.Error()
+							if resultado.Reason != "" {
+								motivo = resultado.Reason
+							}
 							files = append(files, map[string]string{
-								"filename": filepath.Base(filename) + "/" + entry.Name,
+								"filename": filepath.Base(filename),
 								"path":     filename,
-								"dataURL":  "data:text/plain;base64," + base64.StdEncoding.EncodeToString(entry.Data),
+								"error":    motivo,
 							})
+							continue
+						}
+						for _, anexo := range resultado.Attachments {
+							files = append(files, map[string]string{
+								"filename": anexo.Name,
+								"path":     filename,
+								"dataURL":  "data:text/plain;base64," + base64.StdEncoding.EncodeToString(anexo.Data),
+							})
+						}
+						if resultado.Reason != "" {
+							slog.Info("zip attachment skipped entries", "filename", filepath.Base(filename), "reason", resultado.Reason)
 						}
 						continue
 					}

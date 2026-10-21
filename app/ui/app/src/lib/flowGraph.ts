@@ -6,6 +6,8 @@
 // nodes through edges. Condition nodes branch on named ports ("true"/"false").
 // The graph is plain JSON and serializes directly (no hidden state).
 
+import { t } from "@/i18n";
+
 export type FlowNodeKind = "trigger" | "action" | "condition";
 
 export interface FlowNode {
@@ -98,16 +100,16 @@ export function connect(
   const source = graph.nodes.find((n) => n.id === from);
   const target = graph.nodes.find((n) => n.id === to);
   if (!source || !target) {
-    return { graph, error: "Nó de origem ou destino não existe." };
+    return { graph, error: t("flowGraph.connect.missingNodes") };
   }
   if (from === to) {
-    return { graph, error: "Um nó não pode se conectar a si mesmo." };
+    return { graph, error: t("flowGraph.connect.self") };
   }
   if (target.kind === "trigger") {
-    return { graph, error: "Um gatilho não pode receber conexões de entrada." };
+    return { graph, error: t("flowGraph.connect.triggerTarget") };
   }
   if (graph.edges.some((e) => e.from === from && e.to === to && e.fromPort === fromPort)) {
-    return { graph, error: "Essa conexão já existe." };
+    return { graph, error: t("flowGraph.connect.duplicate") };
   }
   const candidate: FlowGraph = {
     ...graph,
@@ -117,7 +119,7 @@ export function connect(
     ],
   };
   if (hasCycle(candidate)) {
-    return { graph, error: "Essa conexão criaria um ciclo no fluxo." };
+    return { graph, error: t("flowGraph.connect.cycle") };
   }
   return { graph: candidate, error: null };
 }
@@ -217,20 +219,20 @@ export function validateFlow(graph: FlowGraph): string[] {
   const problems: string[] = [];
   const triggers = graph.nodes.filter((n) => n.kind === "trigger");
   if (graph.nodes.length === 0) {
-    problems.push("O fluxo está vazio: adicione um gatilho para começar.");
+    problems.push(t("flowGraph.validate.empty"));
     return problems;
   }
   if (triggers.length === 0) {
-    problems.push("O fluxo precisa de pelo menos um gatilho de entrada.");
+    problems.push(t("flowGraph.validate.noTrigger"));
   }
   if (hasCycle(graph)) {
-    problems.push("O fluxo tem um ciclo: remova a conexão que volta para um nó anterior.");
+    problems.push(t("flowGraph.validate.cycle"));
   }
   // Non-trigger nodes with no incoming edge are unreachable.
   const hasIncoming = new Set(graph.edges.map((e) => e.to));
   for (const node of graph.nodes) {
     if (node.kind !== "trigger" && !hasIncoming.has(node.id)) {
-      problems.push(`O nó "${node.label}" está solto (sem conexão de entrada).`);
+      problems.push(t("flowGraph.validate.danglingNode", { label: node.label }));
     }
   }
   return problems;
@@ -279,28 +281,31 @@ export interface CompiledSteps {
  */
 export function compileFlowSteps(graph: FlowGraph): CompiledSteps {
   if (graph.nodes.length === 0) {
-    return { steps: null, skipped: "O fluxo está vazio: nada a persistir como grafo de passos." };
+    return { steps: null, skipped: t("flowGraph.steps.empty") };
   }
   if (graph.nodes.filter((n) => n.kind === "trigger").length !== 1) {
-    return { steps: null, skipped: "O grafo de passos exige exatamente um gatilho." };
+    return { steps: null, skipped: t("flowGraph.steps.singleTrigger") };
   }
   for (const node of graph.nodes) {
     if (!(node.type in STRUCTURAL_STEP_KINDS)) {
       return {
         steps: null,
-        skipped: `O nó "${node.label}" (${node.type}) ainda não roda como passo persistido; o fluxo segue como plano textual.`,
+        skipped: t("flowGraph.steps.unsupportedNode", {
+          label: node.label,
+          type: node.type,
+        }),
       };
     }
   }
   if (graph.nodes.length > MAX_SCHEDULE_FLOW_STEPS) {
     return {
       steps: null,
-      skipped: `O grafo de passos aceita no máximo ${MAX_SCHEDULE_FLOW_STEPS} passos.`,
+      skipped: t("flowGraph.steps.tooMany", { max: MAX_SCHEDULE_FLOW_STEPS }),
     };
   }
   const order = topologicalOrder(graph);
   if (!order) {
-    return { steps: null, skipped: "O fluxo tem um ciclo e não pode ser persistido." };
+    return { steps: null, skipped: t("flowGraph.steps.cycle") };
   }
   const incoming = new Map<string, string[]>();
   for (const edge of graph.edges) {
@@ -316,17 +321,26 @@ export function compileFlowSteps(graph: FlowGraph): CompiledSteps {
     const deps = (incoming.get(node.id) ?? []).slice().sort();
     if (kind !== "action.mission") {
       if (deps.length > 0) {
-        return { steps: null, skipped: `O gatilho "${node.label}" não pode depender de outro passo.` };
+        return {
+          steps: null,
+          skipped: t("flowGraph.steps.triggerDepends", { label: node.label }),
+        };
       }
       steps.push({ id: node.id, kind });
       continue;
     }
     if (deps.length === 0) {
-      return { steps: null, skipped: `A ação "${node.label}" precisa de uma conexão de entrada.` };
+      return {
+        steps: null,
+        skipped: t("flowGraph.steps.actionNoInput", { label: node.label }),
+      };
     }
     const objective = String(node.config.objective ?? "").trim();
     if (!objective) {
-      return { steps: null, skipped: `Preencha o objetivo da ação "${node.label}".` };
+      return {
+        steps: null,
+        skipped: t("flowGraph.steps.missingObjective", { label: node.label }),
+      };
     }
     steps.push({ id: node.id, kind, depends_on: deps, objective });
   }
@@ -373,19 +387,22 @@ function describeFlowStep(node: FlowNode): StepResult {
   switch (node.type) {
     case "action.mission": {
       const objective = String(node.config.objective ?? "").trim();
-      if (!objective) return { error: 'Preencha o objetivo da ação "Rodar missão".' };
+      if (!objective) return { error: t("flowGraph.describe.missionMissingObjective") };
+      // Payload enviado ao backend: mantém-se em pt-BR de propósito.
       return { text: `Rodar missão: ${objective}` };
     }
     case "action.http": {
       const url = String(node.config.url ?? "").trim();
-      if (!url) return { error: 'Preencha a URL da ação "Requisição HTTP".' };
+      if (!url) return { error: t("flowGraph.describe.httpMissingUrl") };
       const method = String(node.config.method ?? "GET").trim().toUpperCase() || "GET";
+      // Payload enviado ao backend: mantém-se em pt-BR de propósito.
       return { text: `Fazer uma requisição ${method} para ${url}` };
     }
     case "action.connector": {
       const connectorId = String(node.config.connectorId ?? "").trim();
-      if (!connectorId) return { error: 'Escolha o conector da ação "Chamar conector".' };
+      if (!connectorId) return { error: t("flowGraph.describe.connectorMissing") };
       const operation = String(node.config.operation ?? "").trim();
+      // Payload enviado ao backend: mantém-se em pt-BR de propósito.
       return {
         text: operation
           ? `Chamar o conector "${connectorId}", operação "${operation}"`
@@ -427,7 +444,7 @@ export function compileFlow(graph: FlowGraph): CompileResult {
   if (triggers.length !== 1) {
     return {
       schedule: null,
-      errors: ["A execução por agendamento aceita exatamente um gatilho por fluxo."],
+      errors: [t("flowGraph.compile.singleTrigger")],
       unsupported: [],
     };
   }
@@ -438,7 +455,7 @@ export function compileFlow(graph: FlowGraph): CompileResult {
   if (!actionNodes.some((n) => n.type === "action.mission")) {
     return {
       schedule: null,
-      errors: ['O fluxo precisa de uma ação "Rodar missão" para ser executado por agendamento.'],
+      errors: [t("flowGraph.compile.needsMission")],
       unsupported: [],
     };
   }
@@ -478,7 +495,7 @@ export function compileFlow(graph: FlowGraph): CompileResult {
     if (!secretEnv) {
       return {
         schedule: null,
-        errors: ["Informe a variável de ambiente com o segredo do gatilho de webhook."],
+        errors: [t("flowGraph.compile.webhookSecret")],
         unsupported,
       };
     }

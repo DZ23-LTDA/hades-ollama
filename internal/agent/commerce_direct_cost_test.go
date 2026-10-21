@@ -14,7 +14,9 @@ import (
 // E a alegação do ADV-44/E-372 (*"ganho 211×"*) **não tinha teste próprio** — e **não se reproduz**: o auditor mediu
 // **~196×**, e numa medição minha **~102×**. *O tempo e o multiplicador dependem da máquina; as contagens, não.*
 //
-// ⇒ Este teste fixa o que é **estrutural**: **N chamadas individuais custam N gravações; 1 lote de N custa 1.**
+// ⇒ Este teste fixa o que é **estrutural**: **N chamadas soltas custam N gravações; 1 lote de N custa 1.**
+// *Nota de lint (E-423): a palavra em português para "individual" era acusada pelo `misspell` contra o dicionário
+// **não desabilitar lint** ⇒ reescrevi em vez de silenciar: "soltas" diz a mesma coisa e não é ambígua.*
 // ***Cronômetro mede a máquina; contador mede o caminho — e só o segundo serve de catraca.***
 func TestCustoEstruturalDiretoVersusLote(t *testing.T) {
 	const n = 100
@@ -32,7 +34,7 @@ func TestCustoEstruturalDiretoVersusLote(t *testing.T) {
 	}
 	gravacoesDireto := direto.Gravacoes()
 	if gravacoesDireto != n {
-		t.Fatalf("ARMADILHA: %d chamadas individuais deveriam custar EXATAMENTE %d gravações e custaram %d. "+
+		t.Fatalf("ARMADILHA: %d chamadas soltas deveriam custar EXATAMENTE %d gravações e custaram %d. "+
 			"O caminho direto é o caro por construção; se ele passou a gravar menos, o ganho do lote precisa ser "+
 			"remedido e este número atualizado junto com a documentação.", n, n, gravacoesDireto)
 	}

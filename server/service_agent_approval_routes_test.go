@@ -44,10 +44,19 @@ func TestServiceAgentApprovalRoutesListAndDecide(t *testing.T) {
 		t.Fatalf("status inválido precisa ser 400, veio %d", invalido.Code)
 	}
 
-	// 3. Decidir SEM ator é recusado: aprovação anônima não é aprovação.
-	anonimo := serviceAgentRequest(engine, "/api/agent/v1/service-agents/approvals/"+approvalID+"/decide", `{"approved":true}`)
-	if anonimo.Code != http.StatusBadRequest {
-		t.Fatalf("decisão sem ator precisa ser 400, veio %d: %s", anonimo.Code, anonimo.Body.String())
+	// 3. 🚨 E-429/ADV-68: com a sessão **owner** que o fixture agora semeia, a decisão é ACEITA — *é o caminho
+	// autorizado, e ele precisa continuar funcionando*. **O que mudou não foi "decidir passou a falhar": foi
+	// "decidir passou a exigir papel e a usar o ator da SESSÃO".** *A recusa de quem NÃO tem papel é medida em
+	// `service_agent_approval_authorization_test.go`, com uma sessão viewer de verdade.*
+	autorizado := serviceAgentRequest(engine, "/api/agent/v1/service-agents/approvals/"+approvalID+"/decide",
+		`{"approved":true,"actor_id":"ana"}`)
+	if autorizado.Code != http.StatusOK {
+		t.Fatalf("decisão por sessão owner precisa ser aceita, veio %d: %s", autorizado.Code, autorizado.Body.String())
+	}
+	// E o ator registrado é o da SESSÃO, **não** o do corpo: *o corpo escolhia a identidade da trilha* ✗.
+	if strings.Contains(autorizado.Body.String(), `"decided_by":"ana"`) {
+		t.Fatalf("ARMADILHA: a trilha gravou o ator do CORPO (`ana`). *`actor_id` do corpo não é identidade: "+
+			"a decisão tem de ser atribuída à SESSÃO autenticada.* Corpo: %s", autorizado.Body.String())
 	}
 
 	// 4. Pedido inexistente é 404.

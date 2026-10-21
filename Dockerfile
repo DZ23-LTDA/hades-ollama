@@ -329,7 +329,38 @@ COPY --from=image-archive /lib/ollama /usr/lib/ollama
 ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 ENV NVIDIA_VISIBLE_DEVICES=all
-ENV OLLAMA_HOST=0.0.0.0:11434
+# SEGURANCA (adendo 2026-10-18, item C): o padrao e' LOOPBACK. *Um servico que nasce
+# exposto nao esta' protegido por omissao: esta' desprotegido por configuracao inicial.*
+# Para expor conscientemente, publique a porta E configure TLS/auth na frente
+# (reverse proxy). Expor sem isso seria alegar "e' local" sem provar o bind.
+ENV OLLAMA_HOST=127.0.0.1:11434
+# SEGURANCA (adendo 2026-10-18, item A): o processo final NAO corre como root.
+#
+# O que o processo precisa:
+#   - LER  /usr/bin/ollama e /usr/lib/ollama          -> root:root, 0755, so' leitura
+#   - ESCREVER o diretorio de modelos e o cache       -> ollama:ollama (unico ownership)
+#
+# GPU: o acesso a /dev/nvidia* e /dev/dri vem do runtime do container (NVIDIA Container
+# Toolkit), nao do uid. *O uid nao decide acesso a device; os grupos suplementares do
+# runtime decidem* -- por isso o uid 1000 nao quebra GPU. Quando o runtime injeta grupos,
+# ele acrescenta-os ao processo ja' sem root.
+#
+# Numeros fixos (uid/gid 1000) e nao `USER ollama` so' por nome: *um volume montado fora
+# precisa de um numero estavel para o chown casar* -- nome muda entre builds, numero nao.
+RUN groupadd --system --gid 1000 ollama \
+    && useradd --system --uid 1000 --gid 1000 --no-create-home \
+        --home-dir /usr/share/ollama --shell /usr/sbin/nologin ollama \
+    && mkdir -p /usr/share/ollama/.ollama/models \
+    && chown -R 1000:1000 /usr/share/ollama \
+    && chmod 0755 /usr/share/ollama /usr/share/ollama/.ollama
+ENV OLLAMA_MODELS=/usr/share/ollama/.ollama/models
+# Declarado como VOLUME para que o ownership inicial seja aplicado pelo Docker na primeira
+# criacao; volume NOMEADO herda o ownership do caminho da imagem.
+VOLUME ["/usr/share/ollama/.ollama"]
+USER 1000:1000
+# Healthcheck sem `ollama` como root e sem shell injection: usa o proprio binario.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD ["/bin/ollama", "list"]
 EXPOSE 11434
 ENTRYPOINT ["/bin/ollama"]
 CMD ["serve"]

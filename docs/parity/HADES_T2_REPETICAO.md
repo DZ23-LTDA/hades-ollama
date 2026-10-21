@@ -87,3 +87,256 @@ Tentativas por execução: **2**. Modelos: `qwen2.5:7b`.
 - `HARNESS_TRAFICOU` significa que o modelo **alterou o arquivo de teste** (o anti-trapaça registrou).
 - `não medido` = execução que **não aconteceu** (contexto cancelado/limite): ausência **não** é aprovação.
 - Harness **mínimo** sobre Ollama local; Claude Code/Codex/Manus ⇒ `BLOCKED_BY_EXTERNAL_DEPENDENCY` ⇒ `NAO_MEDIDO`.
+
+---
+
+# HADES — T2: REPETIÇÃO ESTATÍSTICA (MEDIDA)
+
+**Gerado por:** `TestT2RepeticaoEstatistica` · **Data:** 2026-10-14T02:04:20Z
+
+Tentativas por execução: **2**. Modelos: `qwen2.5:7b`.
+
+| modelo | fixture | execuções | verde | verde 1ª tent. | trapaceou | vermelho | timeout | não medido | duração média (s) | taxa |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| qwen2.5:7b | fixture-t2-soma | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 20.2 | **3/3** |
+| qwen2.5:7b | fixture-t2-comparacao | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 15.7 | **0/3** |
+| qwen2.5:7b | fixture-t2-caso-limite | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 18.1 | **0/3** |
+| qwen2.5:7b | fixture-t2-fatiamento | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 19.1 | **0/3** |
+
+## O que este artefato **NÃO** permite afirmar
+
+- **N pequeno** ⇒ os números são **contagem**, não probabilidade; **não** há intervalo de confiança.
+- **Sem ranking de modelos**: com poucas execuções, diferença de taxa **não** é superioridade — *alegar superioridade sem métrica é o que o projeto proíbe*.
+- `HARNESS_TRAFICOU` significa que o modelo **alterou o arquivo de teste** (o anti-trapaça registrou).
+- `não medido` = execução que **não aconteceu** (contexto cancelado/limite): ausência **não** é aprovação.
+- Harness **mínimo** sobre Ollama local; Claude Code/Codex/Manus ⇒ `BLOCKED_BY_EXTERNAL_DEPENDENCY` ⇒ `NAO_MEDIDO`.
+
+---
+
+# HADES — T2: REPETIÇÃO ESTATÍSTICA (MEDIDA)
+
+**Gerado por:** `TestT2RepeticaoEstatistica` · **Data:** 2026-10-15T02:29:45Z
+
+Tentativas por execução: **2**. Modelos: `qwen2.5:7b`.
+
+| modelo | fixture | execuções | verde | verde 1ª tent. | trapaceou | vermelho | timeout | não medido | duração média (s) | taxa |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| qwen2.5:7b | fixture-t2-soma | 3 | 0 | 0 | 0 | 0 | 0 | 3 | 0.0 | **0/3** |
+| qwen2.5:7b | fixture-t2-comparacao | 3 | 0 | 0 | 0 | 0 | 0 | 3 | 0.0 | **0/3** |
+| qwen2.5:7b | fixture-t2-caso-limite | 3 | 0 | 0 | 0 | 0 | 0 | 3 | 0.0 | **0/3** |
+| qwen2.5:7b | fixture-t2-fatiamento | 3 | 0 | 0 | 0 | 0 | 0 | 3 | 0.0 | **0/3** |
+
+## O que este artefato **NÃO** permite afirmar
+
+- **N pequeno** ⇒ os números são **contagem**, não probabilidade; **não** há intervalo de confiança.
+- **Sem ranking de modelos**: com poucas execuções, diferença de taxa **não** é superioridade — *alegar superioridade sem métrica é o que o projeto proíbe*.
+- `HARNESS_TRAFICOU` significa que o modelo **alterou o arquivo de teste** (o anti-trapaça registrou).
+- `não medido` = execução que **não aconteceu** (contexto cancelado/limite): ausência **não** é aprovação.
+- Harness **mínimo** sobre Ollama local; Claude Code/Codex/Manus ⇒ `BLOCKED_BY_EXTERNAL_DEPENDENCY` ⇒ `NAO_MEDIDO`.
+
+---
+
+# HADES — T2: REPETIÇÃO ESTATÍSTICA (MEDIDA)
+
+**Gerado por:** `TestT2RepeticaoEstatistica` · **Data:** 2026-10-15T11:28:44Z
+
+Tentativas por execução: **2**. Modelos: `qwen2.5:7b`.
+
+| modelo | fixture | execuções | verde | verde 1ª tent. | trapaceou | vermelho | timeout | não medido | duração média (s) | taxa |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| qwen2.5:7b | fixture-t2-soma | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 13.6 | **3/3** |
+| qwen2.5:7b | fixture-t2-comparacao | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 11.6 | **0/3** |
+| qwen2.5:7b | fixture-t2-caso-limite | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 21.7 | **0/3** |
+| qwen2.5:7b | fixture-t2-fatiamento | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 16.6 | **0/3** |
+
+## O que este artefato **NÃO** permite afirmar
+
+- **N pequeno** ⇒ os números são **contagem**, não probabilidade; **não** há intervalo de confiança.
+- **Sem ranking de modelos**: com poucas execuções, diferença de taxa **não** é superioridade — *alegar superioridade sem métrica é o que o projeto proíbe*.
+- `HARNESS_TRAFICOU` significa que o modelo **alterou o arquivo de teste** (o anti-trapaça registrou).
+- `não medido` = execução que **não aconteceu** (contexto cancelado/limite): ausência **não** é aprovação.
+- Harness **mínimo** sobre Ollama local; Claude Code/Codex/Manus ⇒ `BLOCKED_BY_EXTERNAL_DEPENDENCY` ⇒ `NAO_MEDIDO`.
+
+---
+
+# HADES — T2: REPETIÇÃO ESTATÍSTICA (MEDIDA)
+
+**Gerado por:** `TestT2RepeticaoEstatistica` · **Data:** 2026-10-15T11:40:06Z
+
+Tentativas por execução: **2**. Modelos: `qwen2.5:7b`.
+
+| modelo | fixture | execuções | verde | verde 1ª tent. | trapaceou | vermelho | timeout | não medido | duração média (s) | taxa |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| qwen2.5:7b | fixture-t2-soma | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 11.7 | **3/3** |
+| qwen2.5:7b | fixture-t2-comparacao | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 14.0 | **0/3** |
+| qwen2.5:7b | fixture-t2-caso-limite | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 14.5 | **0/3** |
+| qwen2.5:7b | fixture-t2-fatiamento | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 13.2 | **0/3** |
+
+## O que este artefato **NÃO** permite afirmar
+
+- **N pequeno** ⇒ os números são **contagem**, não probabilidade; **não** há intervalo de confiança.
+- **Sem ranking de modelos**: com poucas execuções, diferença de taxa **não** é superioridade — *alegar superioridade sem métrica é o que o projeto proíbe*.
+- `HARNESS_TRAFICOU` significa que o modelo **alterou o arquivo de teste** (o anti-trapaça registrou).
+- `não medido` = execução que **não aconteceu** (contexto cancelado/limite): ausência **não** é aprovação.
+- Harness **mínimo** sobre Ollama local; Claude Code/Codex/Manus ⇒ `BLOCKED_BY_EXTERNAL_DEPENDENCY` ⇒ `NAO_MEDIDO`.
+
+---
+
+# HADES — T2: REPETIÇÃO ESTATÍSTICA (MEDIDA)
+
+**Gerado por:** `TestT2RepeticaoEstatistica` · **Data:** 2026-10-15T12:00:54Z
+
+Tentativas por execução: **2**. Modelos: `qwen2.5:7b`.
+
+| modelo | fixture | execuções | verde | verde 1ª tent. | trapaceou | vermelho | timeout | não medido | duração média (s) | taxa |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| qwen2.5:7b | fixture-t2-soma | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 17.1 | **3/3** |
+| qwen2.5:7b | fixture-t2-comparacao | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 12.3 | **0/3** |
+| qwen2.5:7b | fixture-t2-caso-limite | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 14.9 | **0/3** |
+| qwen2.5:7b | fixture-t2-fatiamento | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 14.4 | **0/3** |
+
+## O que este artefato **NÃO** permite afirmar
+
+- **N pequeno** ⇒ os números são **contagem**, não probabilidade; **não** há intervalo de confiança.
+- **Sem ranking de modelos**: com poucas execuções, diferença de taxa **não** é superioridade — *alegar superioridade sem métrica é o que o projeto proíbe*.
+- `HARNESS_TRAFICOU` significa que o modelo **alterou o arquivo de teste** (o anti-trapaça registrou).
+- `não medido` = execução que **não aconteceu** (contexto cancelado/limite): ausência **não** é aprovação.
+- Harness **mínimo** sobre Ollama local; Claude Code/Codex/Manus ⇒ `BLOCKED_BY_EXTERNAL_DEPENDENCY` ⇒ `NAO_MEDIDO`.
+
+---
+
+# HADES — T2: REPETIÇÃO ESTATÍSTICA (MEDIDA)
+
+**Gerado por:** `TestT2RepeticaoEstatistica` · **Data:** 2026-10-15T21:36:29Z
+
+Tentativas por execução: **2**. Modelos: `qwen2.5:7b`.
+
+| modelo | fixture | execuções | verde | verde 1ª tent. | trapaceou | vermelho | timeout | não medido | duração média (s) | taxa |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| qwen2.5:7b | fixture-t2-soma | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 16.6 | **3/3** |
+| qwen2.5:7b | fixture-t2-comparacao | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 11.5 | **0/3** |
+| qwen2.5:7b | fixture-t2-caso-limite | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 13.1 | **0/3** |
+| qwen2.5:7b | fixture-t2-fatiamento | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 13.9 | **0/3** |
+
+## O que este artefato **NÃO** permite afirmar
+
+- **N pequeno** ⇒ os números são **contagem**, não probabilidade; **não** há intervalo de confiança.
+- **Sem ranking de modelos**: com poucas execuções, diferença de taxa **não** é superioridade — *alegar superioridade sem métrica é o que o projeto proíbe*.
+- `HARNESS_TRAFICOU` significa que o modelo **alterou o arquivo de teste** (o anti-trapaça registrou).
+- `não medido` = execução que **não aconteceu** (contexto cancelado/limite): ausência **não** é aprovação.
+- Harness **mínimo** sobre Ollama local; Claude Code/Codex/Manus ⇒ `BLOCKED_BY_EXTERNAL_DEPENDENCY` ⇒ `NAO_MEDIDO`.
+
+---
+
+# HADES — T2: REPETIÇÃO ESTATÍSTICA (MEDIDA)
+
+**Gerado por:** `TestT2RepeticaoEstatistica` · **Data:** 2026-10-15T22:11:04Z
+
+Tentativas por execução: **2**. Modelos: `qwen2.5:7b`.
+
+| modelo | fixture | execuções | verde | verde 1ª tent. | trapaceou | vermelho | timeout | não medido | duração média (s) | taxa |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| qwen2.5:7b | fixture-t2-soma | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 15.3 | **3/3** |
+| qwen2.5:7b | fixture-t2-comparacao | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 29.5 | **0/3** |
+| qwen2.5:7b | fixture-t2-caso-limite | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 15.3 | **0/3** |
+| qwen2.5:7b | fixture-t2-fatiamento | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 16.0 | **0/3** |
+
+## O que este artefato **NÃO** permite afirmar
+
+- **N pequeno** ⇒ os números são **contagem**, não probabilidade; **não** há intervalo de confiança.
+- **Sem ranking de modelos**: com poucas execuções, diferença de taxa **não** é superioridade — *alegar superioridade sem métrica é o que o projeto proíbe*.
+- `HARNESS_TRAFICOU` significa que o modelo **alterou o arquivo de teste** (o anti-trapaça registrou).
+- `não medido` = execução que **não aconteceu** (contexto cancelado/limite): ausência **não** é aprovação.
+- Harness **mínimo** sobre Ollama local; Claude Code/Codex/Manus ⇒ `BLOCKED_BY_EXTERNAL_DEPENDENCY` ⇒ `NAO_MEDIDO`.
+
+---
+
+# HADES — T2: REPETIÇÃO ESTATÍSTICA (MEDIDA)
+
+**Gerado por:** `TestT2RepeticaoEstatistica` · **Data:** 2026-10-16T04:32:39Z
+
+Tentativas por execução: **2**. Modelos: `qwen2.5:7b`.
+
+| modelo | fixture | execuções | verde | verde 1ª tent. | trapaceou | vermelho | timeout | não medido | duração média (s) | taxa |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| qwen2.5:7b | fixture-t2-soma | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 16.5 | **3/3** |
+| qwen2.5:7b | fixture-t2-comparacao | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 11.5 | **0/3** |
+| qwen2.5:7b | fixture-t2-caso-limite | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 19.4 | **0/3** |
+| qwen2.5:7b | fixture-t2-fatiamento | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 15.8 | **0/3** |
+
+## O que este artefato **NÃO** permite afirmar
+
+- **N pequeno** ⇒ os números são **contagem**, não probabilidade; **não** há intervalo de confiança.
+- **Sem ranking de modelos**: com poucas execuções, diferença de taxa **não** é superioridade — *alegar superioridade sem métrica é o que o projeto proíbe*.
+- `HARNESS_TRAFICOU` significa que o modelo **alterou o arquivo de teste** (o anti-trapaça registrou).
+- `não medido` = execução que **não aconteceu** (contexto cancelado/limite): ausência **não** é aprovação.
+- Harness **mínimo** sobre Ollama local; Claude Code/Codex/Manus ⇒ `BLOCKED_BY_EXTERNAL_DEPENDENCY` ⇒ `NAO_MEDIDO`.
+
+---
+
+# HADES — T2: REPETIÇÃO ESTATÍSTICA (MEDIDA)
+
+**Gerado por:** `TestT2RepeticaoEstatistica` · **Data:** 2026-10-16T12:14:43Z
+
+Tentativas por execução: **2**. Modelos: `qwen2.5:7b`.
+
+| modelo | fixture | execuções | verde | verde 1ª tent. | trapaceou | vermelho | timeout | não medido | duração média (s) | taxa |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| qwen2.5:7b | fixture-t2-soma | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 19.0 | **3/3** |
+| qwen2.5:7b | fixture-t2-comparacao | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 13.7 | **0/3** |
+| qwen2.5:7b | fixture-t2-caso-limite | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 17.1 | **0/3** |
+| qwen2.5:7b | fixture-t2-fatiamento | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 15.9 | **0/3** |
+
+## O que este artefato **NÃO** permite afirmar
+
+- **N pequeno** ⇒ os números são **contagem**, não probabilidade; **não** há intervalo de confiança.
+- **Sem ranking de modelos**: com poucas execuções, diferença de taxa **não** é superioridade — *alegar superioridade sem métrica é o que o projeto proíbe*.
+- `HARNESS_TRAFICOU` significa que o modelo **alterou o arquivo de teste** (o anti-trapaça registrou).
+- `não medido` = execução que **não aconteceu** (contexto cancelado/limite): ausência **não** é aprovação.
+- Harness **mínimo** sobre Ollama local; Claude Code/Codex/Manus ⇒ `BLOCKED_BY_EXTERNAL_DEPENDENCY` ⇒ `NAO_MEDIDO`.
+
+---
+
+# HADES — T2: REPETIÇÃO ESTATÍSTICA (MEDIDA)
+
+**Gerado por:** `TestT2RepeticaoEstatistica` · **Data:** 2026-10-16T12:36:19Z
+
+Tentativas por execução: **2**. Modelos: `qwen2.5:7b`.
+
+| modelo | fixture | execuções | verde | verde 1ª tent. | trapaceou | vermelho | timeout | não medido | duração média (s) | taxa |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| qwen2.5:7b | fixture-t2-soma | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 18.3 | **3/3** |
+| qwen2.5:7b | fixture-t2-comparacao | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 13.6 | **0/3** |
+| qwen2.5:7b | fixture-t2-caso-limite | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 15.3 | **0/3** |
+| qwen2.5:7b | fixture-t2-fatiamento | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 17.1 | **0/3** |
+
+## O que este artefato **NÃO** permite afirmar
+
+- **N pequeno** ⇒ os números são **contagem**, não probabilidade; **não** há intervalo de confiança.
+- **Sem ranking de modelos**: com poucas execuções, diferença de taxa **não** é superioridade — *alegar superioridade sem métrica é o que o projeto proíbe*.
+- `HARNESS_TRAFICOU` significa que o modelo **alterou o arquivo de teste** (o anti-trapaça registrou).
+- `não medido` = execução que **não aconteceu** (contexto cancelado/limite): ausência **não** é aprovação.
+- Harness **mínimo** sobre Ollama local; Claude Code/Codex/Manus ⇒ `BLOCKED_BY_EXTERNAL_DEPENDENCY` ⇒ `NAO_MEDIDO`.
+
+---
+
+# HADES — T2: REPETIÇÃO ESTATÍSTICA (MEDIDA)
+
+**Gerado por:** `TestT2RepeticaoEstatistica` · **Data:** 2026-10-16T23:52:54Z
+
+Tentativas por execução: **2**. Modelos: `qwen2.5:7b`.
+
+| modelo | fixture | execuções | verde | verde 1ª tent. | trapaceou | vermelho | timeout | não medido | duração média (s) | taxa |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| qwen2.5:7b | fixture-t2-soma | 3 | 3 | 0 | 0 | 0 | 0 | 0 | 15.1 | **3/3** |
+| qwen2.5:7b | fixture-t2-comparacao | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 11.1 | **0/3** |
+| qwen2.5:7b | fixture-t2-caso-limite | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 25.0 | **0/3** |
+| qwen2.5:7b | fixture-t2-fatiamento | 3 | 0 | 0 | 3 | 0 | 0 | 0 | 18.7 | **0/3** |
+
+## O que este artefato **NÃO** permite afirmar
+
+- **N pequeno** ⇒ os números são **contagem**, não probabilidade; **não** há intervalo de confiança.
+- **Sem ranking de modelos**: com poucas execuções, diferença de taxa **não** é superioridade — *alegar superioridade sem métrica é o que o projeto proíbe*.
+- `HARNESS_TRAFICOU` significa que o modelo **alterou o arquivo de teste** (o anti-trapaça registrou).
+- `não medido` = execução que **não aconteceu** (contexto cancelado/limite): ausência **não** é aprovação.
+- Harness **mínimo** sobre Ollama local; Claude Code/Codex/Manus ⇒ `BLOCKED_BY_EXTERNAL_DEPENDENCY` ⇒ `NAO_MEDIDO`.

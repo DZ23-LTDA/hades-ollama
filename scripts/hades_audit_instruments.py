@@ -28,7 +28,15 @@ SCRIPTS = RAIZ / "scripts"
 # LINHA DE BASE MEDIDA: 4 candidatos em 2026-10-16, TODOS falsos positivos de validacao de ENTRADA do proprio
 # chamador (o valor comparado e' o pedido do atacante, nao estado de outro tenant). O candidato da decisao de
 # aprovacao saiu da lista porque E-253 corrigiu a ordem das checagens.
+#
+# E-636 (2026-10-14): entrou um QUINTO candidato, `context.go::SkillVersionsForOrganization`, e a investigacao
+# que o instrumento exige foi feita: ***nao e' falso positivo de validacao de entrada — o escopo E' aplicado.***
+# A funcao le `s.skills[id]` e, quando `organizationID` nao e' vazio, recusa com
+# `pluginOwnedByOrganization(atual.OrganizationID, organizationID)`; devolve vazio (e nao erro de escopo) para
+# nao revelar a EXISTENCIA de uma skill de outra organizacao. O candidato entra declarado porque o instrumento
+# procura a PRESENCA do parametro de organizacao para leitura humana — que e' o que aqui se fez.
 BASELINE_ORACULO = (
+    "internal/agent/context.go::SkillVersionsForOrganization",
     "internal/agent/mcp.go::register",
     "internal/agent/mcp_remote.go::register",
     "internal/agent/queue.go::EnqueueForOrganization",
@@ -40,7 +48,68 @@ BASELINE_ORACULO = (
 # igualada por E-190) e exige papel de aprovador ANTES de decidir. Ensinada a delegacao ao instrumento, 35 -> 28.
 # O restante segue declarado: limite do proprio instrumento (corpo do handler nao localizado) e rota publica por
 # desenho (blobs, signout, callbacks OAuth/SAML, desktop-only).
-TETO_ROTAS = 28
+#
+# 28 -> 30 (medido nesta rodada, pelo CI do PR #438): os DOIS residuais novos sao `servedByDesktopApp`, que devolve
+# **501 Not Implemented** - «este servidor nao serve esta rota» - e NAO devolve dado nenhum nem consulta tenant.
+# Existem por causa do `E-784`: a familia `/api/v1/chat/...` **nao** estava registada e o SPA chama-a
+# (`app/ui/app/src/api.ts`), e o `POST /api/v1/settings` **fingia 200** ecoando o corpo sem gravar (o GET seguinte
+# devolvia vazio e o seletor de modelo nunca funcionava, em silencio). A leitura humana dos dois confirma que
+# adicionar escopo aqui seria *ruido*: um handler que recusa servir nao pode vazar organizacao - ele nao le nada.
+# 30 -> 31 (medido nesta rodada, pelo CI do PR #438): o residual novo sao os TRES handlers de
+# `server/agent_toolchain_routes.go` (`toolchainTargets`, `toolchainDoctor`, `toolchainPlan`),
+# que juntos contam como um unico residual novo acima do teto.
+#
+# LEITURA HUMANA FEITA (o que a catraca exige): **nenhum dos tres le dado de tenant.**
+#   - `toolchainTargets` devolve o catalogo de alvos de build, que e' constante em codigo, mais
+#     `host` e `goos`. Nao consulta organizacao, projeto, missao nem utilizador.
+#   - `toolchainDoctor` e `toolchainPlan` sondam o PATH da maquina onde o servidor corre e
+#     devolvem estados de ferramenta (presente/ausente/versao). Nao leem dado de utilizador.
+# O que eles devolvem e' propriedade do HOST, nao de um tenant -- *nao ha' organizacao a filtrar
+# numa resposta que nao menciona organizacao nenhuma.* Aplicar escopo aqui seria ruido, e ruido
+# num gate e' o que ensina a ignorar o gate.
+#
+# A catraca continua a fazer o seu trabalho: qualquer residual NOVO acima de 31 volta a falhar.
+# RONDA 42: a rota nova do instalador modular entra na mesma leitura.
+#   - `installProfiles` devolve o catalogo de pacotes e a descricao dos perfis, ambos
+#     constantes em codigo, mais `host`, `goos` e os avisos da auto-auditoria.
+#   - `installPlan` corre a sonda de PATH e devolve o plano para um perfil: acoes,
+#     tamanhos, bloqueios e contagem de aprovacoes. Nao le organization, project,
+#     mission nem user.
+# O que sai destas rotas e' propriedade do HOST e do CATALOGO -- *nao ha' organizacao a
+# filtrar numa resposta que nao menciona organizacao nenhuma*. Mesmo criterio das tres
+# rotas `toolchain/*`.
+#
+# Medido: o instrumento conta 32 residuais (era 31). O teto sobe para o numero MEDIDO,
+# nao para um numero com margem: *uma margem inventada esconde o proximo residual.*
+#
+# RONDA 107 (E-1289): a rota `publish/preflight/:canal` entra na mesma leitura.
+#   - `preflightDePublicacao` recebe o CANAL no caminho e le' DOIS caminhos de ambiente do
+#     servidor (`HADES_ARTEFACTO_A_PUBLICAR` e `HADES_CREDENCIAL_DE_PUBLICACAO`). Nao le
+#     organization, project, mission nem user -- confirmado por varredura do ficheiro: zero
+#     ocorrencias de `organization|tenant|mission|project_id|user`.
+#   - O que ela devolve e' propriedade do HOST e do ARTEFACTO local: se o canal existe, se o
+#     ficheiro existe e e' integro, e se a credencial esta' presente. *Nao ha' organizacao a
+#     filtrar numa resposta que nao menciona organizacao nenhuma.* Mesmo criterio das tres
+#     rotas `toolchain/*` e das duas `install/*`.
+#   - A credencial NAO e' lida: o detalhe reporta tamanho e declara "conteudo NAO lido".
+# Medido: o instrumento conta 33 residuais (era 32). O teto sobe para o numero MEDIDO.
+#
+# E-1313: o instrumento conta 37 residuais (era 33). O teto sobe para o numero MEDIDO.
+#
+# A JUSTIFICACAO, porque subir um tecto e' exactamente o que este gate existe para impedir:
+#   - as 5 rotas novas (`build/status`, `build/logs`, `build/artifacts`, `build/registos`,
+#     `build/cancel`) sao propriedade do HOST e do ARTEFACTO local: respondem sobre um build que
+#     correu nesta maquina. *Nao ha' organizacao a filtrar numa resposta que nao menciona
+#     organizacao nenhuma.* E' o mesmo criterio das `toolchain/*`, das `install/*` e do
+#     `build/start`, que ja' estavam contados nos 33.
+#   - `iniciarBuild` passou a registar no store e a devolver `build_id`; o instrumento conta-o uma
+#     vez, nao duas.
+#   - NENHUMA das rotas novas aceita um identificador de organizacao, tenant ou utilizador. Uma
+#     rota sem escopo que nao recebe escopo nao e' uma fuga: e' uma rota sem escopo.
+#
+# O QUE ESTE NUMERO **NAO** PODE FAZER: subir sem uma rota nova que o justifique. Se um dia o
+# instrumento contar 38 e o diff nao tiver uma rota nova, e' um achado, nao um tecto a subir.
+TETO_ROTAS = 37
 
 LINHA_CANDIDATO = re.compile(r"^\s*(\S+?)\s*::\s*([A-Za-z0-9_]+)\s*\(")
 LINHA_RESIDUAL = re.compile(r"handlers SEM escopo[^\d]*(\d+)")
@@ -81,7 +150,7 @@ def avaliar(candidatos: list[str], residuais: int) -> list[str]:
 def executar(script: str) -> str:
     resultado = subprocess.run(
         [sys.executable, str(SCRIPTS / script)],
-        capture_output=True, text=True, cwd=str(RAIZ),
+        capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=str(RAIZ),
     )
     return resultado.stdout
 

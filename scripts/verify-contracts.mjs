@@ -100,8 +100,27 @@ function routeMatches(frontRaw, backendRaw) {
   }
   return true;
 }
+// E-1344: `call.path` (normalizado, COM prefixo) e nao `call.raw` (o texto cru).
+//
+// O DEFEITO QUE ISTO CORRIGE -- provado com um probe real:
+//
+//   `agentFetch("/plugins")`  ->  raw = "/plugins"
+//                                 path = "/api/agent/v1/plugins"
+//
+// Com `call.raw`, o gate comparava "/plugins" com a rota do backend
+// "/api/agent/v1/plugins" e escrevia:
+//
+//   [FAIL] GET /api/agent/v1/plugins -> NO MATCH
+//
+// -- um falso negativo ABSURDO a' vista: a rota que o log diz nao encontrar esta' no prefixo
+// do proprio log. Passou despercebido porque todos os clientes escritos ate' hoje usam o
+// caminho completo, onde raw == path. O defeito so' aparecia quando alguem escrevesse o
+// caminho curto -- e nesse dia o gate acusava o produto pelo que o instrumento fazia.
+//
+//   *Um gate que compara o texto cru com o caminho normalizado nao compara dois caminhos:
+//   compara duas maneiras de escrever o mesmo caminho, e chama-lhes nomes diferentes.*
 function matches(call, route) {
-  return (route.method === "ALL" || route.method === call.method) && routeMatches(call.raw, route.path);
+  return (route.method === "ALL" || route.method === call.method) && routeMatches(call.path, route.path);
 }
 
 const uniqueCalls = [...new Map(frontendCalls.map(c => [`${c.method} ${c.path} ${c.file}`, c])).values()];

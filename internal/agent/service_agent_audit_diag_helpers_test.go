@@ -89,7 +89,12 @@ func mascaraIdentificadoresGerados(texto string) string {
 		return texto
 	}
 	// Prefixos cunhados pelo sistema (mission, aprovação, conversa, sessão de live, evento, pedido, produto, etc.).
-	comPrefixo := regexp.MustCompile(`\b(?:apr|aud|cv|tr|sp|ms|apv|run|wf|svc|res|brk|clo|live|cev|mod|wl|prod|ped|appt|shift|org|proj|agent|mission)_[0-9a-zA-Z][0-9a-zA-Z_-]*`)
+	// E-824: `ct` (contato) FALTAVA. O `summary` do `crm.contact.read` é texto legítimo COM um identificador
+	// embutido ("contato Ana Souza (ct_4111e7ed-f7e), telefone +55...") e o `ct_4111e7ed-f7e` casava com o fragmento
+	// "4111" do segredo da varredura — a MESMA classe de falso positivo que E-196 (campo identificador) e E-333
+	// (identificador embutido em texto livre) já haviam corrigido. Medido na CI da `main` (`4b3e21854`, run
+	// 38499987288): era este o motivo do vermelho, não um vazamento.
+	comPrefixo := regexp.MustCompile(`\b(?:apr|aud|ct|cv|tr|sp|ms|apv|run|wf|svc|res|brk|clo|live|cev|mod|wl|prod|ped|appt|shift|org|proj|agent|mission)_[0-9a-zA-Z][0-9a-zA-Z_-]*`)
 	texto = comPrefixo.ReplaceAllString(texto, "<id>")
 	// UUIDs completos (com ou sem hífens) e sequências longas de hexadecimal.
 	uuidCompleto := regexp.MustCompile(`\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b`)

@@ -1,25 +1,31 @@
 {
   "expo": {
-    "name": "DZ23 Agentic",
-    "slug": "dz23-agentic",
+    "name": "HADES",
+    "slug": "hades",
+    "owner": "dz23s-team",
     "version": "0.2.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "scheme": "dz23-agentic",
+    "scheme": "hades",
     "runtimeVersion": { "policy": "appVersion" },
     "updates": { "fallbackToCacheTimeout": 0 },
     "plugins": ["expo-secure-store", ["expo-notifications", { "color": "#171717" }]],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.lmprado.dz23agentic",
+      "bundleIdentifier": "com.dz23ltd.hades",
       "buildNumber": "1"
     },
     "android": {
-      "package": "com.lmprado.dz23agentic",
+      "package": "com.dz23ltd.hades",
       "versionCode": 1,
       "permissions": ["POST_NOTIFICATIONS"],
       "adaptiveIcon": { "backgroundColor": "#111111" }
     },
-    "web": { "bundler": "metro" }
+    "web": { "bundler": "metro" },
+    "extra": {
+      "eas": {
+        "projectId": "bf2278ec-ade5-4a97-9b31-7c2899488596"
+      }
+    }
   }
 }

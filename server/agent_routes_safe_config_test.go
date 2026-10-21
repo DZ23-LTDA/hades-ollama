@@ -65,7 +65,7 @@ func TestSafeConfigReportsDurableManifestAsConfigured(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Connectors: manager})
+	runtime, err := agent.NewRuntime(agent.RuntimeConfig{WorkspaceRoot: t.TempDir(), Connectors: manager, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

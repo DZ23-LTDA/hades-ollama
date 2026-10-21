@@ -1,4 +1,7 @@
 import Logo from "@/components/Logo";
+import { deveRecusarExecucaoNoChat, respostaSemFerramentas } from "@/lib/execucaoNoChat";
+import { enfileirar, tirarProximo } from "@/lib/filaEnvio";
+import { useT } from "@/i18n";
 import { ModelPicker } from "@/components/ModelPicker";
 import { WebSearchButton } from "@/components/WebSearchButton";
 import { ImageThumbnail } from "@/components/ImageThumbnail";
@@ -126,6 +129,11 @@ function ChatForm({
   const { mutate: sendMessageMutation } = useSendMessage(chatId);
   const navigate = useNavigate();
   const isStreaming = useIsStreaming(chatId);
+  // Defeito D: fila de envio. Enquanto a IA responde, a mensagem e' ENFILEIRADA em vez de
+  // descartada (antes havia `if (... || isStreaming) return;` que a perdia em silencio).
+  const { t } = useT();
+  const [filaEnvio, setFilaEnvio] = useState<string[]>([]);
+  const enviandoDaFila = useRef(false);
   const cancelMessage = useCancelMessage();
   const isDownloading = isDownloadingModel;
   const { selectedModel } = useSelectedModel();
@@ -167,6 +175,7 @@ function ChatForm({
       thinkLevel: settingsThinkLevel,
     },
     setSettings,
+    settingsNotPersisted,
   } = useSettings();
   const { cloudDisabled } = useCloudStatus();
 
@@ -377,7 +386,31 @@ function ChatForm({
     }
   };
 
+  // D2: quando o stream termina e o campo esta' vazio, entrega a proxima da fila.
+  useEffect(() => {
+    if (isStreaming || isDownloading) return;
+    if (filaEnvio.length === 0) return;
+    if (message.content.trim() !== "") return; // o utilizador esta' a escrever: nao atropelar
+    const { proximo, resto } = tirarProximo(filaEnvio);
+    if (!proximo) return;
+    setFilaEnvio(resto);
+    enviandoDaFila.current = true;
+    setMessage((prev) => ({ ...prev, content: proximo }));
+  }, [isStreaming, isDownloading, filaEnvio, message.content]);
+
+  // Dispara o envio do texto que veio da fila, depois de o estado assentar.
+  useEffect(() => {
+    if (!enviandoDaFila.current) return;
+    if (isStreaming || isDownloading) return;
+    enviandoDaFila.current = false;
+    void handleSubmit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [message.content, isStreaming, isDownloading]);
+
   const handleCancel = useCallback(() => {
+    // D4: parar e' parar -- a fila tambem e' limpa.
+    setFilaEnvio([]);
+    setSlashHint(null);
     cancelMessage(chatId);
   }, [cancelMessage, chatId]);
 
@@ -529,7 +562,15 @@ function ChatForm({
   ]);
 
   const handleSubmit = async () => {
-    if (!message.content.trim() || isStreaming || isDownloading) return;
+    if (!message.content.trim() || isDownloading) return;
+    if (isStreaming) {
+      // D1: nao descartar. Vai para a fila e o campo limpa; nada se perde em silencio.
+      const proxima = enfileirar(filaEnvio, message.content);
+      setFilaEnvio(proxima);
+      setMessage((prev) => ({ ...prev, content: "" }));
+      setSlashHint(t("chat.queue.queued", { count: proxima.length }));
+      return;
+    }
 
     const parsedSlash = parseSlashCommand(message.content);
     const slashURL = slashCommandURL(message.content);
@@ -551,6 +592,13 @@ function ChatForm({
       setSlashHint(
         `Descreva o objetivo após ${parsedSlash.command.label} (ex.: "${parsedSlash.command.label} revisar a tela de login").`,
       );
+      return;
+    }
+
+    // FATIA 4 / T4: pedido de execucao numa superficie SEM ferramentas nao pode virar instrucoes
+    // inventadas (create-dir, create-file, ...). Diz o que e' verdade e aponta a que executa.
+    if (deveRecusarExecucaoNoChat(message.content)) {
+      setSlashHint(respostaSemFerramentas());
       return;
     }
 
@@ -768,9 +816,14 @@ function ChatForm({
         // Convert native dialog results to File objects
         // Decode with the browser's native data: URL handling instead of a
         // per-byte JavaScript loop, which froze the UI on larger files.
+        const zipErrors: Array<{ filename: string; error: string }> = [];
         const files = (
           await Promise.all(
             results.map(async (result: ImageData) => {
+              if (result.error) {
+                zipErrors.push({ filename: result.filename, error: result.error });
+                return null;
+              }
               if (!result.dataURL) return null;
               const blob = await (await fetch(result.dataURL)).blob();
               return new File([blob], result.filename, { type: blob.type });
@@ -778,15 +831,16 @@ function ChatForm({
           )
         ).filter(Boolean) as File[];
 
-        if (files.length > 0) {
+        if (files.length > 0 || zipErrors.length > 0) {
           const { validFiles, errors } = await processFiles(files, {
             selectedModel,
             hasVisionCapability,
           });
 
           // Send processed files and errors to the same handler as FileUpload
-          if (validFiles.length > 0 || errors.length > 0) {
-            handleFilesReceived(validFiles, errors);
+          const todosErros = [...errors, ...zipErrors];
+            if (validFiles.length > 0 || todosErros.length > 0) {
+              handleFilesReceived(validFiles, todosErros);
           }
         }
       }
@@ -1136,6 +1190,18 @@ function ChatForm({
               )}
             </button>
           </div>
+          {/* 🚨 E-783: a escolha vale nesta sessao, mas o servidor local NAO a guarda
+              (`POST /api/v1/settings` -> 501). Dize-lo e' a diferenca entre uma limitacao e
+              uma mentira - a licao do `E-560`. */}
+          {settingsNotPersisted && (
+            <p
+              role="status"
+              className="px-1 pb-1 text-[11px] leading-snug text-amber-700 dark:text-amber-400"
+            >
+              Este servidor local não guarda configurações: o modelo
+              escolhido vale nesta sessão, mas não fica memorizado.
+            </p>
+          )}
         </div>
       </div>
 

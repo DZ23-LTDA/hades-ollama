@@ -61,14 +61,59 @@ organizar projetos e automatizar tarefas.
   O Hades confirma se a preferência de nuvem foi realmente salva antes de seguir.
 - Nunca guarde senhas ou chaves dentro de conversas.
 
-## 5. Se algo der errado
+## 5. Se algo der errado - os 6 problemas mais comuns
 
-- **"O servidor está offline" / não responde:** feche e abra o Hades novamente.
-  Ele tenta se reconectar sozinho; se continuar, reinicie o computador.
-- **O download do modelo travou:** verifique sua conexão com a internet e tente
-  baixar de novo pelo mesmo botão.
-- **A tela azul do SmartScreen voltou:** repita o passo 1.3 (Mais informações →
-  Executar assim mesmo), sempre com o arquivo oficial.
+Cada item traz a **mensagem real** que o programa mostra, para reconhecer o problema sem
+adivinhar. Estas mensagens foram medidas numa execucao real, nao inventadas.
+
+### 5.1 A tela azul do SmartScreen apareceu na instalacao
+**O que aparece:** "O Windows protegeu o computador".
+**Por que:** o instalador **ainda nao e' assinado digitalmente** (ver item 6).
+**O que fazer:** Mais informacoes -> Executar assim mesmo -- **so** com o ficheiro baixado da
+pagina oficial do projeto. Se veio de outro sitio, nao execute.
+
+### 5.2 "O servidor esta' offline" ou a interface nao carrega
+**O que aparece:** a interface abre mas nao responde, ou aviso de servidor offline.
+**Por que (a causa mais comum):** **outra aplicacao ja' esta' a usar a porta 11434** -- por exemplo
+uma instancia anterior do Hades que ficou aberta.
+**O que fazer:** feche todas as janelas do Hades; no Gerenciador de Tarefas encerre qualquer processo
+`ollama` ou `hades` que tenha ficado; abra de novo. Se persistir, reinicie o computador.
+
+### 5.3 "Acesso negado" ao criar projeto ou missao
+**O que aparece (mensagem real):**
+`create agent store: mkdir C:\Users\<voce>\AppData\Roaming\ollama-agent\data\missions: Acesso negado`
+**Por que:** a pasta de dados do agente esta' protegida (perfil corporativo, antivirus ou permissoes
+restritas) e o Hades nao consegue escrever la'.
+**O que fazer:** aponte os dados para uma pasta sua, definindo **antes de abrir**:
+
+```
+OLLAMA_AGENT_STORE=C:\Users\<voce>\Hades\dados
+OLLAMA_AGENT_ROOT=C:\Users\<voce>\Hades\projetos
+```
+
+Depois abra o Hades. Nada e' apagado: a pasta antiga fica como estava.
+
+### 5.4 "Salvei as configuracoes e nao ficou guardado"
+**O que aparece:** a alteracao volta ao valor anterior, ou a mensagem
+`Este endpoint e' atendido pelo aplicativo desktop do Hades; o servidor local nao persiste configuracao`
+(o servidor responde **501**).
+**Por que:** o **servidor local** (porta 11434) nao grava configuracoes -- quem grava e' o
+**aplicativo desktop**. E' uma decisao, nao uma avaria.
+**O que fazer:** faca a alteracao **pelo aplicativo desktop**, nao por chamada direta ao servidor.
+
+### 5.5 "O Hades recusou executar e menciona o pare"
+**O que aparece:** a execucao e' recusada e o estado cita o pare de emergencia.
+**Por que:** o **pare de emergencia** foi acionado -- ele existe para parar **tudo**, e ninguem o
+desarma por acidente.
+**O que fazer:** **nao** tente contornar. Peca a quem administra a instalacao para rearmar, com
+justificacao. O rearme e' registado e exige autoridade (`HADES_PARE_AUTORIDADE`); sem essa
+autoridade configurada, o proprio administrador recebe "a autoridade nao esta' configurada".
+
+### 5.6 O download do modelo travou
+**O que aparece:** a barra de progresso para.
+**Por que:** conexao instavel ou espaco em disco insuficiente para o modelo.
+**O que fazer:** confira a internet e o espaco livre, e baixe de novo pelo mesmo botao -- o download
+recomeca sem duplicar o que ja' veio.
 
 ## 6. O que ainda está em preparação (honestidade)
 

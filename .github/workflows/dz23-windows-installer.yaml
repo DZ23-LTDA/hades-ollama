@@ -61,6 +61,40 @@ jobs:
         # Sem VERSION hardcoded: build_windows.ps1 deriva de `git describe --tags`.
         # cuda12 adiciona ggml-cuda.dll (GPU) além do runtime de CPU.
         run: ./scripts/build_windows.ps1 cpu cuda12 ollama app installer
+      - name: Smoke - install the UNSIGNED installer, verify, uninstall
+        shell: pwsh
+        # *O PASSO QUE FALTAVA (medido na ronda 244):* nenhum workflow instalava o
+        # `HadesSetup.exe`. O `test-install.yaml` corre em ubuntu/macos e usa o `install.sh`,
+        # nao o Inno Setup; o `dz23-windows-installer.yaml` so' o CONSTRUIA. Um instalador
+        # que nunca foi instalado nao esta' homologado -- e este passo e' trabalho de pipeline,
+        # nao bloqueio externo.
+        run: |
+          $setup = "dist/HadesSetup.exe"
+          if (-not (Test-Path $setup)) { throw "HadesSetup.exe nao foi produzido" }
+          $alvo = Join-Path $env:RUNNER_TEMP "hades-smoke"
+          $log  = Join-Path $env:RUNNER_TEMP "hades-smoke-install.log"
+          $p = Start-Process -FilePath $setup -Wait -PassThru -ArgumentList @(
+            "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/NOICONS",
+            "/DIR=$alvo", "/LOG=$log")
+          if ($p.ExitCode -ne 0) {
+            if (Test-Path $log) { Get-Content $log -Tail 60 }
+            throw "instalacao falhou com exit $($p.ExitCode)"
+          }
+          $app = Join-Path $alvo "ollama app.exe"
+          if (-not (Test-Path $app)) { throw "o executavel do app nao apareceu em $alvo" }
+          $dll = Get-ChildItem (Join-Path $alvo "lib/ollama") -Filter "ggml-base*.dll" -ErrorAction SilentlyContinue
+          if (-not $dll) { throw "o runtime nativo (ggml-base.dll) nao foi instalado" }
+          Write-Host ("INSTALADO: " + $app)
+          Write-Host ("RUNTIME NATIVO: " + ($dll | Select-Object -First 1).Name)
+          $unins = Join-Path $alvo "unins000.exe"
+          if (Test-Path $unins) {
+            $u = Start-Process -FilePath $unins -Wait -PassThru -ArgumentList @(
+              "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART")
+            if ($u.ExitCode -ne 0) { throw "desinstalacao falhou com exit $($u.ExitCode)" }
+            if (Test-Path $app) { throw "a desinstalacao deixou o executavel em $alvo" }
+          }
+          Write-Host "SMOKE INSTALACAO: OK (instalou, verificou o app e o runtime nativo, desinstalou)"
+
       - name: Detect SignPath signing configuration
         id: signing
         shell: pwsh

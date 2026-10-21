@@ -97,7 +97,7 @@ class EscrituracaoTest(unittest.TestCase):
         """Texto duplamente codificado torna o documento ilegivel: precisa ser acusado."""
         alvo = self.tmp / "docs" / "mission"
         alvo.mkdir(parents=True, exist_ok=True)
-        (alvo / "COM_DEFEITO.md").write_text("objetivo: integrar com seguranÃ§a e sem Ã¢nimo", encoding="utf-8")
+        (alvo / "COM_DEFEITO.md").write_text("objetivo: integrar com seguranÃ§a e sem [a-circ-duplo]nimo", encoding="utf-8")
         problemas, resumo = verificador.verificar_mojibake(self.tmp)
         self.assertTrue(
             any("TEXTO CORROMPIDO" in p and "COM_DEFEITO.md" in p for p in problemas),
@@ -253,6 +253,53 @@ class BloqueiosTest(unittest.TestCase):
         self.assertEqual(relatorio, [], f"relatório real inconsistente: {relatorio}")
         self.assertEqual(bloqueios, [], f"bloqueios reais inconsistentes: {bloqueios}")
 
+
+
+
+class CruzamentoDeAuditoriaTest(unittest.TestCase):
+    """E-913 / finding 14 do bot: `PARCIALMENTE FECHADO` NAO e' estado terminal.
+
+    O defeito que este teste discrimina: a lista `encerrado` incluia `PARCIALMENTE FECHADO`, e um achado
+    cujo proprio texto diz que a integracao de producao continua aberta era tratado como **encerrado**.
+    => *a lista de ataques aponta-lo e' **legitimo** (ha' trabalho por fazer), e o cruzamento acusava de
+    «duas verdades sobre o mesmo id» um caso em que so' ha' **uma**.*
+
+    **Com o defeito (a palavra na lista), o primeiro teste falha** -- e o segundo continua a passar, o que
+    mostra que a cura nao desligou o cruzamento: ele continua a apanhar o que e' terminal.
+    """
+
+    def _estado(self, estado_do_achado: str) -> dict:
+        return {
+            "v22": {
+                "auditoria_adversarial": {
+                    "proximos_ataques": [{"id": "ADV-65", "descricao": "integracao de producao pendente"}],
+                    "achados": [{"id": "ADV-65", "estado": estado_do_achado}],
+                }
+            }
+        }
+
+    def test_parcialmente_fechado_nao_e_encerrado(self) -> None:
+        """`PARCIALMENTE FECHADO: falta a integracao` NAO pode ser acusado de duplicar o ataque."""
+        problemas, resumo = verificador.verificar_cruzamento_de_auditoria(
+            self._estado("PARCIALMENTE FECHADO: falta a integracao de producao")
+        )
+        self.assertEqual([], problemas, "um achado PARCIAL nao encerra: a lista de ataques e' legitima")
+        self.assertEqual(0, resumo["ataques_duplicando_achado_encerrado"])
+
+    def test_corrigido_continua_a_ser_encerrado(self) -> None:
+        """A contraprova: um estado TERMINAL continua a acusar -- a cura nao desligou o cruzamento."""
+        problemas, resumo = verificador.verificar_cruzamento_de_auditoria(
+            self._estado("CORRIGIDO: TestX verde")
+        )
+        self.assertEqual(1, len(problemas), "um achado CORRIGIDO na lista de ataques e' duas verdades")
+        self.assertEqual(1, resumo["ataques_duplicando_achado_encerrado"])
+
+    def test_aberto_com_a_palavra_corrigido_nao_acusa(self) -> None:
+        """O `E-447`: `ABERTO: ainda nao corrigido` contem `CORRIGIDO`, e o casamento e' por PREFIXO."""
+        problemas, _ = verificador.verificar_cruzamento_de_auditoria(
+            self._estado("ABERTO: ainda nao corrigido")
+        )
+        self.assertEqual([], problemas, "o prefixo e' ABERTO, e o resto e' explicacao")
 
 
 if __name__ == "__main__":

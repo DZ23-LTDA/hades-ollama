@@ -23,6 +23,10 @@ import (
 
 func agentCommand() *cobra.Command {
 	command := &cobra.Command{Use: "agent", Short: "Create and control agentic missions"}
+	// `--json` responde a FASE 8 do adendo: automacoes e agentes preferem JSON.
+	// Sem a flag a saida continua indentada (legivel por humano); com ela, UMA linha
+	// compacta -- que e' o que um `jq` ou um script consome sem depender de formatacao.
+	command.PersistentFlags().BoolVar(&agentJSONOutput, "json", false, "Emit one-line JSON for automation (stable)")
 
 	var objective, model, workspace, project string
 	var autoRun bool
@@ -114,7 +118,39 @@ func agentCommand() *cobra.Command {
 			return agent.RotatePostgresAgentTenantKey(ctx, adminDSN, dsn, currentVersion, currentKey, nextVersion, nextKey)
 		},
 	}
-	command.AddCommand(create, get, run, cancel, events, approve, tools, migratePostgres, rotatePostgresKey)
+	// `preset` liga a CLI (FASE 8) ao catalogo de presets de MISSAO (FASE 23): sem isto, o
+	// catalogo so' existia na API e na UI, e quem opera por linha de comando ficava de fora.
+	preset := &cobra.Command{Use: "preset", Short: "Inspect mission presets"}
+	presetList := &cobra.Command{
+		Use: "list", Short: "List mission presets", Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runAgentRequest(cmd.Context(), http.MethodGet, "/api/agent/v1/presets", nil)
+		},
+	}
+	presetShow := &cobra.Command{
+		Use: "show PRESET_ID", Short: "Show one mission preset", Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAgentPresetShow(cmd.Context(), args[0])
+		},
+	}
+	preset.AddCommand(presetList, presetShow)
+	doctor := &cobra.Command{
+		Use:   "doctor",
+		Short: "Diagnose the agent endpoint and report exit codes",
+		Long: "Diagnose the agent endpoint.\n\n" +
+			"Exit codes (documented, stable):\n" +
+			"  0  saudavel      -- todos os checks essenciais responderam\n" +
+			"  2  degradado     -- o essencial responde, mas algum check nao-essencial falhou\n" +
+			"  1  inutilizavel  -- o endpoint essencial nao respondeu\n\n" +
+			"Um check que o servidor nao expoe nao e' contado como falha: e' contado como\n" +
+			"`indisponivel`, porque *inventar um resultado para uma sonda que nao existe\n" +
+			"seria um diagnostico que mente*.",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runAgentDoctor(cmd.Context())
+		},
+	}
+	command.AddCommand(create, get, run, cancel, events, approve, tools, preset, doctor, toolchainCommand(), migratePostgres, rotatePostgresKey)
 	return command
 }
 
@@ -126,6 +162,14 @@ func postgresTenantKeyVersionFromEnv() (int, error) {
 // hung server cannot block the command indefinitely even if the caller's
 // context has no deadline.
 var agentCLIHTTPClient = &http.Client{Timeout: 2 * time.Minute}
+
+// agentCLIOut e' variavel para os testes poderem capturar a saida sem redirecionar o
+// `os.Stdout` do processo inteiro -- *um teste que troca o stdout global corre contra
+// os outros testes do pacote.*
+var agentCLIOut io.Writer = os.Stdout
+
+// agentJSONOutput liga a flag `--json` (FASE 8 do adendo).
+var agentJSONOutput bool
 
 func runAgentRequest(ctx context.Context, method, path string, payload any) error {
 	base := envconfig.Host()
@@ -166,10 +210,239 @@ func runAgentRequest(ctx context.Context, method, path string, payload any) erro
 	}
 	var pretty any
 	if err := json.Unmarshal(data, &pretty); err == nil {
-		encoder := json.NewEncoder(os.Stdout)
-		encoder.SetIndent("", "  ")
+		encoder := json.NewEncoder(agentCLIOut)
+		if !agentJSONOutput {
+			encoder.SetIndent("", "  ")
+		}
 		return encoder.Encode(pretty)
 	}
-	_, err = os.Stdout.Write(data)
+	_, err = agentCLIOut.Write(data)
 	return err
+}
+
+// runAgentPresetShow busca o preset pelo id. A rota devolve o catalogo inteiro, entao a
+// selecao e' feita aqui e nao no servidor: *uma rota nova por causa de um filtro que o
+// cliente faz em tres linhas e' superficie a mais para manter.*
+func runAgentPresetShow(ctx context.Context, presetID string) error {
+	id := strings.TrimSpace(presetID)
+	if id == "" {
+		return errors.New("preset id is required")
+	}
+	base := envconfig.Host()
+	base.Path = strings.TrimSuffix(base.Path, "/") + "/api/agent/v1/presets"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base.String(), nil)
+	if err != nil {
+		return err
+	}
+	if token := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TOKEN")); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := agentCLIHTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode >= http.StatusBadRequest {
+		return fmt.Errorf("agent API %s: %s", resp.Status, strings.TrimSpace(string(data)))
+	}
+	var payload struct {
+		Presets []json.RawMessage `json:"presets"`
+	}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return fmt.Errorf("decode presets: %w", err)
+	}
+	for _, raw := range payload.Presets {
+		var head struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(raw, &head); err != nil {
+			continue
+		}
+		if head.ID != id {
+			continue
+		}
+		var out any
+		if err := json.Unmarshal(raw, &out); err != nil {
+			return err
+		}
+		encoder := json.NewEncoder(agentCLIOut)
+		if !agentJSONOutput {
+			encoder.SetIndent("", "  ")
+		}
+		return encoder.Encode(out)
+	}
+	return fmt.Errorf("unknown preset %q; run `agent preset list` to see the catalog", id)
+}
+
+// ---------------------------------------------------------------------------
+// `agent doctor` -- FASE 8 do adendo V3.
+// ---------------------------------------------------------------------------
+
+// Authored classification of a single probe.
+const (
+	doctorOK        = "ok"
+	doctorDegradado = "degradado"
+	doctorFalhou    = "falhou"
+	doctorOmitido   = "indisponivel"
+)
+
+type doctorCheck struct {
+	Nome      string `json:"nome"`
+	Rota      string `json:"rota"`
+	Estado    string `json:"estado"`
+	Essencial bool   `json:"essencial"`
+	Detalhe   string `json:"detalhe,omitempty"`
+}
+
+type doctorReport struct {
+	Endpoint  string        `json:"endpoint"`
+	Checks    []doctorCheck `json:"checks"`
+	Veredicto string        `json:"veredicto"`
+	ExitCode  int           `json:"exit_code"`
+}
+
+const (
+	// Exit codes documentados do `agent doctor`.
+	exitSaudavel     = 0
+	exitDegradado    = 2
+	exitInutilizavel = 1
+)
+
+// doctorErro carrega o codigo de saida. *Um erro que nao diz como terminou o
+// processo deixa o consumidor a adivinhar -- e automacoes nao adivinham.*
+type doctorErro struct {
+	Codigo    int
+	Relatorio doctorReport
+}
+
+func (e doctorErro) Error() string {
+	// O veredicto pode nao vir preenchido: um erro cuja mensagem depende de um campo
+	// opcional pode sair VAZIA, e uma mensagem de erro vazia nao ajuda ninguem.
+	// Derivamos do codigo quando falta.
+	veredicto := e.Relatorio.Veredicto
+	if veredicto == "" {
+		switch e.Codigo {
+		case exitDegradado:
+			veredicto = "degradado"
+		case exitInutilizavel:
+			veredicto = "inutilizavel"
+		default:
+			veredicto = "desconhecido"
+		}
+	}
+	return "agent doctor: veredicto " + veredicto
+}
+
+func (e doctorErro) ExitCode() int { return e.Codigo }
+
+// runAgentDoctor sonda o endpoint e devolve nil (0), doctorErro{2} ou doctorErro{1}.
+func runAgentDoctor(ctx context.Context) error {
+	base := envconfig.Host()
+	base.Path = strings.TrimSuffix(base.Path, "/")
+	relatorio := doctorReport{Endpoint: base.String()}
+
+	// `health` e' o unico check essencial: se ele nao responde, nao ha agente.
+	sondas := []struct {
+		nome      string
+		rota      string
+		essencial bool
+	}{
+		{"saude do agente", "/api/agent/v1/health", true},
+		{"catalogo de ferramentas", "/api/agent/v1/tools", false},
+		{"catalogo de presets", "/api/agent/v1/presets", false},
+	}
+
+	falhouEssencial := false
+	degradado := false
+	for _, sonda := range sondas {
+		check := doctorCheck{Nome: sonda.nome, Rota: sonda.rota, Essencial: sonda.essencial}
+		estado, detalhe := sondaAgentEndpoint(ctx, base.String()+sonda.rota)
+		check.Estado = estado
+		check.Detalhe = detalhe
+		switch estado {
+		case doctorFalhou:
+			if sonda.essencial {
+				falhouEssencial = true
+			} else {
+				degradado = true
+			}
+		case doctorOmitido:
+			// Rota ausente nao e' falha do produto: e' uma versao que nao a tem.
+			if sonda.essencial {
+				falhouEssencial = true
+			}
+		}
+		relatorio.Checks = append(relatorio.Checks, check)
+	}
+
+	// O token nunca e' impresso: so' se existe.
+	tokenPresente := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TOKEN")) != ""
+	if !tokenPresente {
+		relatorio.Checks = append(relatorio.Checks, doctorCheck{
+			Nome:   "token do agente",
+			Estado: doctorOK,
+			Detalhe: "OLLAMA_AGENT_TOKEN nao definido -- o endpoint sera' sondado sem autenticacao; " +
+				"se ele exigir token, os checks acima falham com 401",
+		})
+	} else {
+		relatorio.Checks = append(relatorio.Checks, doctorCheck{
+			Nome: "token do agente", Estado: doctorOK,
+			Detalhe: "OLLAMA_AGENT_TOKEN definido (valor nao lido para o relatorio)",
+		})
+	}
+
+	switch {
+	case falhouEssencial:
+		relatorio.Veredicto, relatorio.ExitCode = "inutilizavel", exitInutilizavel
+	case degradado:
+		relatorio.Veredicto, relatorio.ExitCode = "degradado", exitDegradado
+	default:
+		relatorio.Veredicto, relatorio.ExitCode = "saudavel", exitSaudavel
+	}
+
+	if err := escreverDoctor(relatorio); err != nil {
+		return err
+	}
+	if relatorio.ExitCode != exitSaudavel {
+		return doctorErro{Codigo: relatorio.ExitCode, Relatorio: relatorio}
+	}
+	return nil
+}
+
+// sondaAgentEndpoint devolve o estado e um detalhe legivel.
+func sondaAgentEndpoint(ctx context.Context, url string) (string, string) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return doctorFalhou, err.Error()
+	}
+	if token := strings.TrimSpace(os.Getenv("OLLAMA_AGENT_TOKEN")); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := agentCLIHTTPClient.Do(req)
+	if err != nil {
+		return doctorFalhou, "sem resposta: " + err.Error()
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
+	switch {
+	case resp.StatusCode == http.StatusNotFound:
+		return doctorOmitido, "rota nao exposta por esta versao do servidor"
+	case resp.StatusCode >= http.StatusBadRequest:
+		return doctorFalhou, "HTTP " + strconv.Itoa(resp.StatusCode)
+	default:
+		return doctorOK, "HTTP " + strconv.Itoa(resp.StatusCode)
+	}
+}
+
+// escreverDoctor imprime o relatorio no formato pedido por `--json`.
+func escreverDoctor(relatorio doctorReport) error {
+	encoder := json.NewEncoder(agentCLIOut)
+	if !agentJSONOutput {
+		encoder.SetIndent("", "  ")
+	}
+	return encoder.Encode(relatorio)
 }

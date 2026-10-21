@@ -1,6 +1,26 @@
 # Notas das capturas
 
-## Captura atual — 2026-09-22
+## Captura atual — 2026-10-21
+
+Recapturadas nesta rodada as 10 telas da série `class-a-plus-*.png` com Chromium em viewport de
+1440x900, através de `app/ui/app/scripts/capture-parity-screens.mjs` (Vite dev em `127.0.0.1:4175`,
+proxy `/api` para o servidor Hades local em `127.0.0.1:11435`, com `OLLAMA_AGENT_STORE` e
+`OLLAMA_AGENT_ROOT` dentro de `_tmp/`). `npm run screens:verify` passa com **PASS (10 files)**.
+
+Para esta captura foram corrigidos dois defeitos reais encontrados pelo próprio procedimento:
+
+1. **`SkillSelection` serializava `"selected": null`** quando a lista estava vazia (slice nil em Go).
+   O painel fazia `.map()` sobre `null` e a página `/skills` registava
+   `TypeError: Cannot read properties of null (reading 'map')`. Corrigido com `MarshalJSON` no tipo
+   (contrato: lista, mesmo vazia) e travado por `TestSkillSelectionVaziaSerializaComoLista`.
+2. **O manifesto e o validador tinham contratos diferentes**: o script escrevia `captures[]` com
+   caminho absoluto e o validador lê `files[]` com caminho relativo. O script passou a emitir os dois
+   (`files` = contrato verificado).
+
+`POST /api/v1/settings` devolve **501 por decisão** neste servidor local (sem persistência), travado
+por `server/desktop_local_settings_ratchet_test.go`; a ferramenta de captura passou a classificar esse
+501 (e a mensagem correspondente na consola) como **esperado**, em vez de tratar o servidor local
+como página avariada.
 
 Os arquivos `class-a-plus-home.png`, `class-a-plus-projects.png`, `class-a-plus-library.png`, `class-a-plus-scheduled.png`, `class-a-plus-skills.png`, `class-a-plus-plugins.png`, `class-a-plus-tasks.png`, `class-a-plus-agentic.png`, `class-a-plus-settings.png` e `class-a-plus-company.png` foram recapturados nesta rodada com Chromium em viewport de 1440×900. O arquivo compatível `settings.png` aponta para a mesma captura funcional de Settings.
 

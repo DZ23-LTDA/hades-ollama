@@ -1,6 +1,6 @@
 name: dz23-macos-build
 
-# Build macOS (universal, CPU/Metal) UNSIGNED do Ollama Classe A+.
+# Build macOS (universal, CPU/Metal) UNSIGNED do HADES.
 # Espelha os comandos de build do job darwin-build do release.yaml, SEM
 # assinatura/notarizacao (Apple Developer ID = BLOCKED_BY_EXTERNAL_DEPENDENCY).
 # Dispatch-only (nao pesa o CI de PR); tambem roda em tag v* para o RC.
@@ -66,7 +66,7 @@ jobs:
           if [ -f dist/darwin/ollama ]; then cp dist/darwin/ollama "$stage/bin/ollama"; fi
           if [ -d dist/darwin/lib ]; then cp -R dist/darwin/lib/. "$stage/lib/"; fi
           cat > "$stage/VERSION" <<META
-          product=Ollama Classe A+
+          product=HADES
           version=${VERSION}
           commit=$(git rev-parse --short=12 HEAD)
           arch=universal

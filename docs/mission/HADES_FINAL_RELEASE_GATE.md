@@ -4,6 +4,25 @@
 > intermediário de engenharia (estágio 22, em [`HADES_ENGINEERING_GATE.md`](HADES_ENGINEERING_GATE.md)).
 > **Gerado por `scripts/hades_release_gate.py`** — rode com `--check` para conferir.
 
+## Procedência
+
+🚨 **E-552 + E-554: *o commit medido tem de estar ESCRITO, ou o documento não se pode reproduzir nem contestar.***
+
+| Campo | Valor |
+| --- | --- |
+| **Commit medido** (`measured_commit`) | `27859fb004f89be7a137fe95ab5e14c3aab244f4` |
+| **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
+| **Gerado em** (`measured_at`) | 2026-10-21T09:34:20-03:00 |
+| **Snapshot real** (`gate_head`) | `27859fb004f89be7a137fe95ab5e14c3aab244f4` |
+| **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
+| **Entradas nao commitadas** (`gate_dirty`) | 4 |
+| **O gate prova o snapshot candidato?** (`gate_snapshot`) | **MESMO** |
+
+*Dois campos, e não um: o `E-552` mediu que este derivado **não** citava commit nenhum, e que o
+`HADES_BASELINE_REPORT.md` citava **só** a `main` — *o que não está errado (*ele mede o baseline, e o baseline é da
+`main`*), mas era **ambíguo**: «commit de referência» não dizia **se** era o medido ou o comparado* ⇒ *agora a
+ambiguidade desaparece **por construção**.*
+
 ## Veredito
 
 **`NOT_RELEASE_READY`** — `RELEASE_CANDIDATE` e `COMPLETED_VERIFIED` **não** podem ser declarados
@@ -12,7 +31,7 @@ subjetiva.
 
 ## Matriz de aceite (seção 9 das diretrizes)
 
-Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 5 · DONE: 19
+Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 4 · DONE: 20
 
 | # | Requisito | Status | Evidência / limite | O que destrava |
 | --- | --- | --- | --- | --- |
@@ -23,7 +42,7 @@ Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 5 · DONE: 19
 | 5 | APIs externas configuradas são testadas e usadas | **BLOCKED_BY_EXTERNAL_DEPENDENCY** | B-07: chaves de provedor | Credencial de provedor (estágio 4) |
 | 6 | A troca de modelo preserva contexto autorizado | **DONE** | Bootstrap de contexto reconstruído por modelo, com teste (estágio 5) | — |
 | 7 | O sistema de permissões é aplicado pelo servidor | **DONE** | Autorização server-side com testes de escopo (estágios 5 e 18) | — |
-| 8 | Plugins têm instalação e execução verificáveis | **BLOCKED_BY_EXTERNAL_DEPENDENCY** | **Provado (30 testes PASS)**: instalação com verificação de assinatura, rejeição de conteúdo adulterado, rollback que restaura a versão anterior UMA vez, isolamento por organização, sete caminhos de recusa e **delegação ao sandbox governado** com trilha de auditoria. **E-293**: o desfecho da execução passou a ser **afirmado, não tolerado** (o teste anterior aceitava sucesso OU falha). Medido neste host: `sandbox.exec requires the Linux namespace executor; host-process fallback is disabled` — o Hades **recusa cair para processo de host** (fail-closed, correto por segurança), logo a execução real é `BLOCKED_BY_EXTERNAL_DEPENDENCY` | Executar em **Linux/WSL2 com o executor de namespace** (mantendo o fallback de host desabilitado) |
+| 8 | Plugins têm instalação e execução verificáveis | **BLOCKED_BY_EXTERNAL_DEPENDENCY** | **Provado (30 testes PASS)**: instalação com verificação de assinatura, rejeição de conteúdo adulterado, rollback que restaura a versão anterior UMA vez, isolamento por organização, sete caminhos de recusa e **delegação ao sandbox governado** com trilha de auditoria. **E-293**: o desfecho da execução passou a ser **afirmado, não tolerado**. **Correção de um defeito real (commit 3f4984962)**: `sandbox_linux.go` comparava `cgroup.controllers` com `strings.Contains(" "+conteudo+" ", ...)` e o ficheiro termina em newline, pelo que o **último** controlador (`pids`) nunca casava -- o sandbox estrito respondia `NOT_CONFIGURED` em **qualquer** Linux real. Corrigido para comparação por campos. **Medido depois do fix, em WSL2 Ubuntu com cgroup v2 delegado (cpu memory pids), `node` v22.22.1 em `/usr/bin` e `chroot` real em caminho confiável**: 27 PASS, 0 FAIL, 2 SKIP -- e os 2 SKIP mostram agora a causa exacta: `exit status 127` com `stderr="setpriv: setgroups failed: Operation not permitted"`. **O bloqueio real é o WSL2 negar `setgroups`**, não o produto. Medido neste host: `sandbox.exec requires the Linux namespace executor; host-process fallback is disabled` quando falta o executor -- o Hades **recusa cair para processo de host** (fail-closed, correto por segurança) **RE-MEDIDO em 2026-10-21 e a causa anterior estava ERRADA**: `setpriv --reuid=1 --regid=1 --clear-groups true` devolve **`DIRETO_OK`** neste WSL2 -- o `setgroups` **ja' nao e'** o bloqueio. O que falha e' a **delegacao de cgroup v2**: criada a raiz `/sys/fs/cgroup/hades-sandbox` com `+cpu +memory +pids` aplicado (`hades-sandbox controllers: cpu memory pids`) e `OLLAMA_AGENT_SANDBOX_CGROUP_ROOT` apontada, os 2 testes passam de SKIP a FAIL com `configure strict sandbox cgroup cpu.max: ... permission denied`; repetido com um cgroup2 proprio dentro de `unshare -Cm` deu `SUBTREE_FALHOU` e `CPU_MAX_FALHOU` (mesmo erro). O teste `TestPluginExecutionFailureCarriesSandboxDiagnostics` falha pela **mesma** causa (o plugin nunca executa, logo nao existe `stderr`): `o diagnostico precisa conter stderr; chaves: [gate_status execution_isolation]`. Estado medido da suite nesse cenario: **27 PASS, 2 FAIL** | Um host Linux **nativo** (ou runner) onde a **delegacao de cgroup v2** seja permitida -- ou seja, onde se possa escrever `cpu.max`/`pids.max` em cgroups filhos. Medido neste WSL2: o `setgroups` ja' PASSA; o que e' negado e' a delegacao (`permission denied`), mesmo com a raiz delegada e mesmo com cgroup2 proprio em `unshare -Cm` |
 | 9 | MCPs têm instalação e execução verificáveis | **DONE** | MCP local/stdio exercitado com testes de revogação e auditoria (estágio 7) | — |
 | 10 | Skills têm ativação e execução verificáveis | **DONE** | Ativação por projeto/agente/modelo com testes (estágio 8) | — |
 | 11 | Agentes e subagentes executam missões reais | **DONE** | Orquestração com cotas e artefatos verificáveis (estágio 9) | — |
@@ -32,7 +51,7 @@ Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 5 · DONE: 19
 | 14 | O Builder entrega aplicações utilizáveis | **DONE** | E-178: app do Studio criado, **publicado**, **servido por HTTP (200)** e **aberto em navegador real**, que renderizou 3 componentes no canvas com **0 erros de console** (`docs/mission/evidence/`). **LIMITE**: app de **demonstração** (heading/table/button) — **não** é full-stack com banco/auth/CRUD | App full-stack com banco, autenticação e CRUD navegado ponta a ponta (estágio 12) |
 | 15 | O agente de código entrega correções testadas | **DONE** | Fluxo issue → teste → correção → PR comprovado (estágio 11) | — |
 | 16 | Workflows executam os nós realmente suportados | **DONE** | Motor determinístico com retry/DLQ e log por nó (estágio 13) | — |
-| 17 | Browser/computer-use funciona nos ambientes homologados | **BLOCKED_BY_EXTERNAL_DEPENDENCY** | B-09 residual: Python ausente para o E2E de browser | Ambiente com navegador/Python para o E2E (estágio 14) |
+| 17 | Browser/computer-use funciona nos ambientes homologados | **DONE** | **Medido em 2 ambientes com o helper do proprio produto** (`internal/agent/browser_helper.py`). (a) **CI, runner Windows**: job *Go agentic Windows portability* -> `TestBrowserOperatorNavigateAndSnapshot` **pass** (run 39541806198) depois de a causa-raiz do tecto de 15 s ter sido fechada. (b) **Host local Windows**: driver sobre o helper -> `navigate` rc=0 com title `DZ23` e screenshot JPEG real; `snapshot` rc=0 com content `Hello Browser`; **recusa** de destino privado sem `OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE` -> rc=1 com erro `browser URL resolves to a non-public address`. Playwright 1.64.0 + Chromium do host. **Limite declarado**: a prova e' em Windows (CI + local); a cobertura Linux/macOS do operador pertence aos itens #21/B5 e **nao** e' reclamada aqui | — |
 | 18 | A memória respeita os escopos | **DONE** | Isolamento entre organizações com prova em disco (estágio 15). **E-289/E-290**: a escrita passou a **recusar** sobrescrever trabalho de outro escritor — **intenção declarada por caminho** (não-destrutivos guardados, destrutivos por intenção) e detecção também por **revisão**. Limites: os 3 caminhos destrutivos seguem **sem guarda por intenção**; a trava do arquivo é **ADVISORY**; sem **fila de escritas** | — |
 | 19 | A segurança multitenant está validada | **DONE** | **E-294 — lastro medido**: o job de CI *PostgreSQL RLS, Redis DLQ and OTLP integration* sobe um **PostgreSQL 16 real** com **três papéis distintos** (admin/runtime/migrator, senhas geradas por execução), restringe a autenticação **por papel** via `pg_hba`, roda as migrações e executa com `-tags integration`: `TestDistributedPostgresRLSAndEvents`, `...RuntimeRejectsRLSDrift` (**guarda**: recusa quando o RLS desvia), `...RuntimeCannotConnectOutsideApplicationDatabase` (**sonda negativa** de permissão), `...TenantKeyRotation` e a suíte `TestDistributed` completa (**32 testes**). Limite: roda no runner Linux do CI, não no host de desenvolvimento, e **não** mede inferência por timing | — |
 | 20 | A suíte obrigatória está aprovada | **DONE** | Lint, contrato, suíte Go e paridade Linux (com detector de corrida) verdes na rodada mais recente | — |
@@ -60,6 +79,7 @@ Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 5 · DONE: 19
 | B-05 | Contas reais de marketplace/social/pagamento | ver HADES_BLOCKERS.md |
 | B-06 | Identidade de assinatura de release (certificado). ESTADO MEDIDO (E-201): a autenticacao de NOTARIZACAO foi PROVADA com a chave de API do App Store Connect (JWT | ver HADES_BLOCKERS.md |
 | B-07 | MEDIDO (E-209), nao suposto. O B-07 dizia 'chaves de provedor de modelo para homologacao de chamada real'. Medido: 19 provedores com credencial PRESENTE e habil | ver HADES_BLOCKERS.md |
+| B-19 | (1) Chrome real exige a Chrome Web Store (conta + revisao) -- o `--load-extension` foi removido e o service_worker nao acorda; o Chromium 156 e o Edge 155 passa | ver HADES_BLOCKERS.md |
 
 ## O que faria o veredito mudar
 

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgenticRouteImport } from './routes/agentic'
+import { Route as CapabilitiesRouteImport } from './routes/capabilities'
 import { Route as CompanyRouteImport } from './routes/company'
 import { Route as CompareRouteImport } from './routes/compare'
 import { Route as ConnectRouteImport } from './routes/connect'
@@ -24,6 +25,7 @@ import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProvidersRouteImport } from './routes/providers'
 import { Route as ScheduledRouteImport } from './routes/scheduled'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SigningRouteImport } from './routes/signing'
 import { Route as SkillsRouteImport } from './routes/skills'
 import { Route as StudioRouteImport } from './routes/studio'
 import { Route as TasksRouteImport } from './routes/tasks'
@@ -38,6 +40,11 @@ const IndexRoute = IndexRouteImport.update({
 const AgenticRoute = AgenticRouteImport.update({
   id: '/agentic',
   path: '/agentic',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CapabilitiesRoute = CapabilitiesRouteImport.update({
+  id: '/capabilities',
+  path: '/capabilities',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompanyRoute = CompanyRouteImport.update({
@@ -105,6 +112,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SigningRoute = SigningRouteImport.update({
+  id: '/signing',
+  path: '/signing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SkillsRoute = SkillsRouteImport.update({
   id: '/skills',
   path: '/skills',
@@ -134,6 +146,7 @@ const TasksNewRoute = TasksNewRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agentic': typeof AgenticRoute
+  '/capabilities': typeof CapabilitiesRoute
   '/company': typeof CompanyRoute
   '/compare': typeof CompareRoute
   '/connect': typeof ConnectRoute
@@ -147,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/providers': typeof ProvidersRoute
   '/scheduled': typeof ScheduledRoute
   '/settings': typeof SettingsRoute
+  '/signing': typeof SigningRoute
   '/skills': typeof SkillsRoute
   '/studio': typeof StudioRoute
   '/tasks': typeof TasksRoute
@@ -156,6 +170,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agentic': typeof AgenticRoute
+  '/capabilities': typeof CapabilitiesRoute
   '/company': typeof CompanyRoute
   '/compare': typeof CompareRoute
   '/connect': typeof ConnectRoute
@@ -169,6 +184,7 @@ export interface FileRoutesByTo {
   '/providers': typeof ProvidersRoute
   '/scheduled': typeof ScheduledRoute
   '/settings': typeof SettingsRoute
+  '/signing': typeof SigningRoute
   '/skills': typeof SkillsRoute
   '/studio': typeof StudioRoute
   '/tasks': typeof TasksRoute
@@ -179,6 +195,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/agentic': typeof AgenticRoute
+  '/capabilities': typeof CapabilitiesRoute
   '/company': typeof CompanyRoute
   '/compare': typeof CompareRoute
   '/connect': typeof ConnectRoute
@@ -192,6 +209,7 @@ export interface FileRoutesById {
   '/providers': typeof ProvidersRoute
   '/scheduled': typeof ScheduledRoute
   '/settings': typeof SettingsRoute
+  '/signing': typeof SigningRoute
   '/skills': typeof SkillsRoute
   '/studio': typeof StudioRoute
   '/tasks': typeof TasksRoute
@@ -203,6 +221,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/agentic'
+    | '/capabilities'
     | '/company'
     | '/compare'
     | '/connect'
@@ -216,6 +235,7 @@ export interface FileRouteTypes {
     | '/providers'
     | '/scheduled'
     | '/settings'
+    | '/signing'
     | '/skills'
     | '/studio'
     | '/tasks'
@@ -225,6 +245,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/agentic'
+    | '/capabilities'
     | '/company'
     | '/compare'
     | '/connect'
@@ -238,6 +259,7 @@ export interface FileRouteTypes {
     | '/providers'
     | '/scheduled'
     | '/settings'
+    | '/signing'
     | '/skills'
     | '/studio'
     | '/tasks'
@@ -247,6 +269,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/agentic'
+    | '/capabilities'
     | '/company'
     | '/compare'
     | '/connect'
@@ -260,6 +283,7 @@ export interface FileRouteTypes {
     | '/providers'
     | '/scheduled'
     | '/settings'
+    | '/signing'
     | '/skills'
     | '/studio'
     | '/tasks'
@@ -270,6 +294,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgenticRoute: typeof AgenticRoute
+  CapabilitiesRoute: typeof CapabilitiesRoute
   CompanyRoute: typeof CompanyRoute
   CompareRoute: typeof CompareRoute
   ConnectRoute: typeof ConnectRoute
@@ -283,6 +308,7 @@ export interface RootRouteChildren {
   ProvidersRoute: typeof ProvidersRoute
   ScheduledRoute: typeof ScheduledRoute
   SettingsRoute: typeof SettingsRoute
+  SigningRoute: typeof SigningRoute
   SkillsRoute: typeof SkillsRoute
   StudioRoute: typeof StudioRoute
   TasksRoute: typeof TasksRoute
@@ -304,6 +330,13 @@ declare module '@tanstack/react-router' {
       path: '/agentic'
       fullPath: '/agentic'
       preLoaderRoute: typeof AgenticRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/capabilities': {
+      id: '/capabilities'
+      path: '/capabilities'
+      fullPath: '/capabilities'
+      preLoaderRoute: typeof CapabilitiesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/company': {
@@ -397,6 +430,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/signing': {
+      id: '/signing'
+      path: '/signing'
+      fullPath: '/signing'
+      preLoaderRoute: typeof SigningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/skills': {
       id: '/skills'
       path: '/skills'
@@ -438,6 +478,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgenticRoute: AgenticRoute,
+  CapabilitiesRoute: CapabilitiesRoute,
   CompanyRoute: CompanyRoute,
   CompareRoute: CompareRoute,
   ConnectRoute: ConnectRoute,
@@ -451,6 +492,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProvidersRoute: ProvidersRoute,
   ScheduledRoute: ScheduledRoute,
   SettingsRoute: SettingsRoute,
+  SigningRoute: SigningRoute,
   SkillsRoute: SkillsRoute,
   StudioRoute: StudioRoute,
   TasksRoute: TasksRoute,

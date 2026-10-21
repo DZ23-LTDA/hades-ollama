@@ -230,6 +230,30 @@ func (s *AuthStore) AddMembership(userID, organizationID string, role Role) (Mem
 	return membership, s.persistLocked()
 }
 
+// AdesaoExistente devolve a adesao ja' existente entre utilizador e organizacao.
+//
+// Existe porque "entrar no tenant" tem de ser IDEMPOTENTE SEM REBAIXAR: um owner que volta a
+// autenticar-se nao pode sair com papel de viewer. A primeira versao chamava `AddMembership`
+// sempre, e o efeito medido foi exactamente esse -- o dono do tenant perdeu o poder de
+// escrever ("role viewer cannot perform execute").
+//
+//	*Renovar o acesso nao e' renegociar o papel: quem ja' e' dono continua dono.*
+func (s *AuthStore) AdesaoExistente(userID, organizationID string) (Membership, bool) {
+	userID = strings.TrimSpace(userID)
+	organizationID = strings.TrimSpace(organizationID)
+	if userID == "" || organizationID == "" {
+		return Membership{}, false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, adesao := range s.memberships {
+		if adesao.UserID == userID && adesao.OrganizationID == organizationID {
+			return adesao, true
+		}
+	}
+	return Membership{}, false
+}
+
 func (s *AuthStore) IssueToken(userID, organizationID string, ttl time.Duration) (string, AccessToken, error) {
 	if ttl <= 0 || ttl > 30*24*time.Hour {
 		ttl = 24 * time.Hour

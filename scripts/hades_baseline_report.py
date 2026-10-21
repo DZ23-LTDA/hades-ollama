@@ -93,7 +93,13 @@ def gerar_baseline(estado: dict) -> str:
         "",
         "## 1. Ambiente das medições",
         "",
-        f"- commit de referência: `{estado.get('git', {}).get('main_sha', 'desconhecido')}`",
+        f"- commit de referência (`main`): `{estado.get('git', {}).get('main_sha', 'desconhecido')}`",
+        # 🚨 E-552 + E-554: ***DOIS CAMPOS, NÃO UM.*** *O `E-552` mediu que este derivado citava **só** a `main` -
+        # e **não** estava errado: ele mede o **baseline**, e o baseline é da `main`. Mas «commit de referência» não
+        # dizia **se** era o medido ou o comparado ⇒ **ambíguo** ✗. Agora são dois campos explícitos, e a ambiguidade
+        # desaparece **por construção** - *quem lê sabe qual é qual, sem adivinhar.*
+        f"- commit **medido** (`measured_commit`): `{estado.get('measured_commit', 'NAO_MEDIDO')}`",
+        f"- medido em (`measured_at`): {estado.get('measured_at', 'NAO_MEDIDO')}",
         "- SO das medições locais: Windows (runner do agente); o CI roda Linux",
         "- toolchain: **go1.26.9**, fixado por `go-version-file: go.mod` em todos os workflows (E-167)",
         "- plataforma Linux: container `golang:1.26.9`; execução de plugin: container `node:22-bookworm`",

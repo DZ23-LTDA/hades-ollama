@@ -30,7 +30,7 @@ func TestRuntimeExecutaMissaoMultiEtapaComCadeiaDeAprovacoes(t *testing.T) {
 			Input: map[string]any{"path": ".", "max_entries": 10},
 		},
 	}}
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestRuntimeComAprovacaoNegadaNaoEscreveNemProduzArtefato(t *testing.T) {
 			Input: map[string]any{"path": "a.txt", "content": "nao deve existir\n"},
 		},
 	}}
-	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Store: NewMemoryStore(), Planner: planner, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

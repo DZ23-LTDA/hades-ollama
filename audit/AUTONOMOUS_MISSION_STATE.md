@@ -1,3 +1,141 @@
+## Checkpoint vigente — E-662: decompositor + RouteBatch pelo DAG — 2026-10-15 06:36 -03
+
+```yaml
+state: FIXING
+branch: fix/checker-relogio
+pr: 438
+toolchain: "_tmp/goroot1269 (go1.26.9); APPDATA/LOCALAPPDATA em _tmp para os testes que criam runtime"
+
+E662_entregue:
+  - "DecomporPlanoEmSubtarefas: PROJETA o plano da missao (Step.Title/capacidades/pin/DependsOn) em subtarefas. NAO cria um segundo plano - reusa `ValidatePlanGraph` (E-434) como garantia."
+  - "RouteBatch: o comentario da interface prometia 'respeita dependencias' e a implementacao ordenava SO' por prioridade -> um dependente de prioridade maior era decidido ANTES do prerequisito. Agora a ordem e' TOPOLOGICA (Kahn) e a prioridade e' apenas desempate."
+  - "Grafo invalido RECUSADO com `ErrPlanGraphInvalid` (reuso do sentinel existente): ciclo, auto-dependencia, dependencia fantasma, ID repetido, ID vazio."
+  - "A projecao COPIA as fatias (prova no teste: mutar a subtarefa nao altera o plano)."
+
+E662_provas:
+  - "12/12 testes do router/DAG PASS (`-run TestAdaptiveRouter|TestRouteBatch|TestDecompor|TestPlanoValidado`)"
+  - "gofmt -l vazio; go vet ./internal/agent/ exit 0; go build ./... exit 0"
+  - "regressao na area afetada (Plan|Step|Route|Router|Runtime|Mission|WhatsApp): exit 0"
+
+E487_reconfirmado:
+  - "Duas falhas (`mkdir %APPDATA%\\ollama-agent: Acesso negado`) sao AMBIENTAIS, nao do produto: com APPDATA/LOCALAPPDATA sob _tmp o mesmo comando da' exit 0. Registrado no HADES_PENDING_WORK.md (E-487) e reconfirmado aqui."
+
+limites:
+  - "go test -race exige cgo (ausente neste host): a prova do detector de corrida vem dos jobs `race` do CI."
+  - "O router ainda NAO e' chamado pelo loop de execucao, e o EVENTO de auditoria da decisao continua faltando - §4 nao esta entregue."
+next_action: commit+push, confirmar CI no novo SHA, e ligar o router ao loop de execucao com evento
+rollback: reverter os commits desta fatia; nenhum reset --hard, nenhum force-push
+```
+
+## Checkpoint vigente — memoria persistente comprovada + build quebrado no PR #438 reparado — 2026-10-15 06:25 -03
+
+```yaml
+state: FIXING
+branch: fix/checker-relogio
+pr: 438
+toolchain: "_tmp/goroot1269/go (go1.26.9) — o `go` NAO esta no PATH; o repo traz o toolchain fixado"
+bateria_local: "_tmp/bateria_local.ps1 = espelho do job do CI: 1 node + 27 python = 28/28 VERDE"
+
+memoria_persistente:
+  vault: "C:\\Users\\DZ23\\Documents\\Obsidian Vault\\Memoria-Compartilhada-IA"
+  notas: [HADES-CURRENT-TASK.md, HADES-MEMORIA-DESENVOLVIMENTO.md, HADES-Retomada-20261015.md, MEMORY_INDEX.md, HADES-CHECKPOINT-LOG.md]
+  escrita_automatica: "hook .git/hooks/post-commit -> scripts/hades_checkpoint_note.ps1 (versionado)"
+  prova_do_hook: "commit 9c3a85b13 gerou SOZINHO a entrada `motivo: post-commit` no HADES-CHECKPOINT-LOG.md"
+  recuperacao_em_sessao_nova:
+    metodo: "subagente com contexto ZERO, lendo SOMENTE a pasta de memoria (proibido abrir o repo ou rodar git)"
+    resultado: "PASSOU — recuperou projeto, branch, SHAs, a tarefa em andamento, o proximo passo, os documentos canonicos, o comando de retomada e os bloqueios; usou NAO ENCONTRADO NA MEMORIA onde nao havia dado"
+    achado_do_teste: "a nota viva estava UMA revisao atras do log automatico (aa7b0f2c1 vs 9c3a85b13) — corrigido"
+
+E661_build_quebrado_no_PUSH:
+  sintoma: "gofmt acusou erro de sintaxe em internal/agent/adaptive_router.go (E-657, ja empurrado no commit 06b55b9c5)"
+  causa_raiz: "o arquivo tinha uma CHAVE TROCADA: faltava o `}` do `for` externo de capabilitiesHash (linha ~124) e sobrava um `}` depois de addToCache (linha ~264). Os dois erros se CANCELAVAM no balanco de chaves."
+  segunda_causa: "linha 231 usava `:=` com o nome `decision`, ja' existente como multillm.RouteDecision -> sombreamento -> 4 erros de tipo em cascata + import github.com/google/uuid nao usado"
+  correcao: "acrescentado o `}` que faltava, removido o `}` que sobrava, variavel renomeada para `roteada`, import removido, `Confidence` fica 0 (NAO MEDIDA) e o score BRUTO do registry segue no `Reason` — nao inventei normalizacao 0..1"
+  prova: "gofmt -l vazio; go build ./... exit 0; CGO_ENABLED=0 go build ./... exit 0; go vet ./internal/agent/ exit 0; bateria 28/28"
+  licao_de_metodo: "BALANCO DE CHAVES NAO E' PARSE VALIDO. Eu havia concluido 'o commit esta balanceado, logo compila' — falso. O ARBITRO e' o parser (gofmt/build), nao a contagem (ADV-24 aplicado a mim mesmo)."
+
+gate_verde_por_construcao:
+  defeito: "o passo do CI era `test -z \"$(gofmt -l ...)\"`: com erro de parse o gofmt escreve em STDERR e sai com STDOUT VAZIO, entao `test -z \"\"` PASSAVA. Foi assim que um arquivo Go invalido atravessou o CI verde."
+  correcao: "o codigo de saida do gofmt passa a ser conferido e o motivo da falha e' impresso"
+  numeracao: "E-658 fica reservado ao AdaptiveRouter (ja' declarado no proprio arquivo); minha instrumentacao de codificacao vira E-660 e o gate do gofmt E-661"
+
+pendencias:
+  - "empurrar estes commits e confirmar o CI no novo SHA (o `go build` do CI deve voltar a verde)"
+  - "o AdaptiveRouter (E-657/E-658) COMPILA mas NAO esta LIGADO a nada: nenhum call site fora do proprio arquivo. Nao declarar §4 entregue."
+  - "remedir os 5 documentos de checkpoint (frescura) antes de mexer em measured_at do estado"
+next_action: commit + push dos reparos, conferir CI, e retomar Paperclip/Cloudroom a partir do estado real
+rollback: reverter os commits desta fatia; nenhum reset --hard, nenhum force-push
+```
+
+## Checkpoint vigente — P0 do CI reparado na raiz + memória de retomada — 2026-10-15 06:2x -03
+
+```yaml
+state: CHECKPOINTING
+branch: fix/checker-relogio
+sha_medido: 06b55b9c5698a129372dfecf65020ad5c9f68dbc
+origin_main: 4b3e2185422c24d5a05fd46a343953ad6f41d1e5
+pr: {numero: 438, head_remoto: 6a391ef5c53e9d43300c2fabef0b9b6dc3e8d864, estado: open, mergeable_state: blocked}
+checks_do_pr: {total: 23, success: 22, failure: 1, falha: "Preserve Class A+ surfaces"}
+
+# --- P0 nº 1: causa-raiz MEDIDA, nao suposta ---------------------------------
+causa_raiz:
+  - commit 6a391ef5c gravou docs/mission/HADES_MASTER_STATE.json com BOM UTF-8 -> json.loads
+    lancava "Unexpected UTF-8 BOM" em scripts/hades_release_gate.py:77 (mesmo traceback do CI,
+    reproduzido localmente com exit 1)
+  - o MESMO commit gravou o ficheiro passando por Windows-1252 e dupla-codificou 58 ocorrencias
+    (travessao virava "a-euro"); origin/main e o pai f115749cf tem ZERO dessas ocorrencias
+
+reparo_provado:
+  metodo: "texto.encode('cp1252').decode('utf-8')"
+  resultado:
+    - JSON valido, 34 chaves de topo
+    - mojibake restante: 0 (era 58); BOM: ausente
+    - folhas iguais ao pai limpo: 3641  (as 82 que "mudaram" eram PURA corrupcao)
+    - mudancas reais: 3 metadados (measured_at, measured_commit, updated_at)
+    - folhas novas: 14, todas em evidence_log[0] (rodada 8)
+  diff_do_estado: 80 linhas alteradas (cirurgico), nao o ficheiro inteiro
+
+instrumento_E660:
+  - scripts/hades_encoding_check.py cobria so dupla codificacao; BOM passava em silencio
+    (read_text(encoding='utf-8') NAO lanca sobre BOM: o \ufeff vira o primeiro caractere)
+  - passa a acusar BOM (medido nos BYTES) + 3 testes novos
+  - injecao de falha: detector cego ao BOM -> com_bom=[]  => o teste TEM dentes
+  - o checker NAO estava na bateria do CI: entra agora, junto do hades_test_clock_check.py
+    (lacuna essa ja declarada no corpo do PR #438)
+
+correcao_de_rota:
+  hipotese_minha: a edicao nao commitada de internal/agent/adaptive_router.go (remocao de uma "}")
+    era o conserto de um erro de sintaxe do commit 06b55b9c5
+  medicao: o commit esta BALANCEADO (47/47, delta 0); a edicao da worktree deixava delta +1
+    => NAO COMPILA. A worktree era o defeito, nao o conserto.
+  acao: patch preservado em _tmp/wip-preservado-20261015.patch (5238 bytes, 3 hunks) e ficheiro
+    restaurado ao estado commitado (balanceado)
+
+provas_locais:
+  - "bateria completa: 23 checkers, 0 falhas"
+  - "hades_mission_check.py: ESCRITURACAO CONSISTENTE (era exit 1)"
+  - "hades_encoding_check.py: 2388 arquivos, 0 violacoes (era exit 1)"
+  - "hades_release_gate.py --check: GATE CONSISTENTE (era exit 1)"
+  - "scripts/hades_resume.ps1: EXECUTADO, exit 0, imprime o estado medido"
+limite_de_prova:
+  - "go AUSENTE neste host: go test/go build/gofmt so sao provaveis no runner do CI"
+  - "revisao humana do PR #438 (LMPrado-DZ23) pendente; mergeable_state=blocked NAO se contorna"
+
+memoria_de_retomada:
+  - "Obsidian (Memoria-Compartilhada-IA): HADES-CURRENT-TASK.md, HADES-Retomada-20261015.md, MEMORY_INDEX.md"
+  - "teste controlado: escrita por MCP + leitura independente por processo separado recuperou o nonce; registro de teste removido"
+  - "~/.dsh/AGENTS.md ganhou a secao de memoria/retomada (carregado em toda sessao)"
+  - "medido: pwsh nao esta no PATH; powershell.exe e 5.1 Desktop e le .ps1 sem BOM como Windows-1252
+     => hades_resume.ps1 e ASCII PURO (0 bytes nao-ASCII)"
+
+pendencias:
+  - "empurrar os commits para a branch do PR #438 e confirmar CI verde no novo SHA"
+  - "remedir os 5 documentos de checkpoint (contrato de FRESCURA) ao atualizar measured_at do estado"
+  - "decidir sobre o WIP de docs/parity/HADES_T2_*.md (repassa medicoes GREEN para NAO_MEDIDO)"
+next_action: commitar as tres fatias verificadas, empurrar sem force-push e acompanhar o CI no novo SHA
+rollback: reverter os commits desta fatia na branch; nenhum reset --hard, nenhum force-push
+```
+
 ## Checkpoint vigente — Missão contínua T0/P0 — 2026-10-02 03:58 UTC
 ```yaml
 state: D7B_COMPLETE

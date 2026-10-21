@@ -60,8 +60,19 @@ func newSandboxControl(stepID string) (*sandboxControl, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sandbox cgroup controllers are unavailable: %w", err)
 	}
+	// O ficheiro `cgroup.controllers` termina com newline ("cpu memory pids\n"). Comparar com
+	// `strings.Contains(" "+conteudo+" ", " "+controlador+" ")` falhava SEMPRE para o ultimo
+	// controlador, porque o "\n" ficava entre o nome e o espaco final: `pids\n ` nao contem
+	// ` pids `. Efeito medido (WSL2 Ubuntu, cgroup v2, 2026-10-21): o sandbox estrito respondia
+	// `sandbox cgroup controller "pids" is not delegated` mesmo com pids delegado e pids.max
+	// presente -- ou seja, o sandbox estrito era INATINGIVEL em qualquer host Linux real.
+	// A comparacao passa a ser por campos, que ignora espacos e newlines.
+	delegados := make(map[string]struct{}, 8)
+	for _, campo := range strings.Fields(string(controllers)) {
+		delegados[campo] = struct{}{}
+	}
 	for _, controller := range []string{"cpu", "memory", "pids"} {
-		if !strings.Contains(" "+string(controllers)+" ", " "+controller+" ") {
+		if _, ok := delegados[controller]; !ok {
 			return nil, fmt.Errorf("sandbox cgroup controller %q is not delegated", controller)
 		}
 	}

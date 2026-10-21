@@ -1,0 +1,11 @@
+{
+  "id": "replica-deploy",
+  "version": "0.1.0+77c9436f",
+  "description": "Ships an app clone live on the user's own domain: a preflight gate (tests green, parity must-haves done, rebrand sweep clean, listing linted, legal pages up), production database and env vars, the host, DNS records for the domain and for email, Stripe live mode, OAuth redirects, monitoring, and mobile builds to TestFlight and Play. Use when the user says \"deploy it\", \"ship it\", \"put it live\", \"connect my domain\", \"go to production\", \"publish the app\", or after /replica-launch.",
+  "category": "replica",
+  "license": "MIT",
+  "homepage": "https://github.com/Jakeschincariol/replica-skill",
+  "dependencies": [],
+  "token_budget": 1129,
+  "content_sha256": "2784d2dcd2b12c1812cc15c3b25a5fd718149c932c8c6934573c9c2c8ad122c2"
+}

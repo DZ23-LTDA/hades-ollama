@@ -1,3 +1,4 @@
+import { t } from "@/i18n";
 import type { AgentConnectorCatalogEntry } from "./agenticClient";
 
 // Catalogo de conectores e fontes de dados exibido no marketplace de Plugins.
@@ -33,41 +34,55 @@ const entry = (
   status: "available",
 });
 
-export const BUILTIN_CONNECTOR_CATALOG: BuiltinCatalogEntry[] = [
+// `category` NAO e' traduzido de proposito: e' identificador de contrato vindo do
+// backend (`ConnectorsPage` casa por igualdade exacta em `CATEGORY_GROUPS`) e serve
+// de chave em `CATEGORY_ACCENT`. Traduzi-lo quebraria filtro e cor do tile.
+/**
+ * Catalogo interno dos conectores.
+ *
+ * E' uma FUNCAO, e nao uma constante, de proposito: as descricoes passam por `t()`, e
+ * uma constante de modulo avaliaria as traducoes UMA vez, no carregamento. Efeito
+ * medido: trocar de idioma nao repintava as descricoes do catalogo sem recarregar a
+ * pagina -- limitacao que estava declarada em docs/mission/HADES_USER_READY_EVIDENCE.md.
+ * Sendo funcao, `t()` corre na chamada e o idioma activo e' respeitado.
+ */
+export function builtinConnectorCatalog(): BuiltinCatalogEntry[] {
+  return [
   // Comunicação
-  entry("connectors", "gmail", "Gmail", "Comunicação", "oauth", "OAuth", "Redija respostas, pesquise a caixa de entrada e resuma conversas por e-mail."),
-  entry("connectors", "outlook-mail", "Outlook Mail", "Comunicação", "oauth", "OAuth", "Escreva, pesquise e gerencie e-mails do Outlook sem sair do fluxo."),
-  entry("connectors", "slack", "Slack", "Comunicação", "oauth", "OAuth", "Leia canais, envie mensagens e acompanhe conversas de equipe."),
-  entry("connectors", "whatsapp", "WhatsApp Business", "Comunicação", "custom_api", "API key", "Envie e receba mensagens em fluxos aprovados de atendimento."),
-  entry("connectors", "discord", "Discord", "Comunicação", "oauth", "OAuth", "Acompanhe servidores e canais e publique atualizações com aprovação."),
+  entry("connectors", "gmail", "Gmail", "Comunicação", "oauth", "OAuth", t("connectorCatalog.gmail.description")),
+  entry("connectors", "outlook-mail", "Outlook Mail", "Comunicação", "oauth", "OAuth", t("connectorCatalog.outlookMail.description")),
+  entry("connectors", "slack", "Slack", "Comunicação", "oauth", "OAuth", t("connectorCatalog.slack.description")),
+  entry("connectors", "whatsapp", "WhatsApp Business", "Comunicação", "custom_api", "API key", t("connectorCatalog.whatsapp.description")),
+  entry("connectors", "discord", "Discord", "Comunicação", "oauth", "OAuth", t("connectorCatalog.discord.description")),
   // Produtividade
-  entry("connectors", "google-workspace", "Google Workspace", "Produtividade", "oauth", "OAuth", "Acesse arquivos do Drive, Docs e Sheets e deixe o agente ajudar no contexto."),
-  entry("connectors", "google-calendar", "Google Agenda", "Produtividade", "oauth", "OAuth", "Entenda a agenda, gerencie eventos e otimize seu tempo."),
-  entry("connectors", "notion", "Notion", "Produtividade", "oauth", "OAuth", "Pesquise o workspace, atualize notas e automatize fluxos de trabalho."),
-  entry("connectors", "microsoft-365", "Microsoft 365", "Produtividade", "oauth", "OAuth", "Word, Excel, Outlook e Teams em um único conector de produtividade."),
-  entry("connectors", "jira", "Jira", "Produtividade", "oauth", "OAuth", "Consulte issues, sprints e boards e crie tarefas com aprovação."),
-  entry("connectors", "linear", "Linear", "Produtividade", "oauth", "OAuth", "Acompanhe issues e ciclos de engenharia e proponha atualizações."),
+  entry("connectors", "google-workspace", "Google Workspace", "Produtividade", "oauth", "OAuth", t("connectorCatalog.googleWorkspace.description")),
+  entry("connectors", "google-calendar", "Google Agenda", "Produtividade", "oauth", "OAuth", t("connectorCatalog.googleCalendar.description")),
+  entry("connectors", "notion", "Notion", "Produtividade", "oauth", "OAuth", t("connectorCatalog.notion.description")),
+  entry("connectors", "microsoft-365", "Microsoft 365", "Produtividade", "oauth", "OAuth", t("connectorCatalog.microsoft365.description")),
+  entry("connectors", "jira", "Jira", "Produtividade", "oauth", "OAuth", t("connectorCatalog.jira.description")),
+  entry("connectors", "linear", "Linear", "Produtividade", "oauth", "OAuth", t("connectorCatalog.linear.description")),
   // Desenvolvimento
-  entry("connectors", "github", "GitHub", "Desenvolvimento", "oauth", "OAuth", "Repositórios, issues e pull requests com contexto de código."),
-  entry("connectors", "gitlab", "GitLab", "Desenvolvimento", "oauth", "OAuth", "Repositórios, merge requests e pipelines em um só lugar."),
-  entry("connectors", "supabase", "Supabase", "Desenvolvimento", "custom_api", "API key", "Consulte tabelas, funções e logs do seu projeto Postgres gerenciado."),
+  entry("connectors", "github", "GitHub", "Desenvolvimento", "oauth", "OAuth", t("connectorCatalog.github.description")),
+  entry("connectors", "gitlab", "GitLab", "Desenvolvimento", "oauth", "OAuth", t("connectorCatalog.gitlab.description")),
+  entry("connectors", "supabase", "Supabase", "Desenvolvimento", "custom_api", "API key", t("connectorCatalog.supabase.description")),
   // Social e Ads
-  entry("connectors", "instagram", "Instagram", "Social e Ads", "oauth", "OAuth", "Gere e publique posts, stories e reels com aprovação."),
-  entry("connectors", "meta-ads", "Meta Ads Manager", "Social e Ads", "oauth", "OAuth", "Insights e otimização de anúncios para economizar horas e maximizar retorno."),
-  entry("connectors", "tiktok", "TikTok", "Social e Ads", "oauth", "OAuth", "Publique conteúdo e acompanhe métricas de alcance e engajamento."),
-  entry("connectors", "linkedin", "LinkedIn", "Social e Ads", "oauth", "OAuth", "Publique atualizações e pesquise conexões e páginas com aprovação."),
+  entry("connectors", "instagram", "Instagram", "Social e Ads", "oauth", "OAuth", t("connectorCatalog.instagram.description")),
+  entry("connectors", "meta-ads", "Meta Ads Manager", "Social e Ads", "oauth", "OAuth", t("connectorCatalog.metaAds.description")),
+  entry("connectors", "tiktok", "TikTok", "Social e Ads", "oauth", "OAuth", t("connectorCatalog.tiktok.description")),
+  entry("connectors", "linkedin", "LinkedIn", "Social e Ads", "oauth", "OAuth", t("connectorCatalog.linkedin.description")),
   // Mídia
-  entry("connectors", "video-editor", "Video Editor", "Mídia", "mcp", "MCP", "Crie e refine vídeos em uma timeline editável."),
-  entry("connectors", "higgsfield", "Higgsfield", "Mídia", "custom_api", "API key", "Gere imagens e vídeos cinematográficos com Higgsfield."),
-  entry("connectors", "canva", "Canva", "Mídia", "oauth", "OAuth", "Crie e edite designs e exporte assets para suas missões."),
+  entry("connectors", "video-editor", "Video Editor", "Mídia", "mcp", "MCP", t("connectorCatalog.videoEditor.description")),
+  entry("connectors", "higgsfield", "Higgsfield", "Mídia", "custom_api", "API key", t("connectorCatalog.higgsfield.description")),
+  entry("connectors", "canva", "Canva", "Mídia", "oauth", "OAuth", t("connectorCatalog.canva.description")),
 
   // Fontes de dados
-  entry("data_sources", "similarweb", "Similarweb", "Fontes de dados", "custom_api", "API key", "Analise tráfego e dados de SEO de qualquer domínio ou URL."),
-  entry("data_sources", "world-bank", "World Bank DataBank", "Fontes de dados", "custom_api", "API key", "Estatísticas oficiais do World Bank para qualquer país, região ou faixa de renda."),
-  entry("data_sources", "bigquery", "Google BigQuery", "Fontes de dados", "oauth", "OAuth", "Consulte grandes datasets e cruze com o contexto das missões."),
-  entry("data_sources", "stripe", "Stripe", "Fontes de dados", "custom_api", "API key", "Leia pagamentos, assinaturas e métricas financeiras (somente leitura)."),
-  entry("data_sources", "google-analytics", "Google Analytics", "Fontes de dados", "oauth", "OAuth", "Métricas de audiência, aquisição e conversão dos seus sites."),
-];
+  entry("data_sources", "similarweb", "Similarweb", "Fontes de dados", "custom_api", "API key", t("connectorCatalog.similarweb.description")),
+  entry("data_sources", "world-bank", "World Bank DataBank", "Fontes de dados", "custom_api", "API key", t("connectorCatalog.worldBank.description")),
+  entry("data_sources", "bigquery", "Google BigQuery", "Fontes de dados", "oauth", "OAuth", t("connectorCatalog.bigquery.description")),
+  entry("data_sources", "stripe", "Stripe", "Fontes de dados", "custom_api", "API key", t("connectorCatalog.stripe.description")),
+  entry("data_sources", "google-analytics", "Google Analytics", "Fontes de dados", "oauth", "OAuth", t("connectorCatalog.googleAnalytics.description")),
+  ];
+}
 
 const CATEGORY_ACCENT: Record<string, string> = {
   Comunicação: "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
@@ -93,7 +108,7 @@ export function catalogAccentClasses(category: string): string {
  */
 export function mergeConnectorCatalog(
   backend: AgentConnectorCatalogEntry[],
-  builtin: BuiltinCatalogEntry[] = BUILTIN_CONNECTOR_CATALOG,
+  builtin: BuiltinCatalogEntry[] = builtinConnectorCatalog(),
 ): AgentConnectorCatalogEntry[] {
   const seenIds = new Set(backend.map((item) => item.id.toLocaleLowerCase()));
   const seenNames = new Set(backend.map((item) => item.name.toLocaleLowerCase()));

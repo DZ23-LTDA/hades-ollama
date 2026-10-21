@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/ollama/ollama/api"
@@ -34,9 +35,10 @@ type RoutedPlannerResolver interface {
 	ResolvePlannerForMission(ctx context.Context, provider, model, organizationID string, capabilities []string) (Planner, PlannerResolution, error)
 }
 
-type plannerChatClient interface {
-	Chat(ctx context.Context, request *api.ChatRequest, callback api.ChatResponseFunc) error
-}
+// plannerChatClient e' o nome historico do cliente de chat do planejador. E-666: passou a ser ALIAS da interface
+// exportada `InferenceChatClient`, para que o runtime injete o MESMO tipo em vez de manter duas abstracoes
+// paralelas para falar com modelo.
+type plannerChatClient = InferenceChatClient
 
 // PlanUsageSink permite que o runtime injete o destino do consumo do modelo. Fica em uma
 // interface separada de Planner para não quebrar planejadores que não reportam consumo.
@@ -51,7 +53,17 @@ type PlanUsageReporter interface {
 
 type RulePlanner struct{}
 
+// Plan gera o plano por regras e depois deixa o PRESET governa-lo.
+//
+// A separacao e' deliberada: *um preset que so' muda o orcamento governa a factura, nao o
+// trabalho.* O que muda aqui e' QUAIS passos existem.
 func (RulePlanner) Plan(_ context.Context, mission Mission) ([]Step, error) {
+	passos := planRulePorObjetivo(mission)
+	return aplicarPresetAoPlano(mission, passos)
+}
+
+// planRulePorObjetivo e' o planeador por palavras-chave, sem conhecimento de presets.
+func planRulePorObjetivo(mission Mission) []Step {
 	objective := strings.ToLower(mission.Objective)
 	if strings.Contains(objective, "test") || strings.Contains(objective, "testar") || strings.Contains(objective, "coding") || strings.Contains(objective, "repair") || strings.Contains(objective, "worktree") || strings.Contains(objective, "merge") {
 		steps := []Step{
@@ -89,7 +101,7 @@ func (RulePlanner) Plan(_ context.Context, mission Mission) ([]Step, error) {
 				},
 			})
 		}
-		return steps, nil
+		return steps
 	}
 	if strings.Contains(objective, "navegar") || strings.Contains(objective, "browser") {
 		return []Step{
@@ -111,7 +123,7 @@ func (RulePlanner) Plan(_ context.Context, mission Mission) ([]Step, error) {
 				State:            StepPending,
 				Input:            map[string]any{"path": "relatorio-missao.md", "content": "# Relatório de Execução da Missão\n\nNavegação realizada com sucesso e frame visual espelhado em tempo real.\n"},
 			},
-		}, nil
+		}
 	}
 	if strings.Contains(objective, "escrever") || strings.Contains(objective, "criar arquivo") || strings.Contains(objective, "editar") {
 		return []Step{{
@@ -122,7 +134,7 @@ func (RulePlanner) Plan(_ context.Context, mission Mission) ([]Step, error) {
 			RequiresApproval: true,
 			State:            StepPending,
 			Input:            map[string]any{"path": "agent-output.txt", "content": mission.Objective + "\n"},
-		}}, nil
+		}}
 	}
 	return []Step{{
 		ID:    "step_1",
@@ -131,7 +143,97 @@ func (RulePlanner) Plan(_ context.Context, mission Mission) ([]Step, error) {
 		Risk:  RiskRead,
 		State: StepPending,
 		Input: map[string]any{"path": ".", "max_entries": 100},
-	}}, nil
+	}}
+}
+
+// aplicarPresetAoPlano faz o preset GOVERNAR o plano, com dois efeitos observaveis e
+// nenhum Kind inventado:
+//
+//  1. `preset.Tests` vazio -> o passo `project.test.run` NAO e' gerado. *Um preset que nao
+//     declara testes nao gera um passo de testes: seria trabalho que o preset nao pediu.*
+//  2. `preset.Approvals` com a accao `merge` -> o passo `git.merge.origin` e' gerado. Sem
+//     essa declaracao ele nao aparece: *integrar de volta e' uma accao que o preset tem de
+//     pedir explicitamente, nao um extra que o planeador oferece.*
+//
+// Os dois usam Kind que o executor JA conhece. Nao ha' Kind novo: *um Kind que o executor
+// nao sabe executar seria um passo que falha no fim, e um plano que so' falha depois de
+// correr nao e' um plano.*
+func aplicarPresetAoPlano(mission Mission, passos []Step) ([]Step, error) {
+	id := strings.TrimSpace(mission.PresetID)
+	if id == "" {
+		return passos, nil
+	}
+	preset, existe := MissionPresetByID(id)
+	if !existe {
+		// Falha fechada: um preset desconhecido nao vira "plano sem preset" em silencio.
+		return nil, fmt.Errorf("%w: unknown preset %q; available: %s",
+			ErrPresetInvalido, id, strings.Join(MissionPresetIDs(), ", "))
+	}
+
+	temTestes := len(preset.Tests) > 0
+	temMerge := false
+	for _, aprovacao := range preset.Approvals {
+		if strings.EqualFold(strings.TrimSpace(aprovacao), "merge") {
+			temMerge = true
+			break
+		}
+	}
+
+	filtrados := make([]Step, 0, len(passos)+1)
+	for _, passo := range passos {
+		switch passo.Kind {
+		case "project.test.run":
+			if !temTestes {
+				continue
+			}
+		case "git.merge.origin":
+			if !temMerge {
+				continue
+			}
+		}
+		// Rastreabilidade: cada passo diz por que preset foi governado. Sem isto, um plano
+		// filtrado e' indistinguivel de um plano que nunca teve aqueles passos.
+		if passo.Input == nil {
+			passo.Input = map[string]any{}
+		}
+		passo.Input["preset_id"] = preset.ID
+		filtrados = append(filtrados, passo)
+	}
+
+	// O merge so' e' gerado quando o objectivo pede OU quando o preset o declara. Se o preset
+	// o declara e o objectivo nao o gerou, acrescenta-se: o preset e' a politica, o objectivo
+	// e' o pedido -- e a politica pode exigir uma salvaguarda que o pedido esqueceu.
+	if temMerge {
+		temPassoMerge := false
+		for _, passo := range filtrados {
+			if passo.Kind == "git.merge.origin" {
+				temPassoMerge = true
+				break
+			}
+		}
+		if !temPassoMerge && mission.GitWorktreeActive {
+			filtrados = append(filtrados, Step{
+				ID:               "step_merge",
+				Kind:             "git.merge.origin",
+				Title:            "Mesclar alteracoes do branch da missao (exigido pelo preset)",
+				Risk:             RiskWrite,
+				RequiresApproval: true,
+				State:            StepPending,
+				Input: map[string]any{
+					"repo_root":    mission.GitRepoRoot,
+					"branch_name":  mission.GitBranch,
+					"worktree_dir": mission.GitWorktreePath,
+					"preset_id":    preset.ID,
+				},
+			})
+		}
+	}
+
+	// Renumerar: um plano com step_2 sem step_1 e' um plano que mente sobre a sua ordem.
+	for i := range filtrados {
+		filtrados[i].ID = "step_" + strconv.Itoa(i+1)
+	}
+	return filtrados, nil
 }
 
 type UnconfiguredPlanner struct{}
@@ -263,7 +365,7 @@ func (p OllamaPlanner) Plan(ctx context.Context, mission Mission) ([]Step, error
 	// ou projeto, o contexto canônico do Hades entra como mensagem de sistema
 	// ANTES do objetivo, declarando identidade, escopo e permissões. Sem escopo
 	// de tenant nada é injetado — na dúvida, não se vaza contexto de outro dono.
-	instrucaoSistema := "You are a mission planner. Return only JSON with a top-level steps array. Each step must have kind, title, risk, requires_approval, and input. Allowed kinds are workspace.list, workspace.read, git.repo.inspect, workspace.write, terminal.exec, sandbox.exec, browser.operator, desktop.companion, mcp.call, mcp.remote.call, connector.http, and media.process only when a media provider is configured. Never invent completed results. Use read risk for inspection, write risk for filesystem changes, external_side_effect for browser, desktop, MCP, connectors, and media provider actions, and require approval for write, terminal, sandbox, browser, desktop, MCP, connector, and media steps. Use workspace.list to inspect a DIRECTORY and workspace.read to read a specific FILE: never use workspace.read to inspect a directory. Workspace paths MUST be RELATIVE to the workspace root (for example \"README.md\" or \"cmd/app\" or \".\" for the root directory): an absolute path such as \"/\" is refused before execution."
+	instrucaoSistema := "You are a mission planner. Return only JSON with a top-level steps array. Each step must have kind, title, risk, requires_approval, and input. Allowed kinds are workspace.list, workspace.read, git.repo.inspect, workspace.write, terminal.exec, sandbox.exec, browser.operator, desktop.companion, mcp.call, mcp.remote.call, connector.http, and media.process only when a media provider is configured, plus model.infer for a step that must actually run one inference call on the model routed for that step. Never invent completed results. Use read risk for inspection, write risk for filesystem changes, external_side_effect for browser, desktop, MCP, connectors, and media provider actions, and require approval for write, terminal, sandbox, browser, desktop, MCP, connector, and media steps. Use workspace.list to inspect a DIRECTORY and workspace.read to read a specific FILE: never use workspace.read to inspect a directory. Workspace paths MUST be RELATIVE to the workspace root (for example \"README.md\" or \"cmd/app\" or \".\" for the root directory): an absolute path such as \"/\" is refused before execution."
 	// O contrato vem dos DESCRITORES reais: dizer só os kinds permitidos deixava o modelo
 	// devolver passos sem os campos exigidos.
 	if contrato := PlanningToolContract(p.Tools); contrato != "" {
@@ -373,6 +475,13 @@ func normalizeSteps(steps []Step) ([]Step, error) {
 		// executes project code on the host (external side effect).
 		"project.test.run": RiskExternalSideEffect,
 		"git.merge.origin": RiskWrite,
+		// E-666: inferencia por passo (`model.infer`). E' EFEITO EXTERNO - sai da maquina, custa e pode enviar dado -
+		// e portanto exige aprovacao, como qualquer ferramenta dessa classe. *A classe aqui tem de ser a MESMA do
+		// descritor da ferramenta: este mapa e' a fonte unica do risco (SEC-01), e uma divergencia entre os dois
+		// deixaria o plano rebaixar o risco.* Sem esta linha o kind nem e' planejavel: `normalizeSteps` recusa
+		// qualquer ferramenta fora deste mapa ("planner returned unsupported tool") - *e um executor inalcancavel e'
+		// so' uma promessa.*
+		KindDeInferencia: RiskExternalSideEffect,
 	}
 	for i := range steps {
 		if _, ok := allowed[steps[i].Kind]; !ok {

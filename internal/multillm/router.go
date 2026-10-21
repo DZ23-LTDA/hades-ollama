@@ -2,6 +2,8 @@ package multillm
 
 import (
 	"errors"
+	"net"
+	"net/url"
 	"sort"
 	"strings"
 )
@@ -35,12 +37,31 @@ type RouteRequest struct {
 	LocalOnly            bool
 	Preference           RoutePreference
 	Health               map[string]ProviderHealth
+	// 🚨 E-428 (Estágio 43 do complemento, estratégia `MANUAL`): **PIN de MODELO por tarefa**.
+	//
+	// *Isto completa o que já existia — e a correção do meu próprio diagnóstico importa:* `PreferredProvider`
+	// (`:32`) **já é restrição RÍGIDA por PROVEDOR** (`:67` faz `continue` em quem não bate), *não* um bônus
+	// solto. **O que faltava era fixar o MODELO**: *"quero ESTE modelo nesta tarefa"*, e não "quero qualquer um
+	// deste provedor".
+	//
+	// ***Uma tarefa que fixa um modelo e recebe outro silenciosamente é a mesma traição de confiar numa aprovação
+	// que não foi dada — só muda o objeto.***
+	//
+	// Um pin que **não pode ser honrado** (modelo indisponível, capability ausente, teto de custo, `LocalOnly`
+	// incompatível) devolve `ErrNoRoute`: *falhar é a resposta honesta; escolher outro por baixo é que não é.*
+	PinnedModelID string
 }
 
 type RouteDecision struct {
 	Model  Model  `json:"model"`
 	Score  int64  `json:"score"`
 	Reason string `json:"reason"`
+	// Factors sao os componentes que SOMAM o Score. Existem porque o adendo proibe uma
+	// pontuacao opaca como unica justificativa: *um score sem factors obriga quem o le' a
+	// confiar em quem o escreveu -- e confianca nao e' um formato de evidencia.*
+	//
+	// Invariante testada: a soma dos factors de um candidato e' igual ao seu Score.
+	Factors map[string]int64 `json:"factors,omitempty"`
 }
 
 var ErrNoRoute = errors.New("no provider route satisfies the requested constraints")
@@ -63,11 +84,19 @@ func (r *Registry) RouteCandidates(request RouteRequest) ([]RouteDecision, error
 		if !model.Available || !supports(model, request.RequiredCapabilities) || !r.supportsPath(model, request.Path) {
 			continue
 		}
+		// E-428: o PIN de modelo é restrição RÍGIDA, como `LocalOnly` — *os outros não são candidatos.* Um pin que
+		// não pode ser honrado cai no `ErrNoRoute` do fim da função, **nunca** num "escolhi outro" silencioso.
+		if request.PinnedModelID != "" && model.ID != request.PinnedModelID {
+			continue
+		}
 		provider, ok := r.providers[model.Provider]
 		if !ok || (request.PreferredProvider != "" && provider.Name != request.PreferredProvider) {
 			continue
 		}
-		if request.LocalOnly && !provider.AllowPrivate {
+		// LocalOnly e' restricao RIGIDA de LOCALIDADE, nao de conectividade. So' passa quem
+		// declara Locality: "local"; desconhecido NAO e' local (fail-closed). O antigo filtro por
+		// AllowPrivate deixava passar provedor remoto com rede privada permitida.
+		if request.LocalOnly && !providerEhLocal(provider) {
 			continue
 		}
 		cost := model.CostPer1KInputCents + model.CostPer1KOutputCents
@@ -78,37 +107,55 @@ func (r *Registry) RouteCandidates(request RouteRequest) ([]RouteDecision, error
 		if request.Health != nil && !health.Healthy {
 			continue
 		}
-		score := int64(model.Priority * 100)
-		score += int64(model.QualityScore * 10)
-		score -= cost
+		// Cada parcela e' registada no mapa `factors` E somada ao score na mesma linha.
+		// *Somar num sitio e explicar noutro e' como um relatorio que se desmente a si
+		// proprio: cedo ou tarde alguem compara os dois.*
+		score := int64(0)
+		factors := map[string]int64{}
+		somar := func(nome string, valor int64) {
+			if valor != 0 {
+				factors[nome] = valor
+			}
+			score += valor
+		}
+		somar("prioridade", int64(model.Priority*100))
+		somar("qualidade", int64(model.QualityScore*10))
+		somar("custo", -cost)
 		if modelIsFree(model) {
-			score += 100000
+			somar("gratuito", 100000)
 		}
 		if health.LatencyMS > 0 {
 			if request.MaxLatencyMS > 0 && health.LatencyMS > request.MaxLatencyMS {
 				continue
 			}
-			score -= health.LatencyMS
+			somar(ParetoLatency, -health.LatencyMS)
 		}
 		if health.ErrorRate > 0.0 {
-			score -= int64(health.ErrorRate * 1000)
+			somar("taxa_erro", -int64(health.ErrorRate*1000))
 		}
 		if request.PreferredProvider != "" {
-			score += 10000
+			somar("provedor_preferido", 10000)
 		}
 		// Optional user preference reweights the balanced default. The empty
 		// (Auto) preference leaves the score unchanged for backward compatibility.
 		switch request.Preference {
 		case RoutePreferenceBestQuality:
-			score += int64(model.QualityScore) * 100
+			somar("preferencia_qualidade", int64(model.QualityScore)*100)
 		case RoutePreferenceCheapest:
-			score -= cost * 100
+			somar("preferencia_custo", -cost*100)
 		case RoutePreferenceFastest:
 			if health.LatencyMS > 0 {
-				score -= health.LatencyMS * 20
+				somar("preferencia_latencia", -health.LatencyMS*20)
+			}
+		case RoutePreferenceMostPrivate:
+			// FASE 19: PRIVACIDADE e' um eixo, nao um filtro. O local sobe; o remoto nao
+			// desaparece. `LocalOnly` continua a ser o filtro rigido, e sao coisas
+			// diferentes de proposito.
+			if provider.AllowPrivate {
+				somar("privacidade_local", 50000)
 			}
 		}
-		candidates = append(candidates, RouteDecision{Model: model, Score: score, Reason: routeReason(model, health, request)})
+		candidates = append(candidates, RouteDecision{Model: model, Score: score, Reason: routeReason(model, health, request), Factors: factors})
 	}
 	if len(candidates) == 0 {
 		return nil, ErrNoRoute
@@ -155,4 +202,34 @@ func modelIsFree(model Model) bool {
 		return true
 	}
 	return model.CostPer1KInputCents+model.CostPer1KOutputCents == 0
+}
+
+// providerEhLocal diz se a inferencia acontece na maquina do utilizador.
+//
+// Ordem: declaracao explicita (`Locality: "local"`) vence; sem declaracao, um BaseURL de loopback
+// e' evidencia SUFICIENTE de localidade (nao se alcanca 127.0.0.1 por rede) e mantem compatibilidade
+// com as configuracoes existentes, que nao declaram `Locality`. Qualquer outra coisa -- incluindo um
+// BaseURL publico com `AllowPrivate: true` -- NAO e' local.
+func providerEhLocal(p Provider) bool {
+	if strings.EqualFold(strings.TrimSpace(p.Locality), "local") {
+		return true
+	}
+	if strings.TrimSpace(p.Locality) != "" {
+		return false
+	}
+	endereco, err := url.Parse(strings.TrimSpace(p.BaseURL))
+	if err != nil {
+		return false
+	}
+	host := strings.TrimSpace(endereco.Hostname())
+	if host == "" {
+		return false
+	}
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback()
+	}
+	return false
 }

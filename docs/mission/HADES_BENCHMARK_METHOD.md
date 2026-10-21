@@ -9,6 +9,8 @@
 > exige a MESMA tarefa, a MESMA máquina e a licença/conta de cada produto — sem
 > isso, qualquer número seria inventado. Aqui se mede apenas o custo
 > determinístico dos motores que o Hades controla.
+>
+> **Artefactos MEDIDOS deste estagio**: `docs/parity/HADES_T2_MATRIX.md` (matriz RED->GREEN com modelos reais -- 3/8 verde, 4 `HARNESS_TRAFICOU`, 1 vermelho -- `E-1047`) e `docs/parity/HADES_T2_REPETICAO.md` (repeticao estatistica -- `E-1049`). *Os comandos reproduziveis estao em `HADES_STAGE_21_BENCHMARK.md`, secao 6.*
 
 ## 1. Comando reproduzível
 

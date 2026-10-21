@@ -174,17 +174,26 @@ func (a *agentAPI) createCompanyOrder(c *gin.Context) {
 	if input.IdempotencyKey == "" {
 		input.IdempotencyKey = c.GetHeader("Idempotency-Key")
 	}
-	company, err := a.runtime.CompanyStore().CreateOrder(c.Param("id"), input)
+	// E-467: `CreateOrder` passou a devolver **o pedido** (criado ou o existente, com `Replayed`) além da empresa ⇒
+	// *a superfície deixa de adivinhar qual pedido nasceu, e a reentrega passa a dizer que foi reentrega.*
+	company, pedido, err := a.runtime.CompanyStore().CreateOrder(c.Param("id"), input)
 	if err != nil {
 		writeAgentError(c, statusForAgentError(err), err)
 		return
 	}
-	if len(company.Orders) > 0 {
-		if approval, approvalErr := a.runtime.CompanyStore().PendingApproval(c.Param("id"), "order", company.Orders[len(company.Orders)-1].ID); approvalErr == nil {
+	if pedido.ID != "" {
+		if approval, approvalErr := a.runtime.CompanyStore().PendingApproval(c.Param("id"), "order", pedido.ID); approvalErr == nil {
 			_ = a.runtime.CompanyStore().BindApprovalRequester(c.Param("id"), approval.ID, agentActorID(c))
 		}
 	}
-	c.JSON(http.StatusCreated, company)
+	// **409 numa reentrega**, como no agendamento (E-458): *o pedido existe, e a resposta diz qual é.* E `201` quando
+	// nasceu agora. *Um cliente que reentrega por queda de rede quer saber se criou ou se já existia — e não uma lição
+	// sobre o formato do pedido.*
+	codigo := http.StatusCreated
+	if pedido.Replayed {
+		codigo = http.StatusConflict
+	}
+	c.JSON(codigo, gin.H{"company": company, "order": pedido, "idempotent_replay": pedido.Replayed})
 }
 
 func (a *agentAPI) approveCompanyOrder(c *gin.Context) {

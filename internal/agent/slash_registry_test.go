@@ -47,6 +47,19 @@ func TestSlashRegistryCoversSection6AndIsHonest(t *testing.T) {
 		"/memory", "/deploy", "/status", "/resume", "/whatsapp", "/telegram", "/inbox", "/voice",
 		"/calls", "/channels", "/crm", "/orders", "/handoff", "/campaign", "/business-status",
 		"/cancel", "/approve", "/deny",
+		// 🚨 E-533 (Estagio 44 - Cowork & Spark): **declarados como mandato**, e nao apenas acrescentados ao registo.
+		//
+		// *O contrato acima e' bidireccional - `len(registry) == len(required)` - e isso e' bom: obriga a que
+		// acrescentar um comando seja uma DECISAO, e nao um efeito lateral.*
+		//
+		// `/spark` e `/cowork` entram porque o Estagio 44 se chama «Hades Cowork & Spark» e os nomeia; `/reject`
+		// entra porque e' o par de `/approve` e `/deny`, que ja' estavam nesta lista, e o Estagio 44 nomeia-o entre
+		// os oito. ⇒ *os tres pertencem ao mandato; a lista e' que estava desactualizada em relacao ao complemento.*
+		"/spark", "/cowork", "/reject",
+		// FASE 23 do adendo V3: `/preset` entra porque o catalogo de presets de MISSAO tem de ter
+		// um comando, ou nao e' usado por ninguem. O contrato bidireccional (len(registry) ==
+		// len(required)) obriga a declarar isto como DECISAO -- que e' o que estou a fazer.
+		"/preset",
 	}
 	for _, name := range required {
 		if _, ok := byName[name]; !ok {

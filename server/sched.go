@@ -606,7 +606,23 @@ func (s *Scheduler) load(req *LlmRequest, systemInfo ml.SystemInfo, gpus []ml.De
 			wantPath = req.model.ShortName
 		}
 		if s.activeLoading.ModelPath() != wantPath {
-			panic(fmt.Errorf("attempting to load different model after eviction (original %v new %v)", s.activeLoading.ModelPath(), wantPath))
+			// SEMANTICA: o `panic` original matava o PROCESSO INTEIRO com `s.loadedMu` preso
+			// (o Lock esta' 88 linhas acima, em `s.loadedMu.Lock()`), e *um lock preso por
+			// panic e' um deadlock que sobrevive a' causa*: qualquer goroutine seguinte ficaria
+			// bloqueada para sempre -- indisponibilidade total em vez de uma requisicao falhada.
+			//
+			// A invariante continua a ser verificada; muda o que acontece quando ela e' violada:
+			// a requisicao falha com erro controlado (o mesmo caminho das L595-600), o lock e'
+			// libertado e o servidor continua a servir os outros modelos.
+			//
+			// NAO e' silenciar o problema: o erro vai para o `errCh` do pedido E para o log.
+			inconsistencia := fmt.Errorf(
+				"attempting to load different model after eviction (original %v new %v)",
+				s.activeLoading.ModelPath(), wantPath)
+			slog.Error("inconsistencia de carregamento", "error", inconsistencia)
+			req.errCh <- inconsistencia
+			s.loadedMu.Unlock()
+			return false
 		}
 	}
 

@@ -164,8 +164,25 @@ func TestTresEspecialistasEmWorktreesIsoladosComMergeControlado(t *testing.T) {
 		t.Fatalf("após abortar o merge conflitante, o base tem de manter a versão já integrada: %q", conteudo)
 	}
 
-	// 7. Limpeza: os worktrees são removidos sem deixar o repositório preso.
-	for _, sessao := range append([]*GitWorktreeSession{conflitoA, conflitoB}, sessoes[papeis[0]], sessoes[papeis[1]], sessoes[papeis[2]]) {
+	// 7. Limpeza: os worktrees sao removidos sem deixar o repositorio preso.
+	//
+	// FASE 2 do adendo V3: a remocao passou a RECUSAR worktrees com trabalho nao integrado.
+	// Os dois worktrees de conflito (`conflitoA`, `conflitoB`) tem exactamente isso -- o merge foi
+	// abortado de proposito, e o commit de cada um nunca entrou no alvo. A guarda esta' certa a
+	// recusar.
+	//
+	// Este teste DESCARTA esse trabalho de proposito, porque o conflito ja' foi provado acima.
+	// Usar `RemoveGitWorktreeComPerda` com motivo e' a forma honesta de o dizer:
+	//
+	//	*Um teste que descarta trabalho tem de o declarar, senao amanha ninguem sabe se o
+	//	comportamento seguro foi exercitado ou apenas contornado.*
+	for _, sessao := range []*GitWorktreeSession{conflitoA, conflitoB} {
+		if err := RemoveGitWorktreeComPerda(ctx, sessao, "teste: worktree de conflito descartado apos provar o aborto"); err != nil {
+			t.Fatalf("descartar worktree de conflito %s: %v", sessao.MissionID, err)
+		}
+	}
+	for _, sessao := range []*GitWorktreeSession{sessoes[papeis[0]], sessoes[papeis[1]], sessoes[papeis[2]]} {
+		// Estes foram integrados pelo merge controlado; a remocao segura tem de os aceitar.
 		if err := RemoveGitWorktree(ctx, sessao); err != nil {
 			t.Fatalf("remover worktree %s: %v", sessao.MissionID, err)
 		}

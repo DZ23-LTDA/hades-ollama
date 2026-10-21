@@ -6,6 +6,7 @@ import {
   PlusIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
+import { useT } from "@/i18n";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
 import { SettingsTabs } from "@/components/SettingsTabs";
@@ -35,17 +36,17 @@ type CategoryFilter =
   | "connected"
   | "whatsapp";
 
-const CATEGORIES: Array<{ id: CategoryFilter; label: string }> = [
-  { id: "all", label: "Todos" },
-  { id: "productivity", label: "Produtividade" },
-  { id: "creativity", label: "Criatividade e mídia" },
-  { id: "business", label: "Negócios" },
-  { id: "development", label: "Desenvolvimento" },
-  { id: "infra", label: "Infraestrutura" },
-  { id: "finance", label: "Finanças" },
-  { id: "data", label: "Dados e métricas" },
-  { id: "connected", label: "Conectados" },
-  { id: "whatsapp", label: "WhatsApp Gateway" },
+const CATEGORIES: Array<{ id: CategoryFilter; labelKey: string }> = [
+  { id: "all", labelKey: "connectors.categories.all" },
+  { id: "productivity", labelKey: "connectors.categories.productivity" },
+  { id: "creativity", labelKey: "connectors.categories.creativity" },
+  { id: "business", labelKey: "connectors.categories.business" },
+  { id: "development", labelKey: "connectors.categories.development" },
+  { id: "infra", labelKey: "connectors.categories.infra" },
+  { id: "finance", labelKey: "connectors.categories.finance" },
+  { id: "data", labelKey: "connectors.categories.data" },
+  { id: "connected", labelKey: "connectors.categories.connected" },
+  { id: "whatsapp", labelKey: "connectors.categories.whatsapp" },
 ];
 
 // Cada aba mapeia para as categorias REAIS do catálogo (em português, como
@@ -103,6 +104,7 @@ function ConnectorLogo({ id }: { id: string }) {
 }
 
 export function ConnectorsPage() {
+  const { t } = useT();
   const [catalog, setCatalog] = useState<AgentConnectorCatalogEntry[]>([]);
   const [connectors, setConnectors] = useState<AgentConnector[]>([]);
   const [mcpServers, setMcpServers] = useState<AgentMCPServer[]>([]);
@@ -180,7 +182,7 @@ export function ConnectorsPage() {
           operations,
         }),
       });
-      if (!res.ok) throw new Error("Falha ao registrar conector no backend");
+      if (!res.ok) throw new Error(t("connectors.create.failedBackend"));
       setShowCreateModal(false);
       setCustomName("");
       setCustomBaseUrl("");
@@ -189,7 +191,7 @@ export function ConnectorsPage() {
       setCustomAllowWrite(false);
       load();
     } catch (e) {
-      setCreateError(e instanceof Error ? e.message : "Falha ao registrar conector");
+      setCreateError(e instanceof Error ? e.message : t("connectors.create.failed"));
     } finally {
       setCreating(false);
     }
@@ -220,7 +222,7 @@ export function ConnectorsPage() {
 
   return (
     <SidebarLayout
-      title="Plugins & Conectores"
+      title={t("connectors.page.title")}
       sidebar={<AppSidebar current="connectors" />}
     >
       <SettingsTabs current="connectors" />
@@ -230,10 +232,10 @@ export function ConnectorsPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="page-title font-bold sm:text-3xl">
-                Plugins
+                {t("connectors.page.heading")}
               </h1>
               <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-                Conecte serviços externos, contas OAuth e servidores MCP para expandir as capacidades do agente.
+                {t("connectors.page.description")}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -242,7 +244,9 @@ export function ConnectorsPage() {
                 onClick={() => setCategory("connected")}
                 className="rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
               >
-                Gerenciar Conectores ({connectors.length + mcpServers.length})
+                {t("connectors.page.manage", {
+                  count: connectors.length + mcpServers.length,
+                })}
               </button>
               <button
                 type="button"
@@ -250,7 +254,7 @@ export function ConnectorsPage() {
                 className="inline-flex items-center gap-1.5 rounded-xl bg-neutral-900 px-3.5 py-2 text-xs font-semibold text-white hover:opacity-90 dark:bg-white dark:text-neutral-900"
               >
                 <PlusIcon className="h-4 w-4" />
-                Criar Conector
+                {t("connectors.page.create")}
               </button>
             </div>
           </div>
@@ -272,8 +276,8 @@ export function ConnectorsPage() {
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Buscar conectores e plugins..."
-                aria-label="Buscar conectores"
+                placeholder={t("connectors.search.placeholder")}
+                aria-label={t("connectors.search.aria")}
                 className="w-full bg-transparent text-sm text-neutral-900 outline-none placeholder:text-neutral-400 dark:text-neutral-100"
               />
             </label>
@@ -293,7 +297,7 @@ export function ConnectorsPage() {
                         : "bg-white text-neutral-600 hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
                     }`}
                   >
-                    {cat.label}
+                    {t(cat.labelKey)}
                   </button>
                 );
               })}
@@ -306,27 +310,27 @@ export function ConnectorsPage() {
           {showCreateModal && (
             <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-md dark:border-neutral-800 dark:bg-neutral-950">
               <h3 className="text-base font-bold text-neutral-900 dark:text-white">
-                Cadastrar Conector / API Personalizada
+                {t("connectors.create.title")}
               </h3>
               <p className="mt-1 text-xs text-neutral-500">
-                Adicione endpoints REST ou servidores MCP locais/remotos para o agente invocar com segurança.
+                {t("connectors.create.description")}
               </p>
               <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                    Nome do Serviço / Provedor
+                    {t("connectors.create.nameLabel")}
                   </label>
                   <input
                     type="text"
                     value={customName}
                     onChange={(e) => setCustomName(e.target.value)}
-                    placeholder="Ex: Minha API Interna"
+                    placeholder={t("connectors.create.namePlaceholder")}
                     className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                    URL Base da API
+                    {t("connectors.create.baseUrlLabel")}
                   </label>
                   <input
                     type="text"
@@ -338,30 +342,29 @@ export function ConnectorsPage() {
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                    Variável de Ambiente com a Chave (opcional)
+                    {t("connectors.create.tokenEnvLabel")}
                   </label>
                   <input
                     type="text"
                     value={customTokenEnv}
                     onChange={(e) => setCustomTokenEnv(e.target.value)}
-                    placeholder="Ex: MINHA_API_KEY (o segredo nunca é exposto)"
+                    placeholder={t("connectors.create.tokenEnvPlaceholder")}
                     className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                   />
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300">
-                    Caminho permitido (prefixo)
+                    {t("connectors.create.pathLabel")}
                   </label>
                   <input
                     type="text"
                     value={customPath}
                     onChange={(e) => setCustomPath(e.target.value)}
-                    placeholder="Ex: /v1/clientes"
+                    placeholder={t("connectors.create.pathPlaceholder")}
                     className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:outline-none dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
                   />
                   <p className="mt-1 text-[11px] text-neutral-500">
-                    O agente só poderá chamar rotas sob este prefixo. Mantenha o
-                    menor escopo possível.
+                    {t("connectors.create.pathHint")}
                   </p>
                 </div>
                 <div className="sm:col-span-2">
@@ -373,11 +376,9 @@ export function ConnectorsPage() {
                       className="mt-0.5 h-4 w-4 rounded border-neutral-300 dark:border-neutral-600"
                     />
                     <span>
-                      Permitir escrita (POST/PUT/PATCH/DELETE) neste caminho.
+                      {t("connectors.create.allowWriteLabel")}
                       <span className="mt-0.5 block font-normal text-[11px] text-neutral-500">
-                        Por padrão o conector é somente leitura (apenas GET).
-                        Habilite a escrita apenas se este endereço realmente
-                        precisar executar alterações.
+                        {t("connectors.create.allowWriteHint")}
                       </span>
                     </span>
                   </label>
@@ -401,7 +402,7 @@ export function ConnectorsPage() {
                   }}
                   className="rounded-xl border border-neutral-200 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300"
                 >
-                  Cancelar
+                  {t("connectors.create.cancel")}
                 </button>
                 <button
                   type="button"
@@ -409,7 +410,9 @@ export function ConnectorsPage() {
                   onClick={handleCreateCustom}
                   className="rounded-xl bg-neutral-900 px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-neutral-900"
                 >
-                  {creating ? "Salvando..." : "Registrar conector"}
+                  {creating
+                    ? t("connectors.create.saving")
+                    : t("connectors.create.submit")}
                 </button>
               </div>
             </div>
@@ -422,7 +425,7 @@ export function ConnectorsPage() {
             <div>
               {loading && (
                 <p className="py-12 text-center text-sm text-neutral-500">
-                  Carregando catálogo de plugins...
+                  {t("connectors.list.loading")}
                 </p>
               )}
 
@@ -434,7 +437,7 @@ export function ConnectorsPage() {
                     onClick={() => void load()}
                     className="mt-2 text-xs underline"
                   >
-                    Tentar novamente
+                    {t("common.retry")}
                   </button>
                 </div>
               )}
@@ -443,7 +446,7 @@ export function ConnectorsPage() {
                 <div className="rounded-2xl border border-dashed border-neutral-300 p-12 text-center dark:border-neutral-700">
                   <SparklesIcon className="mx-auto h-8 w-8 text-neutral-400" />
                   <p className="mt-3 text-sm text-neutral-500">
-                    Nenhum conector encontrado nesta categoria.
+                    {t("connectors.list.empty")}
                   </p>
                 </div>
               )}
@@ -479,17 +482,17 @@ export function ConnectorsPage() {
                         {state === "connected" ? (
                           <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
                             <CheckIcon className="h-3.5 w-3.5" />
-                            Ativo
+                            {t("connectors.card.active")}
                           </span>
                         ) : oauthOnly ? (
                           <button
                             type="button"
                             aria-expanded={open}
                             onClick={() => setExpanded(open ? null : entry.id)}
-                            title="Requer um app OAuth registrado pela DZ23"
+                            title={t("connectors.card.oauthTitle")}
                             className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300"
                           >
-                            Requer configuração OAuth
+                            {t("connectors.card.oauthRequires")}
                           </button>
                         ) : (
                           <button
@@ -499,7 +502,9 @@ export function ConnectorsPage() {
                             className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
                           >
                             <PlusIcon className="h-3.5 w-3.5" />
-                            {state === "disabled" ? "Desativado" : "Conectar"}
+                            {state === "disabled"
+                              ? t("connectors.card.disabled")
+                              : t("connectors.card.connect")}
                           </button>
                         )}
                       </div>

@@ -4,6 +4,7 @@ import { ArrowLeftIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { agentErrorMessage, createMission } from "@/lib/agenticClient";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarLayout } from "@/components/layout/layout";
+import { useT } from "@/i18n";
 
 // The runtime rejects objectives above 8 KiB; keep the client limit below it so
 // multi-byte text is still validated by the server instead of being truncated.
@@ -11,6 +12,7 @@ export const MAX_OBJECTIVE_LENGTH = 8000;
 
 export function NewTaskPage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const [objective, setObjective] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -28,7 +30,7 @@ export function NewTaskPage() {
     if (submitting) return;
     const trimmed = objective.trim();
     if (!trimmed) {
-      setValidationError("Descreva o objetivo da tarefa antes de criar.");
+      setValidationError(t("newTask.validation.empty"));
       objectiveRef.current?.focus();
       return;
     }
@@ -45,15 +47,16 @@ export function NewTaskPage() {
       });
       await navigate({ to: "/tasks", search: { created: mission.id } });
     } catch (cause) {
-      setSubmitError(
-        agentErrorMessage(cause, "Não foi possível criar a tarefa."),
-      );
+      setSubmitError(agentErrorMessage(cause, t("newTask.error.create"), t));
       setSubmitting(false);
     }
   };
 
   return (
-    <SidebarLayout title="Nova tarefa" sidebar={<AppSidebar current="tasks" />}>
+    <SidebarLayout
+      title={t("newTask.title")}
+      sidebar={<AppSidebar current="tasks" />}
+    >
       <div className="min-h-0 flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-900">
         <div className="mx-auto w-full max-w-3xl px-4 pb-14 pt-8 sm:px-6 lg:px-12">
           <Link
@@ -61,19 +64,17 @@ export function NewTaskPage() {
             className="inline-flex items-center gap-1.5 rounded-md text-xs font-medium text-neutral-500 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 dark:text-neutral-400 dark:hover:text-white"
           >
             <ArrowLeftIcon className="h-3.5 w-3.5" />
-            Voltar para Tarefas
+            {t("newTask.back")}
           </Link>
           <div className="mt-5 mb-3 flex items-center gap-2 text-xs font-medium text-violet-600 dark:text-violet-300">
             <SparklesIcon className="h-4 w-4" />
-            Missão agentic
+            {t("newTask.eyebrow")}
           </div>
           <h2 className="font-rounded text-3xl font-semibold tracking-tight text-neutral-950 dark:text-white">
-            Nova tarefa
+            {t("newTask.title")}
           </h2>
           <p className="mt-3 text-sm leading-6 text-neutral-500 dark:text-neutral-400">
-            A tarefa é criada no runtime local com leitura do workspace e sem
-            execução automática. Você acompanha plano, approvals e artifacts em
-            Tarefas.
+            {t("newTask.description")}
           </p>
 
           <form
@@ -89,7 +90,7 @@ export function NewTaskPage() {
               htmlFor="new-task-objective"
               className="text-sm font-medium text-neutral-900 dark:text-white"
             >
-              Objetivo da tarefa
+              {t("newTask.objective.label")}
             </label>
             <textarea
               id="new-task-objective"
@@ -113,15 +114,17 @@ export function NewTaskPage() {
               aria-describedby={
                 validationError ? `${hintId} ${validationId}` : hintId
               }
-              placeholder="Ex.: Revisar o README e listar o que falta para rodar o projeto localmente"
+              placeholder={t("newTask.objective.placeholder")}
               className="mt-2 w-full resize-y rounded-xl border border-neutral-300 bg-transparent px-3 py-2.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:opacity-60 aria-[invalid=true]:border-red-500 dark:border-neutral-700 dark:text-white"
             />
             <p
               id={hintId}
               className="mt-2 text-xs text-neutral-500 dark:text-neutral-400"
             >
-              {objective.length}/{MAX_OBJECTIVE_LENGTH} caracteres · Ctrl+Enter
-              para criar
+              {t("newTask.objective.hint", {
+                count: objective.length,
+                max: MAX_OBJECTIVE_LENGTH,
+              })}
             </p>
             {validationError && (
               <p
@@ -140,7 +143,7 @@ export function NewTaskPage() {
                 aria-atomic="true"
                 className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"
               >
-                <p className="font-medium">A tarefa não foi criada.</p>
+                <p className="font-medium">{t("newTask.error.title")}</p>
                 <p className="mt-1 text-xs">{submitError}</p>
               </div>
             )}
@@ -150,7 +153,7 @@ export function NewTaskPage() {
                 to="/tasks"
                 className="inline-flex items-center justify-center rounded-xl border border-neutral-200 px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 dark:border-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-800"
               >
-                Cancelar
+                {t("common.cancel")}
               </Link>
               <button
                 type="submit"
@@ -159,10 +162,10 @@ export function NewTaskPage() {
                 className="inline-flex items-center justify-center rounded-xl bg-neutral-950 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60 dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-200"
               >
                 {submitting
-                  ? "Criando tarefa…"
+                  ? t("newTask.submit.pending")
                   : submitError
-                    ? "Tentar novamente"
-                    : "Criar tarefa"}
+                    ? t("common.retry")
+                    : t("newTask.submit")}
               </button>
             </div>
           </form>

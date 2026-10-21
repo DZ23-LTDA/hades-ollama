@@ -68,3 +68,30 @@ O que cada tarefa prova:
 - Relatório medido: `_tmp/benchmark-report.json` (artefato citado em E-117).
 - `go test ./internal/agent/` → **ok** · `go test ./server/` → **ok** · `golangci-lint` →
   **0 issues** (o falso positivo do `misspell` em "COMPETITIVO" foi **reescrito**, não silenciado).
+
+---
+
+## 6. Artefactos MEDIDOS deste estagio (indice, com comando)
+
+*Um metodo que nao aponta para o artefacto e' um metodo que o auditor nao segue.* Os tres
+documentos do estagio descreviam as medicões; **nenhum chegava ao resultado**. Esta secção liga
+os dois -- e cada linha traz o comando que a reproduz.
+
+| artefacto | o que contem | comando | evidencia |
+| --- | --- | --- | --- |
+| `docs/parity/HADES_T2_MATRIX.md` | matriz **RED -> GREEN** com **modelos reais**: 3/8 verde, **4 `HARNESS_TRAFICOU`**, 1 vermelho | `$env:HADES_T2_MEDIR_MODELO='1'; go test ./internal/agent/ -run 'TestMatrizRealComModelosLocais' -count=1 -timeout 30m` | `E-1047` (*`PASS` em 599,88 s*) |
+| `docs/parity/HADES_T2_REPETICAO.md` | **repeticao estatistica**: `qwen2.5:7b`, 3 execucoes por fixture | `$env:HADES_T2_MEDIR_MODELO='1'; $env:HADES_T2_MODELS='qwen2.5:7b'; $env:HADES_T2_REPEATS_N='3'; go test ./internal/agent/ -run 'TestT2RepeticaoEstatistica' -count=1 -timeout 40m` | `E-1049` (*`PASS` em 209,78 s*) |
+| `internal/agent/harness_benchmark.go` | o harness e o **anti-trapaca** (`:286`) | -- | `E-1047` |
+| `cmd/bench` | medicao directa do Ollama (`load`/`ttft`/`prefill`/`generate`) | `go run ./cmd/bench -model llama3.2:3b -epochs 3 -max-tokens 200 -format csv` | `E-1047` |
+
+### O que estes artefactos NAO provam
+
+- **`NAO_EXECUTADA` para a comparacao externa**: executar Manus, Claude Code, Codex, Devin,
+  Cursor, Lovable, Bolt, v0, Base44, n8n, Dify, Perplexity, CrewAI ou LangGraph exigiria
+  **contas, credenciais e custo** que este ambiente nao tem. *Sem os executar, qualquer
+  comparacao seria invencao.*
+- **A taxa e' 3/8** com modelos locais de **3-7B**: *um modelo, um host, uma quantizacao.*
+- **`N=3` por fixture** na repeticao: *contagem, nao probabilidade; nao ha' intervalo de confianca.*
+- **O warm/cold do `cmd/bench` nao existe**: `unloadModel` (`bench.go:504`) corre **antes** de
+  medir -- toda corrida e' fria por construcao. O par real esta' **dentro** da corrida, por
+  epoca (92,2 / 89,7 / 91,3 tok/s -- **0,98x**): *o instrumento mede estabilidade, nao warm/cold.*

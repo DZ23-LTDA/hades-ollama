@@ -1,8 +1,11 @@
 name: class-a-plus-integrity
 
 concurrency:
-  # PRs preempt previous attempts; each push/re-run gets an independent group
-  # so long platform builds cannot cancel one another on the recovery branch.
+  # PRs preempt previous attempts: `group` usa o NUMERO DA PR, entao todo push na mesma PR
+  # cai no MESMO grupo e `cancel-in-progress: true` CANCELA o run em curso.
+  # *O texto anterior dizia "independent group ... cannot cancel one another" -- era FALSO:*
+  # medido em 2026-10-21: o job 118966988946 terminou `cancelled` 5 min depois do push
+  # seguinte, a meio da suite. Consequencia pratica: nao empurrar enquanto um job critico correr.
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
@@ -38,10 +41,61 @@ jobs:
       # requisito como DONE no documento enquanto o indice de evidencias diz outra coisa - um gate que mente.
       - name: Verify the release gate matches the mission state (no drift)
         run: python3 scripts/hades_release_gate.py --check
+      # **E-989**: o MANIFESTO do snapshot (ESTAGIO 22 item 3). Ele registra `source_sha`, ramo,
+      # SBOM com sha256, plataformas e limitacoes - e, como todo ficheiro gerado, **envelhece em
+      # silencio** se ninguem o conferir. O `--check` compara o que e' estavel e ignora o que muda
+      # por si (`generated_at`, `source_dirty`), pela licao do `E-987`: *um `--check` que grita
+      # sempre nao e' lido*. Aqui ele passa a ter catraca no CI.
+      - name: Verify the snapshot manifest matches the tree (no drift)
+        run: |
+          python3 -m py_compile scripts/hades_manifest.py
+          python3 scripts/hades_manifest.py --check
+      # **E-991**: o INVENTARIO DE MARCA (§FASE-5 itens 1 e 3). Mesmo caso do manifesto: e' um
+      # ficheiro gerado, portanto envelhece. E a primeira versao do gerador **media o proprio
+      # output** (escrevia um documento com as strings da marca e depois contava-as), o que
+      # dava 15 linhas diferentes entre duas geracoes; *foi este `--check` que o apanhou*.
+      - name: Verify the brand inventory matches the repository (no drift)
+        run: |
+          python3 -m py_compile scripts/hades_brand_inventory.py
+          python3 scripts/hades_brand_inventory.py --check
+      # **E-992**: a CATRACA DO ASCII nos `.ps1`. `powershell.exe` 5.1 le' `.ps1` sem BOM como
+      # Windows-1252. Um byte > 127 num **comentario** nao e' impresso; numa **string** e' -- e
+      # sai corrompido para o utilizador. O checker separa as duas classes: `codigo`/string tem
+      # divida **declarada** (34 no `install.ps1`, 1 no `hades-quickstart.ps1`, ligados ao
+      # §FASE-6), e **divida nova falha**; `comentario` tem tecto por ficheiro.
+      - name: Verify no non-ASCII reaches PowerShell strings (ratchet)
+        run: python3 scripts/hades_ascii_ps1_check.py
       # Escrituracao da missao: evidencia citada que nao existe, ID duplicado, buraco na numeracao, bloqueio
       # orfao e veredito otimista com pendencia precisam FALHAR aqui (E-180). O passo seguinte injeta esses
       # defeitos em fixtures para provar que a checagem realmente os encontra.
+      # A FORMA do indice, e nao o seu conteudo (E-1007): *quatro* anomalias **intra-registo** passaram
+      # todos os checkers nesta janela, porque **todos contam linhas que comecam por `| E-`** -- e uma
+      # entrada **partida** nao comeca. Esta catraca verifica as cinco formas: entrada = uma linha,
+      # nenhuma linha orfa dentro da tabela, IDs unicos, nenhum newline LITERAL (`E-999`) e nenhum ID
+      # citado sem entrada fora da faixa historica declarada (`E-571..E-777`).
+      - name: Verify the evidence index SHAPE (no split entries, no phantom IDs)
+        run: |
+          python3 -m py_compile scripts/hades_index_shape_check.py
+          python3 scripts/hades_index_shape_check_test.py
+          python3 scripts/hades_index_shape_check.py --check
+      # A JANELA DE CITACAO dos documentos de retomada (E-1008): *o `mission_check` exige
+      # «alguma evidencia >= E-960», e um documento de retomada parado no E-1000 satisfaz
+      # PARA SEMPRE.* Esta catraca mede **quao recente** a citacao e' -- a menos de 12
+      # evidencias da cabeca do indice.
+      - name: Verify the handoff documents cite the head of the index (window)
+        run: |
+          python3 -m py_compile scripts/hades_handoff_window_check.py
+          python3 scripts/hades_handoff_window_check_test.py
+          python3 scripts/hades_handoff_window_check.py --check
+      # A COBERTURA DE EXECUCAO dos instrumentos (E-1010): *o `hades_go_test_check.py` (E-488)
+      # foi criado porque «a bateria nao corria go test» -- e nao estava em gate nenhum.*
+      - name: Verify every instrument is wired to a gate (no orphans)
+        run: |
+          python3 -m py_compile scripts/hades_orphan_instruments_check.py
+          python3 scripts/hades_orphan_instruments_check.py --check
       - name: Verify mission bookkeeping (no phantom evidence, coherent verdict)
+
+
         run: |
           python3 scripts/hades_mission_check.py
           python3 scripts/hades_mission_check_docs_test.py
@@ -63,11 +117,223 @@ jobs:
           python3 scripts/hades_scope_classifier_test.py
           python3 scripts/hades_tenant_scope_check_test.py
           python3 scripts/hades_tenant_scope_check.py --check
+          # E-1290: o build de RELEASE Android assinava com a DEBUG KEY. A debug keystore usa a senha
+          # publica `android` e o alias `androiddebugkey`, conhecidos desde 2010: um artefacto assinado
+          # com ela e' forjavel por qualquer pessoa, e o Google Play RECUSA AAB assinado com debug key.
+          # A catraca impede o regresso do template do React Native e roda aqui porque o build real e'
+          # BLOCKED_EXTERNAL (sem JDK 17, Android SDK e Gradle na maquina de desenvolvimento).
+          python3 scripts/hades_android_signing_check_test.py
+          python3 scripts/hades_android_signing_check.py
+          # E-1292: o `hades_local_gates.ps1` -- a bateria local de gates -- esteve partido sem
+          # ninguem notar. A linha 787 tinha `e'` dentro de string com `'`; o PowerShell analisa o
+          # script inteiro antes de correr, por isso NENHUM gate local corria. O unico checker que
+          # olhava para .ps1 verificava ASCII, nao sintaxe.
+          #     *Um gate que nao arranca nao e' um gate: e' um ficheiro com nome de gate.*
+          #
+          # E-1300: este instrumento mede sintaxe de `.ps1` com o `PSParser::Tokenize` do PROPRIO
+          # PowerShell -- e `powershell.exe` NAO EXISTE no runner Ubuntu/macOS. A primeira versao
+          # falhava com `FileNotFoundError: ... 'powershell.exe'` (8 erros) e deixava este job
+          # vermelho em todos os commits. A correccao tem duas metades:
+          #   1. o teste PULA as classes que exigem o interpretador, com o motivo escrito;
+          #   2. o checker devolve **3** = BLOCKED_BY_EXTERNAL_DEPENDENCY quando nao pode medir.
+          # O ramo abaixo aceita o 3 e IMPRIME o bloqueio -- nunca o confunde com aprovacao, e nunca
+          # o esconde atras de `|| true`. No Windows o mesmo passo mede os 14 ficheiros e sai 0.
+          #     *Uma ausencia de medida nao e' uma medida: declara-se, nao se converte em aprovacao
+          #     nem em defeito.*
+          python3 scripts/hades_ps1_syntax_check_test.py
+          set +e
+          python3 scripts/hades_ps1_syntax_check.py
+          ps1_exit=$?
+          set -e
+          if [ "$ps1_exit" -eq 3 ]; then
+            echo "PS1 SINTAXE: BLOCKED_BY_EXTERNAL_DEPENDENCY declarado (exit 3) -- sem powershell.exe neste SO"
+          elif [ "$ps1_exit" -ne 0 ]; then
+            echo "PS1 SINTAXE: FALHOU (exit $ps1_exit)"
+            exit "$ps1_exit"
+          fi
+          # E-1293: o `namespace` do Gradle era `com.dz23ltd.hades` mas os `.kt` estavam em
+          # `com.lmprado.dz23agentic`. O manifest usa `.MainActivity` (nome relativo), que resolve
+          # contra o NAMESPACE -- o Android procurava uma classe inexistente e o app NAO ABRIA.
+          # O build passa; o erro so' aparece no dispositivo. *Um erro que so' o dispositivo encontra
+          # fica a espera do utilizador.*
+          python3 scripts/hades_android_package_check_test.py
+          python3 scripts/hades_android_package_check.py
+      # E-660: a CODIFICACAO dos artefatos passa a ser gate. O checker existia (E-409/E-410) mas nao rodava no CI
+      # e cobria so' dupla codificacao - um BOM UTF-8 passava em silencio, e um `HADES_MASTER_STATE.json` com BOM
+      # derrubou o `hades_release_gate.py --check` (JSONDecodeError) nesta propria workflow. Instrumento fora da
+      # bateria nao protege: *o defeito que o instrumento cobre e' o defeito que passa*.
+      - name: Verify artifact encoding (no BOM, no double encoding)
+        run: |
+          python3 scripts/hades_encoding_check_test.py
+          python3 scripts/hades_encoding_check.py
+          # E-422: o checker do relogio de parede cobre as duas formas de `time.Now()` + `.Add(`, e era a causa
+          # real do `Go agentic and server gates` vermelho. Ficou fora da bateria quando foi criado; entra agora.
+          python3 scripts/hades_test_clock_check_test.py
+          python3 scripts/hades_test_clock_check.py --check
+      # E-665: CATRACA do gate do `gofmt`. A forma `test -z "$(gofmt ...)"` aprova arquivo ILEGIVEL: com erro de
+      # parse o gofmt escreve em STDERR e sai com STDOUT VAZIO, entao a comparacao de string vazia PASSA. *A
+      # cegueira existia em TRES workflows e so' uma estava corrigida — foi esta catraca que encontrou as outras
+      # duas.* Sem ela, a correcao de hoje volta a ser revertida por descuido amanha.
+      - name: Ratchet the gofmt gate (it may not go back to green by construction)
+        run: |
+          python3 scripts/hades_ci_gate_check_test.py
+          python3 scripts/hades_ci_gate_check.py
       - name: Verify the mission bookkeeping checker itself (fault injection)
         run: python3 scripts/hades_mission_check_test.py
+      # PORQUE ESTE PASSO ENTROU (E-1507)
+      #
+      # `hades_rotas_orfas.py` media o tecto de lacunas de produto -- rotas de negocio que o frontend
+      # nao consome -- e corria **so' na bateria local**. Resultado medido nesta serie: tres rotas
+      # novas (`/build/pare`, `/systems/recomendacao`, `/goals/proposta`) levaram o numero de 4 para 7,
+      # a bateria local FALHOU, e o CI deste job ficou **verde** nos mesmos commits.
+      #
+      # ***Um gate que so' corre na maquina de quem constroi nao e' um gate da equipa.***
+      - name: Verify the product-gap ceiling (orphan routes vs frontend surface)
+        run: |
+          python3 scripts/hades_rotas_orfas_test.py
+          python3 scripts/hades_rotas_orfas.py
+      # PORQUE ESTE PASSO ENTROU (E-1508)
+      #
+      # `audit_tenant_guards.py` verifica que nenhum handler fica sem guarda de organizacao reconhecida.
+      # Ele **so' corria na bateria local** -- e foi ele que apontou 21 handlers sem guarda nesta serie,
+      # que eu depois fechei. Um instrumento que so' o autor executa audita o autor, nao o codigo:
+      # os defeitos de ontem ficam invisiveis a quem revisa o PR de hoje.
+      #
+      # E' puro Python (le os .go e procura a guarda): nao precisa de rede nem de ferramentas.
+      - name: Verify tenant guards on every handler (no unguarded handler)
+        run: python3 scripts/audit_tenant_guards.py
+      # E-1509: `hades_security_check.py` verifica os eixos de seguranca (incluindo os instrumentos que
+      # fazem fault injection na bateria) e corria **so' localmente**. Medido antes de entrar:
+      # exit 0 em 0.7 s, sem rede (importa apenas io/re/sys/pathlib). *O instrumento que mede a
+      # seguranca nao pode ser o unico que ninguem corre no PR.*
+      - name: Verify the security axes (9 axes, no plaintext secret)
+        run: python3 scripts/hades_security_check.py
+      # E-1510: dois instrumentos que so' corriam localmente, ambos medidos antes de entrar
+      # (exit 0; 0.6 s e 0.1 s; sem rede). O primeiro guarda a HERMETICIDADE dos testes -- um teste que
+      # depende da maquina passa aqui e falha no runner, e essa diferenca tem de ser apanhada no PR.
+      - name: Verify test hermeticity (no test depends on the machine)
+        run: python3 scripts/hades_testes_hermeticos_check.py
+      - name: Verify traceability of requirements to evidence
+        run: python3 scripts/hades_traceability_check.py
+      # E-1512: cinco instrumentos medidos antes de entrar (exit 0; 0.1-0.3 s; sem rede). Sao baratos e
+      # cada um mede uma propriedade que ninguem verificava no PR: os proprios checkers, a arquitectura
+      # declarada, o contrato entre agentes, o catalogo de agentes e o inventario de auditoria.
+      #
+      # `hades_stability_check.py` NAO entra aqui de proposito: medido a 64 s, tem de entrar sozinho e
+      # com o tempo declarado, para que o custo do job nao cresca sem que alguem saiba porque.
+      - name: Verify the checkers themselves (self-test)
+        run: python3 scripts/hades_checkers_autoteste.py
+      - name: Verify the declared architecture matches the tree
+        run: python3 scripts/hades_architecture_check.py
+      - name: Verify the agent contract between layers
+        run: python3 scripts/hades_agent_contract_check.py
+      - name: Verify the agent catalogue
+        run: python3 scripts/hades_agents_check.py
+      - name: Verify the audit inventory
+        run: python3 scripts/hades_audit_inventory_check.py
+      # E-1513: sete medidos antes de entrar -- todos exit 0, SO' LEITURA (conferi `git status` antes e
+      # depois de cada um) e <= 0.2 s. `hades_go_test_check.py` ficou DE FORA: mediu `exit=2`, exige
+      # argumento -- ligar um instrumento que precisa de parametros sem os dar seria um passo que falha
+      # por construcao.
+      - name: Verify the approval hook ratchet
+        run: python3 scripts/hades_approval_hook_ratchet.py
+      - name: Verify the bridge opt-in ratchet
+        run: python3 scripts/hades_bridge_optin_ratchet.py
+      # E-1519: o `E-1517` retirou este passo porque falhou no runner. A CAUSA-RAIZ foi encontrada e
+      # corrigida no proprio instrumento: `RAIZ` era um **caminho absoluto do Windows de quem o escreveu**
+      # (`C:\Users\...\hades-ollama`), que nao existe no runner Linux -- dai `ha' workflows para
+      # verificar -- 0 ficheiros`. Agora `RAIZ = Path(__file__).resolve().parents[1]` e o instrumento
+      # encontra **16 workflows** em vez de 0. A assercao (3) verifica
+      # `internal/agent/commerce_budget_test.go`, que **esta' versionado** -- logo tambem passa no CI.
+      #
+      #   *A mesma linha explicava os outros 8: procurar "C:\Users" em scripts/ encontrava NOVE
+      #   instrumentos. Nenhum deles podia funcionar no runner, e todos pareciam saudaveis aqui.*
+      - name: Verify CI timeouts are declared
+        run: python3 scripts/hades_ci_timeout_check.py
+      - name: Verify the companion documents
+        run: python3 scripts/hades_companion_doc_check.py
+      - name: Verify the scope classifier itself (self-test)
+        run: python3 scripts/hades_scope_classifier_autoteste.py
+      - name: Verify the MCP surface
+        run: python3 scripts/hades_mcp_check.py
+      - name: Verify the plugins surface
+        run: python3 scripts/hades_plugins_check.py
+      # E-1514: mais sete medidos (exit 0, so' leitura, <= 2.5 s). Ficam DE FORA, com razao:
+      #   hades_extension_engines_check.py (49.7 s) e hades_firefox_package.py (28.7 s)
+      #                                  entram sozinhos, com o tempo declarado
+      #
+      # E-1515, correcao de uma conclusao MINHA: `hades_native_host.py` foi excluido por "medir exit=1
+      # isolado". O diagnostico mostrou que **nao e' defeito: e' contrato de CLI** -- sem argumentos ele
+      # verifica o host INSTALADO (e falha, corretamente, numa maquina sem host); a bateria usa
+      # `--check-repo`, que verifica o template do repositorio. Medido com a flag certa: exit 0 em 0.1 s.
+      # *Diagnosticar antes de excluir; excluir por medicao errada e' a mesma doenca do gate que mente.*
+      - name: Verify the native host template in the repo
+        run: python3 scripts/hades_native_host.py --check-repo
+      - name: Verify the browser bridge package
+        run: python3 scripts/hades_browser_bridge_package.py
+      - name: Verify the extension surface
+        run: python3 scripts/hades_extension_check.py
+      - name: Verify the harness surface
+        run: python3 scripts/hades_harness_check.py
+      - name: Verify the stage artifacts
+        run: python3 scripts/hades_stage_artifacts_check.py
+      - name: Verify the UX onboarding surface
+        run: python3 scripts/hades_ux_onboarding_check.py
+      - name: Verify the derived artifacts
+        run: python3 scripts/hades_derivados_check.py
+      - name: Verify the findings revalidation
+        run: python3 scripts/hades_findings_revalidation.py
+      # E-1516: seis medidos (exit 0, so' leitura, <= 5.7 s). Excluido, com razao medida:
+      #   hades_t2_contexto.py -- escreveu no repositorio quando corrido (conferido com `git status`);
+      #   um passo que altera a arvore em cada PR seria uma alteracao silenciosa, nao um gate.
+      # E-1518: `hades_native_host_roundtrip.py` foi ligado no `E-1516` e **FALHOU no runner** em
+      # `833a1dca5` (passo 41), e outra vez os passos seguintes -- incluindo o `gofmt` -- foram saltados.
+      # Localmente media `exit 0` (1.3 s); no runner NAO, porque o "roundtrip" pressupoe um native host
+      # instalado e o checkout do CI so' tem o template.
+      #
+      # DOIS CASOS SEGUIDOS (`ci_timeout` no E-1517, `native_host_roundtrip` aqui): a classe de
+      # instrumentos que NAO serve para o CI e' aquela que depende de ESTADO DA MAQUINA -- host
+      # instalado, browser, pacote do sistema. Um gate so' pode medir o que o checkout contem.
+      #
+      #   *Nao e' o instrumento que esta' errado: e' o sitio onde o pus.*
+      # E-1521: TERCEIRO instrumento da mesma classe, medido no runner em `454978e21` (passo 42):
+      #
+      #     FALHA: o binario nao existe em /home/runner/work/.../_tmp/hades-linux-amd64
+      #
+      # `hades_linux_package.py` verifica um **artefacto construido**, nao o repositorio. Num checkout
+      # limpo o binario nao existe -- e o instrumento esta' correcto a recusar. O sitio errado e' este
+      # job: ele pertence a um job que **construa** o binario primeiro.
+      #
+      # `hades_firefox_e2e.py` e' retirado pela MESMA razao, com uma diferenca declarada: exige um
+      # browser instalado. Nao foi medido no runner (o #42 falhou antes), logo a classificacao e'
+      # **por classe**, nao por observacao directa.
+      #
+      #   *Tres retirados, tres motivos medidos: caminho absoluto (`E-1517`), host instalado (`E-1518`),
+      #   artefacto construido (aqui). A regra que os une: um gate do job de INTEGRIDADE so' pode medir
+      #   o que o `git checkout` contem.*
+      - name: Verify the competitive surface
+        run: python3 scripts/hades_competitive_check.py
+      - name: Verify the worktree inventory
+        run: python3 scripts/hades_worktree_inventory.py
+      - name: Verify the findings report
+        run: python3 scripts/hades_findings_report.py
+      # E-661: o gate anterior era `test -z "$(gofmt -l ...)"` - e um arquivo que NAO PARSEIA faz o gofmt
+      # escrever o erro em STDERR e sair com STDOUT VAZIO => `test -z ""` PASSAVA. Verde por construcao:
+      # foi assim que um `internal/agent/adaptive_router.go` com um `}` faltando atravessou o CI verde.
+      # Agora o CODIGO DE SAIDA do gofmt e conferido, e o motivo da falha e' impresso.
       - name: Verify Go formatting for protected backend surfaces
         run: |
-          test -z "$(gofmt -l internal/agent internal/multillm server/agent_routes.go)"
+          if ! saida="$(gofmt -l internal/agent internal/multillm server/agent_routes.go 2>&1)"; then
+            echo "gofmt FALHOU (arquivo nao parseavel ou erro de leitura):"
+            echo "$saida"
+            exit 1
+          fi
+          if [ -n "$saida" ]; then
+            echo "arquivos fora do gofmt:"
+            echo "$saida"
+            exit 1
+          fi
+          echo "gofmt OK: nenhum arquivo fora de formato e nenhum erro de parse"
 
   platform-builds:
     name: CGO-free and Windows build gate

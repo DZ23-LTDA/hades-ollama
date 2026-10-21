@@ -247,15 +247,22 @@ def main(request):
             page = page_for(browser_context)
             timeout = min(max(int(request.get("timeout_ms", 15000)), 1000), 60000)
             page.set_default_timeout(timeout)
+            # A navegacao paga o arranque do renderer a frio (primeira pagina, antivirus do
+            # host, runner carregado). Falha medida no CI em 2026-10-21, job 119031140435:
+            #   runtime_test.go:1320: browser operator: Page.goto: Timeout 15000ms exceeded.
+            #   - navigating to "http://127.0.0.1:56689/", waiting until "domcontentloaded"
+            # Nao era assercao falhada: era so o tecto de 15 s. A navegacao passa a ter limite
+            # proprio, maior mas ainda finito, para que uma falha real continue a falhar.
+            navigation_timeout = max(timeout, 45000)
             if page.url == "about:blank" and state_path.is_file():
                 previous = json.loads(state_path.read_text(encoding="utf-8")).get("url", "")
                 if previous:
                     validate_url(previous)
-                    page.goto(previous, wait_until="domcontentloaded")
+                    page.goto(previous, wait_until="domcontentloaded", timeout=navigation_timeout)
             if action == "navigate":
                 url = str(request.get("url", "")).strip()
                 validate_url(url)
-                page.goto(url, wait_until="domcontentloaded")
+                page.goto(url, wait_until="domcontentloaded", timeout=navigation_timeout)
                 validate_url(page.url)
                 return page_result(session_id, page, state_path)
             if action in {"snapshot", "content"}:

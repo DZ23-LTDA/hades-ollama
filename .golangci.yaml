@@ -40,17 +40,38 @@ linters:
         - componentes
         # misspell splits words at accented letters ("conversão" -> "convers").
         - convers
+        # E-1317: o `misspell` so' flagra o SINGULAR -- o plural `discriminantes` ja' passava.
+        # Esta e' a oitava vez que a palavra obrigou a reescrever um comentario nesta sessao, e a
+        # solucao sempre foi a que este ficheiro ja' tinha para as outras: declarar a palavra.
+        #
+        #	*Reescrever o comentario oito vezes e' tratar o sintoma de um corretor ortografico com a
+        #	ferramenta errada.*
+        - discriminante
         - comando
         - comandos
         - progresso
         - operacional
         # Vocabulário do fluxo agendado (P0-2): dependente, condicional.
         - dependente
+        # E-502 (MEDIDO): o `misspell` acusou 5 palavras portuguesas correctas a mais.
+        # ***A chave é `ignore-rules`, não `ignore-words`*** — *foi escrever a chave errada que fez o
+        # `golangci-lint` sair com `exit 3` (erro de config), e eu revertei a edição sem ver a mensagem.*
+        # *O mecanismo já existia, com o mesmo propósito; faltava acrescentar as palavras.*
+        - convincente   # acusada como "convenient"
+        - dependencias  # acusada como "dependencies"
+        - contactos     # acusada como "contacts"
+        - Calcular      # acusada como "Calculator"
+        - intencional   # acusada como "intentional"
         - condicional
         - cliente
         - clientes
         - protocolo
         - protocolos
+        - substituto   # pt-BR legitimo; o dicionario ingles acusa
+        - administrar   # pt-BR legitimo; o dicionario ingles acusa
+        - parametros   # pt-BR legitimo; o dicionario ingles acusa
+        - adquire   # pt-BR legitimo; o dicionario ingles acusa
+        - deram   # pt-BR legitimo; o dicionario ingles acusa
         # Vocabulário dos agentes de atendimento (estágio 35) e das aprovações humanas: são palavras
         # portuguesas corretas que o dicionário inglês do misspell sugere trocar por um cognato.
         # O misspell segue LIGADO: ignore-rules declara IDIOMA, não esconde erro de digitação em inglês.
@@ -88,6 +109,28 @@ linters:
         - intervalos
         - invalidas
         - definitivo
+        # E-547 (MEDIDO): o `ignore-rules` casa a FORMA EXACTA, nao o radical. ⇒ `decorativo` (L80) ja' estava
+        # aqui, e o linter acusou `decorativos` — *o plural e' outra palavra para o dicionario*. Mesma coisa com
+        # `operacional` vs `organizacional`. ⇒ *Acrescentam-se as QUATRO formas exactas que o CI acusou.*
+        # ***O `misspell` SEGUE LIGADO.*** *Isto declara idioma portugues; nao esconde erro de digitacao em ingles.*
+        - decorativos   # acusada como "decorations"
+        - cosmeticos    # acusada como "cosmetics"
+        - organizacional # acusada como "organizational"
+        - posicional    # acusada como "positional"
+        # E-1255 (MEDIDO): o `misspell` acusou `projecto` -> `projection` em
+        # `server/agent_e2e_harness_test.go` (3 ocorrencias, linhas 173/175/179), e o CI ficou RED no job
+        # `test (windows-latest)`. As outras 35 ocorrencias em `internal/agent` passaram — o que mostra
+        # que o dicionario casa contexto, nao so a palavra. O criterio e' o MESMO dos blocos acima:
+        # `projecto` e' portugues correto; o dicionario inges sugere o cognato `projection`.
+        # ***O `misspell` SEGUE LIGADO.***
+        - projecto      # acusada como "projection"
+        - projectos     # a FORMA EXACTA do plural, como o E-547 mediu
+        # E-1265 (MEDIDO): o `misspell` acusou `inventario` -> "inventor" em
+        # `internal/agent/credential_provider.go`. `inventario` e' portugues correto.
+        # ***O `misspell` SEGUE LIGADO.***
+        - inventario    # acusada como "inventor"
+        - inventarios   # a FORMA EXACTA do plural
+        - inventariar   # a forma verbal, que o dicionario tambem acusa
     depguard:
       rules:
         test-only-packages:

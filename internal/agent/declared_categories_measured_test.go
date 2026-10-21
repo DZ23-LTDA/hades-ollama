@@ -9,9 +9,28 @@ import (
 
 // CONFIRMAÇÃO POR COMPORTAMENTO DAS DUAS CATEGORIAS DECLARADAS (E-347).
 //
-// A catraca parou em **2 pendências**, ambas declaradas com **motivo categórico** e **nenhuma medida**:
-//  1. `scheduling_crossprocess` — **DELEGAÇÃO**: monta o caminho do lock e o chamador valida.
-//  2. `benchmark_suite` — **NÃO É ORGANIZAÇÃO**: o componente vem de **nome de tarefa** (identificador interno).
+// A catraca mede **1 pendência**, declarada com **motivo categórico** e **nenhuma medida**:
+//  1. `benchmark_suite` — **NÃO É ORGANIZAÇÃO**: o componente vem de **nome de tarefa** (identificador interno).
+//
+// 🚨 E-432 (BAIXO-1, medido por auditoria independente): este cabeçalho dizia **"2 pendências"** e listava
+// `scheduling_crossprocess` — *que **deixou** de ser pendência em E-347, quando ganhou `requireOrganization`*. O
+// número ficou **obsoleto** ✗, e o arquivo que existe para impedir afirmação sem medição tinha a **própria**
+// afirmação sem medição. **Corrigido, e a lição**: *número que depende de outro instrumento envelhece — quem mede
+// é `scripts/hades_tenant_scope_check.py`, e é a ele que este texto deve obedecer.*
+//
+// E-912 (finding 8, medido): a frase que estava aqui dizia *«a catraca passou a acusar **dispensa órfã e obsoleta**
+// (E-432)»* - e **a metade «e obsoleta» era FALSA**. O comportamento **real** do checker, lido em
+// `scripts/hades_tenant_scope_check.py:216-218`, e' este - e ele **diz por que**:
+//
+//	NOTA DELIBERADA: eu tentei tambem acusar dispensa OBSOLETA (arquivo que JA TEM guarda) e a premissa estava
+//	errada ... TER GUARDA NAO TORNA A ISENCAO OBSOLETA. Removi essa acusacao; fica so' a de ORFA.
+//
+// ⇒ *a acusacao que **existe** e' a de **ÓRFÃ** (`:239`): a dispensa cujo arquivo **nao existe mais** - «excecao sem
+// uso e' divida disfarcada de politica». A de **obsoleta** foi **removida de proposito**, porque a premissa nao se
+// sustentava.* ***E o texto deste arquivo - que existe para impedir afirmacao sem medicao - afirmava as duas.***
+//
+// E o numero, medido agora: o checker declara **1** pendencia (`benchmark_suite.go`), nao tres. *As **tres** foram o
+// achado do `E-432` naquele momento; o texto conta-o no passado e e' isso que fica.*
 //
 // ***Motivo categórico não é medição.*** Este arquivo mede as duas — e é honesto sobre o que **não** consegue provar.
 

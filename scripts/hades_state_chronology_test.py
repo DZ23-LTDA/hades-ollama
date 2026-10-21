@@ -35,6 +35,14 @@ ESTADOS_CANONICOS = {
 }
 RELEASE_STATES = {"NOT_RELEASE_READY", "RELEASE_READY", "RELEASE_CANDIDATE"}
 
+# E-959 (FASE 7.1/7.5): a faixa histórica ausente é DECLARADA no índice e lida daqui. O padrão vive
+# numa constante para que o teste negativo use a MESMA fonte — allowlist divergente é dívida nova.
+# Formato exigido no `HADES_EVIDENCE_INDEX.md`:  FAIXA HISTORICA AUSENTE: E-571..E-777
+FAIXA_HISTORICA_AUSENTE = re.compile(
+    r"(?m)^[^\n]*FAIXA\s+HIST[OÓ]RICA\s+AUSENTE[^\n]*?E-(\d+)\s*\.\.\s*E-(\d+)",
+    re.IGNORECASE,
+)
+
 
 def _agora() -> datetime:
     return datetime.now(timezone.utc)
@@ -100,7 +108,19 @@ def auditar_enum_release(estado: dict) -> list[str]:
 
 
 def auditar_evidence_ids(conteudo: str) -> list[str]:
-    """E-IDs únicos e contíguos — numeração com buraco ou repetida torna o índice não auditável."""
+    """E-IDs únicos e contíguos — numeração com buraco ou repetida torna o índice não auditável.
+
+    E-959 (FASE 7.1): a faixa `E-571..E-777` **não existe** e não pode ser inventada. Ela passou a
+    ser VISÍVEL no CI no momento em que as evidências E-560+ foram commitadas: antes, o maior ID do
+    índice era ~E-570 e o `max(ids)` ficava **abaixo** de 571, então o buraco não aparecia. Isso é
+    exatamente o que o prompt descreve — *«um auditor do GitHub não as vê»* — e o guarda estava
+    certo em disparar.
+
+    A cura **não** é preencher 207 textos fictícios (proibido), nem afrouxar a contiguidade. É
+    **declarar** a faixa no próprio índice, de forma legível por máquina, e exigir que ela continue
+    vazia: qualquer ID novo dentro de uma faixa declarada é violação, para que a dívida histórica
+    nunca vire licença para reutilizar números (FASE 7.6).
+    """
     violacoes: list[str] = []
     ids = [int(m.group(1)) for m in re.finditer(r"(?m)^\| E-(\d+) ", conteudo)]
     if not ids:
@@ -108,7 +128,25 @@ def auditar_evidence_ids(conteudo: str) -> list[str]:
     repetidos = {i for i in ids if ids.count(i) > 1}
     if repetidos:
         violacoes.append(f"E-IDs repetidos: {sorted(repetidos)}")
-    faltando = sorted(set(range(min(ids), max(ids) + 1)) - set(ids))
+
+    faixas_declaradas = [
+        (int(a), int(b)) for a, b in FAIXA_HISTORICA_AUSENTE.findall(conteudo)
+    ]
+    # Uma faixa declarada que VOLTOU a ter IDs e' reutilizacao de numero perdido: falha sempre.
+    for inicio, fim in faixas_declaradas:
+        invadidos = sorted(i for i in set(ids) if inicio <= i <= fim)
+        if invadidos:
+            violacoes.append(
+                "IDs dentro de faixa declarada como ausente (E-%d..E-%d): %s"
+                % (inicio, fim, invadidos)
+            )
+
+    def declarado(i: int) -> bool:
+        return any(inicio <= i <= fim for inicio, fim in faixas_declaradas)
+
+    faltando = [
+        i for i in sorted(set(range(min(ids), max(ids) + 1)) - set(ids)) if not declarado(i)
+    ]
     if faltando:
         violacoes.append(f"buraco na numeração de evidências: {faltando}")
     return violacoes
@@ -165,6 +203,37 @@ class CronologiaDoEstadoTest(unittest.TestCase):
     def test_buraco_e_repeticao_de_evidence_id_sao_acusados(self) -> None:
         self.assertTrue(auditar_evidence_ids("| E-1 | a |\n| E-3 | c |\n"))
         self.assertTrue(auditar_evidence_ids("| E-1 | a |\n| E-1 | b |\n"))
+
+    # ---- E-959: a faixa histórica DECLARADA não é buraco; a mesma faixa NÃO declarada é. ----
+
+    def test_faixa_declarada_como_ausente_nao_e_buraco(self) -> None:
+        conteudo = (
+            "> FAIXA HISTORICA AUSENTE: E-2..E-4 (EVIDENCE_LOST_HISTORICAL)\n"
+            "| E-1 | a |\n| E-5 | b |\n"
+        )
+        self.assertEqual([], auditar_evidence_ids(conteudo))
+
+    def test_mesma_faixa_sem_declaracao_continua_sendo_buraco(self) -> None:
+        # O controle: sem a declaração, o MESMO conteúdo é acusado. Sem isto, o teste acima
+        # poderia estar a passar por o auditor não ver buraco nenhum.
+        self.assertTrue(auditar_evidence_ids("| E-1 | a |\n| E-5 | b |\n"))
+
+    def test_id_novo_dentro_da_faixa_declarada_e_acusado(self) -> None:
+        # FASE 7.6: a dívida declarada NÃO pode virar licença para reutilizar números perdidos.
+        conteudo = (
+            "> FAIXA HISTORICA AUSENTE: E-2..E-4 (EVIDENCE_LOST_HISTORICAL)\n"
+            "| E-1 | a |\n| E-3 | REUTILIZADO |\n| E-5 | b |\n"
+        )
+        violacoes = auditar_evidence_ids(conteudo)
+        self.assertTrue(any("faixa declarada como ausente" in v for v in violacoes), violacoes)
+
+    def test_buraco_fora_da_faixa_declarada_e_acusado(self) -> None:
+        conteudo = (
+            "> FAIXA HISTORICA AUSENTE: E-2..E-4 (EVIDENCE_LOST_HISTORICAL)\n"
+            "| E-1 | a |\n| E-5 | b |\n| E-9 | c |\n"
+        )
+        violacoes = auditar_evidence_ids(conteudo)
+        self.assertTrue(any("buraco na numeração" in v for v in violacoes), violacoes)
 
 
 if __name__ == "__main__":

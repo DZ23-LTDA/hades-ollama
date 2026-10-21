@@ -44,6 +44,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useT } from "@/i18n";
 
 type ClaudeConnectPhase =
   | "idle"
@@ -103,6 +104,7 @@ interface ConnectAppsScreenProps {
 }
 
 function TitleBar({ onSignIn }: { onSignIn?: () => void }) {
+  const { t } = useT();
   const isMacOS =
     typeof navigator !== "undefined" &&
     navigator.platform.toLowerCase().includes("mac");
@@ -120,7 +122,7 @@ function TitleBar({ onSignIn }: { onSignIn?: () => void }) {
           onClick={onSignIn}
           onMouseDown={(event) => event.stopPropagation()}
         >
-          Entrar
+          {t("onboarding.signIn")}
         </button>
       )}
     </header>
@@ -151,18 +153,18 @@ function OnboardingCard({ children }: { children: ReactNode }) {
 
 const OLLAMA_FEATURES = [
   {
-    title: "Conecte seus apps",
-    description: "Turbine seus apps de código com modelos abertos",
+    titleKey: "onboarding.features.connectApps.title",
+    descriptionKey: "onboarding.features.connectApps.description",
     icon: CommandLineIcon,
   },
   {
-    title: "Troque de modelo facilmente",
-    description: "Alterne entre modelos de ponta em um clique.",
+    titleKey: "onboarding.features.switchModel.title",
+    descriptionKey: "onboarding.features.switchModel.description",
     icon: ArrowsRightLeftIcon,
   },
   {
-    title: "Seus dados continuam seus",
-    description: "Modelos locais processam seus pedidos neste computador. Modelos de nuvem só recebem pedidos quando você escolhe usá-los.",
+    titleKey: "onboarding.features.yourData.title",
+    descriptionKey: "onboarding.features.yourData.description",
     icon: ShieldCheckIcon,
   },
 ];
@@ -178,6 +180,7 @@ export function IntroScreen({
   onContinue: () => void;
   onRetryCompletion?: () => void;
 }) {
+  const { t } = useT();
   return (
     <main className="light-only flex h-screen w-full flex-col overflow-hidden bg-white text-neutral-950">
       <TitleBar />
@@ -187,31 +190,30 @@ export function IntroScreen({
           <div className="flex flex-col items-center justify-center gap-2">
             <img
               src="/hello.png"
-              alt="Hades dando boas-vindas"
+              alt={t("onboarding.intro.alt")}
               className="h-[72px] w-[72px] select-none object-contain"
               draggable={false}
             />
             <h1 className="font-rounded text-2xl font-medium leading-8">
-              Bem-vindo ao Hades!
+              {t("onboarding.intro.title")}
             </h1>
           </div>
           <p className="mt-4 max-w-[380px] text-sm leading-6 text-neutral-500">
-            Rode modelos abertos com seus agentes de código para gastar menos
-            mantendo seus dados privados.
+            {t("onboarding.intro.tagline")}
           </p>
           <div className="mx-auto mt-8 flex w-fit max-w-full flex-col gap-6 text-left">
             {OLLAMA_FEATURES.map((feature) => {
               const Icon = feature.icon;
 
               return (
-                <div key={feature.title} className="flex items-start gap-4">
+                <div key={feature.titleKey} className="flex items-start gap-4">
                   <Icon className="mt-0.5 h-7 w-7 shrink-0 stroke-[1.5] text-neutral-700" />
                   <div>
                     <h2 className="text-sm font-medium text-neutral-950">
-                      {feature.title}
+                      {t(feature.titleKey)}
                     </h2>
                     <p className="mt-0.5 text-[13px] leading-5 text-neutral-500">
-                      {feature.description}
+                      {t(feature.descriptionKey)}
                     </p>
                   </div>
                 </div>
@@ -226,7 +228,7 @@ export function IntroScreen({
             disabled={isLeaving}
             aria-busy={isLeaving || undefined}
           >
-            Continuar
+            {t("onboarding.continue")}
           </button>
           <InlineError message={completionError} />
           {completionError && onRetryCompletion && (
@@ -235,7 +237,7 @@ export function IntroScreen({
               className="mt-2 cursor-pointer rounded-md px-3 py-1 text-sm font-normal text-neutral-600 underline decoration-neutral-300 underline-offset-4 hover:text-neutral-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500"
               onClick={onRetryCompletion}
             >
-              Tentar de novo
+              {t("onboarding.retry")}
             </button>
           )}
         </div>
@@ -273,19 +275,20 @@ export function WelcomeScreen({
   cloudOptIn,
   onCloudOptInChange,
 }: WelcomeScreenProps) {
+  const { t } = useT();
   return (
     <main className="light-only flex min-h-screen w-full flex-col bg-white text-neutral-950">
       <TitleBar onSignIn={isAuthenticated ? undefined : onSignIn} />
       <OnboardingCard>
         <OnboardingIcon />
         <h1 className="mt-7 font-rounded text-2xl font-medium leading-8">
-          Crie uma conta
+          {t("onboarding.welcome.title")}
         </h1>
         <p className="mt-3 max-w-[400px] text-sm leading-6 text-neutral-400">
-          Crie sua conta para acessar modelos abertos maiores e mais rápidos.
+          {t("onboarding.welcome.subtitle")}
         </p>
         <p className="mt-1 max-w-[400px] text-sm leading-6 text-neutral-400">
-          Modelos locais processam seus pedidos neste computador. Se você ativar os modelos de nuvem, os pedidos são enviados ao provedor escolhido quando você os usa.
+          {t("onboarding.welcome.privacy")}
         </p>
 
         <div className="mt-7 flex w-full max-w-[240px] flex-col items-center">
@@ -297,10 +300,10 @@ export function WelcomeScreen({
             aria-busy={isSigningIn || isLeaving}
           >
             {isLeaving
-              ? "Abrindo os apps…"
+              ? t("onboarding.welcome.openingApps")
               : isSigningIn
-                ? "Conclua no seu navegador…"
-                : "Criar conta"}
+                ? t("onboarding.welcome.finishInBrowser")
+                : t("onboarding.welcome.createAccount")}
           </button>
           <label className="mt-4 flex items-center gap-2 text-xs text-neutral-600 select-none cursor-pointer">
             <input
@@ -309,7 +312,7 @@ export function WelcomeScreen({
               onChange={(e) => onCloudOptInChange?.(e.target.checked)}
               className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-500 cursor-pointer"
             />
-            <span>Ativar modelos de nuvem grátis da minha conta</span>
+            <span>{t("onboarding.welcome.cloudOptIn")}</span>
           </label>
           <button
             type="button"
@@ -317,7 +320,7 @@ export function WelcomeScreen({
             onClick={onLocal}
             disabled={isLeaving}
           >
-            Não, obrigado — vou usar os modelos locais
+            {t("onboarding.welcome.useLocal")}
           </button>
           <InlineError message={signInError ?? completionError} />
           {completionError && onRetryCompletion && (
@@ -326,7 +329,7 @@ export function WelcomeScreen({
               className="mt-2 cursor-pointer rounded-md px-3 py-1 text-sm font-normal text-neutral-600 underline decoration-neutral-300 underline-offset-4 hover:text-neutral-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500"
               onClick={onRetryCompletion}
             >
-              Tentar de novo
+              {t("onboarding.retry")}
             </button>
           )}
         </div>
@@ -340,6 +343,7 @@ export function RunOllamaScreen({
   onRetryCompletion,
   onContinue,
 }: RunOllamaScreenProps) {
+  const { t } = useT();
   const [modelName, setModelName] = useState(RECOMMENDED_FIRST_MODEL);
   const [pulling, setPulling] = useState(false);
   const [modelReady, setModelReady] = useState(false);
@@ -351,7 +355,7 @@ export function RunOllamaScreen({
     if (!requestedModel || pulling) return;
     setPulling(true);
     setPullError(null);
-    setPullStatus("Preparando download…");
+    setPullStatus(t("onboarding.run.preparing"));
     try {
       for await (const event of pullModel(requestedModel)) {
         const completed = event.completed ?? 0;
@@ -362,13 +366,13 @@ export function RunOllamaScreen({
             : event.status,
         );
       }
-      setPullStatus(`Modelo ${requestedModel} pronto para uso local.`);
+      setPullStatus(t("onboarding.run.modelReady", { model: requestedModel }));
       setModelReady(true);
     } catch (error) {
       setPullError(
         error instanceof Error
           ? error.message
-          : "Não foi possível baixar o modelo neste computador.",
+          : t("onboarding.run.downloadFailed"),
       );
       setPullStatus(null);
     } finally {
@@ -382,17 +386,16 @@ export function RunOllamaScreen({
       <OnboardingCard>
         <OnboardingIcon compact />
         <h1 className="mt-6 font-rounded text-[22px] font-medium leading-7">
-          Baixe seu primeiro modelo
+          {t("onboarding.run.title")}
         </h1>
 
         <p className="mt-3 max-w-xs text-[13px] leading-5 text-neutral-400">
-          Escolha um modelo local para começar. O Hades baixa e roda o modelo no
-          seu computador — sem precisar de terminal.
+          {t("onboarding.run.description")}
         </p>
 
         <div className="mt-5 flex w-full max-w-[360px] flex-col gap-2 text-left">
           <label htmlFor="onboarding-model" className="text-xs font-medium text-neutral-700">
-            Modelo local
+            {t("onboarding.run.modelLabel")}
           </label>
           <div className="flex gap-2">
             <input
@@ -401,7 +404,7 @@ export function RunOllamaScreen({
               onChange={(event) => setModelName(event.target.value)}
               disabled={pulling}
               className="min-w-0 flex-1 rounded-xl border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-neutral-500 focus:ring-2 focus:ring-neutral-200"
-              placeholder={`ex.: ${RECOMMENDED_FIRST_MODEL}`}
+              placeholder={t("onboarding.run.modelPlaceholder", { model: RECOMMENDED_FIRST_MODEL })}
             />
             <button
               type="button"
@@ -410,11 +413,11 @@ export function RunOllamaScreen({
               className="rounded-xl bg-neutral-900 px-3 py-2 text-xs font-medium text-white disabled:cursor-wait disabled:opacity-60"
               aria-busy={pulling}
             >
-              {pulling ? "Baixando…" : "Baixar"}
+              {pulling ? t("onboarding.run.downloading") : t("onboarding.run.download")}
             </button>
           </div>
           <p className="text-[11px] text-neutral-400">
-            O arquivo pode ser grande; mantenha o Ollama em execução durante o processo.
+            {t("onboarding.run.fileNote")}
           </p>
         </div>
 
@@ -432,7 +435,7 @@ export function RunOllamaScreen({
             onClick={onContinue}
             className="mt-5 h-11 w-full max-w-[240px] rounded-full bg-neutral-900 px-5 text-sm font-normal text-white transition-colors hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500"
           >
-            Continuar
+            {t("onboarding.continue")}
           </button>
         )}
         {completionError && (
@@ -441,7 +444,7 @@ export function RunOllamaScreen({
             className="mt-2 cursor-pointer rounded-md px-3 py-1 text-sm font-normal text-neutral-600 underline decoration-neutral-300 underline-offset-4 hover:text-neutral-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500"
             onClick={onRetryCompletion}
           >
-            Tentar de novo
+            {t("onboarding.retry")}
           </button>
         )}
       </OnboardingCard>
@@ -477,6 +480,7 @@ function LaunchCommandIcon({ id }: { id: string }) {
 }
 
 export function ClaudeConnectedIntro({ onDone }: { onDone: () => void }) {
+  const { t } = useT();
   return (
     <div className="claude-connected-backdrop fixed inset-0 z-50 flex items-center justify-center bg-black/20 p-6 dark:bg-black/50">
       <section
@@ -488,7 +492,7 @@ export function ClaudeConnectedIntro({ onDone }: { onDone: () => void }) {
       >
         <img
           src="/claude-connected.png"
-          alt="Exemplo de mapeamento de modelos do Claude nas configurações do Hades"
+          alt={t("onboarding.claudeIntro.alt")}
           width={896}
           height={768}
           className="h-auto w-full object-contain"
@@ -499,15 +503,13 @@ export function ClaudeConnectedIntro({ onDone }: { onDone: () => void }) {
             id="claude-connected-title"
             className="font-rounded text-lg font-medium leading-6 text-neutral-950 dark:text-neutral-100"
           >
-            Acesse os modelos do Hades no seu Claude
+            {t("onboarding.claudeIntro.title")}
           </h2>
           <p
             id="claude-connected-description"
             className="mt-2 text-[13px] leading-5 text-neutral-500 dark:text-neutral-400"
           >
-            O Hades roteia os modelos do Claude automaticamente. Abra as
-            configurações do Hades para escolher quais modelos o Claude Desktop
-            usa.
+            {t("onboarding.claudeIntro.description")}
           </p>
           <div className="mt-11 flex justify-end">
             <button
@@ -516,7 +518,7 @@ export function ClaudeConnectedIntro({ onDone }: { onDone: () => void }) {
               className="rounded-full bg-neutral-100 px-6 py-2 text-sm font-normal text-neutral-950 transition-colors hover:bg-neutral-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500 dark:bg-white dark:hover:bg-neutral-100"
               onClick={onDone}
             >
-              Continuar
+              {t("onboarding.continue")}
             </button>
           </div>
         </div>
@@ -530,6 +532,7 @@ export function ConnectAppsScreen({
   initialClaudeStatus,
   initialCodexStatus,
 }: ConnectAppsScreenProps) {
+  const { t } = useT();
   const isWindows = isWindowsPlatform();
   const safeInitialIntegrations = Array.isArray(initialIntegrations)
     ? initialIntegrations
@@ -615,7 +618,7 @@ export function ConnectAppsScreen({
       return status;
     } catch {
       if (screenMounted.current) {
-        setClaudeError("O Hades não conseguiu ler o status da conexão com o Claude.");
+        setClaudeError(t("onboarding.claude.readStatusFailed"));
       }
       return null;
     }
@@ -657,7 +660,7 @@ export function ConnectAppsScreen({
       },
       () => {
         if (!active) return;
-        setClaudeError("O Hades não conseguiu ler o status da conexão com o Claude.");
+        setClaudeError(t("onboarding.claude.readStatusFailed"));
         setInitialClaudeStatusSettled(true);
       },
     );
@@ -675,7 +678,7 @@ export function ConnectAppsScreen({
       try {
         return (await window.openClaudeDesktop()) || null;
       } catch {
-        return "O Hades conectou o Claude, mas não conseguiu abrir o app.";
+        return t("onboarding.claude.openFailed");
       }
     },
     [],
@@ -716,7 +719,7 @@ export function ConnectAppsScreen({
             () => {
               if (screenMounted.current) {
                 setClaudeError(
-                  "O Hades conectou o Claude, mas não conseguiu abrir o app.",
+                  t("onboarding.claude.openFailed"),
                 );
               }
             },
@@ -728,8 +731,8 @@ export function ConnectAppsScreen({
           if (screenMounted.current) {
             setClaudeError(
               enabled
-                ? "O Hades não conseguiu conectar ao Claude."
-                : "O Hades não conseguiu desconectar do Claude.",
+                ? t("onboarding.claude.connectFailed")
+                : t("onboarding.claude.disconnectFailed"),
             );
           }
         });
@@ -753,8 +756,8 @@ export function ConnectAppsScreen({
       let restartConfirmed = claudeRestartConfirmed.current;
       if (liveStatus.running && !restartConfirmed) {
         restartConfirmed = await confirmDialog(
-          "Reiniciar Claude Desktop para usar Ollama? Qualquer tarefa em execução será interrompida.",
-          { confirmLabel: "Reiniciar" },
+          t("onboarding.claude.restartToUse"),
+          { confirmLabel: t("onboarding.claude.restartLabel") },
         );
         if (!screenMounted.current) return;
         if (!restartConfirmed) {
@@ -776,8 +779,8 @@ export function ConnectAppsScreen({
     } catch (error) {
       setClaudeError(
         error instanceof ClaudeConnectionTimeoutError
-          ? "O Claude está demorando demais para abrir. Verifique o Claude e tente de novo."
-          : "O Hades conectou o Claude, mas não conseguiu abrir o app.",
+          ? t("onboarding.claude.timeoutOpen")
+          : t("onboarding.claude.openFailed"),
       );
     } finally {
       setClaudePhase("idle");
@@ -853,7 +856,7 @@ export function ConnectAppsScreen({
         if (status.running) {
           setClaudePhase("idle");
           setClaudeError(
-            "O Claude está instalado. Ative o Conectar para reiniciá-lo com o Hades.",
+            t("onboarding.claude.installedRestart"),
           );
           return;
         }
@@ -871,7 +874,7 @@ export function ConnectAppsScreen({
         if (!actionError && result.status.connected) {
           actionError = await finishClaudeConnection(result.status);
         } else if (!actionError) {
-          actionError = "O Hades não conseguiu conectar ao Claude.";
+          actionError = t("onboarding.claude.connectFailed");
         }
         setClaudeError(actionError);
         setClaudePhase("idle");
@@ -880,8 +883,8 @@ export function ConnectAppsScreen({
         setClaudePhase("idle");
         setClaudeError(
           error instanceof ClaudeConnectionTimeoutError
-            ? "O Claude está demorando demais para conectar. Verifique o Claude e tente de novo."
-            : "O Hades não conseguiu concluir a conexão com o Claude.",
+            ? t("onboarding.claude.timeoutConnect")
+            : t("onboarding.claude.completeFailed"),
         );
       } finally {
         checking = false;
@@ -893,7 +896,7 @@ export function ConnectAppsScreen({
     const timeout = scheduleClaudeInstallTimeout(() => {
       if (!active) return;
       setClaudePhase("idle");
-      setClaudeError("A instalação do Claude não foi detectada. Tente novamente.");
+      setClaudeError(t("onboarding.claude.installNotDetected"));
     });
     return () => {
       active = false;
@@ -931,7 +934,7 @@ export function ConnectAppsScreen({
         !window.getClaudeDesktopStatus) ||
       !window.setClaudeDesktopConnected
     ) {
-      setClaudeError("A conexão com o Claude está disponível no app do Hades para macOS.");
+      setClaudeError(t("onboarding.claude.macosOnly"));
       return;
     }
 
@@ -947,15 +950,15 @@ export function ConnectAppsScreen({
       setClaudePhase("idle");
       setClaudeError(
         error instanceof ClaudeConnectionTimeoutError
-          ? `O Claude está demorando demais para ${enabling ? "conectar" : "desconectar"}. Tente de novo.`
-          : "O Hades não conseguiu ler o status da conexão com o Claude.",
+          ? t("onboarding.claude.timeoutAction", { action: enabling ? t("onboarding.claude.actionConnect") : t("onboarding.claude.actionDisconnect") })
+          : t("onboarding.claude.readStatusFailed"),
       );
       return;
     }
     if (!screenMounted.current) return;
     if (!status) {
       setClaudePhase("idle");
-      setClaudeError("O Hades não conseguiu ler o status da conexão com o Claude.");
+      setClaudeError(t("onboarding.claude.readStatusFailed"));
       return;
     }
     setClaudeStatus(status);
@@ -976,7 +979,7 @@ export function ConnectAppsScreen({
     if (enabling && !status.installed) {
       if (!window.installClaudeDesktop) {
         setClaudePhase("idle");
-        setClaudeError("O Hades não conseguiu abrir o instalador do Claude.");
+        setClaudeError(t("onboarding.claude.installerFailed"));
         return;
       }
       setClaudePhase("installing");
@@ -992,7 +995,7 @@ export function ConnectAppsScreen({
       }
       if (installResult !== "opened") {
         setClaudePhase("idle");
-        setClaudeError("O Hades não conseguiu abrir o instalador do Claude.");
+        setClaudeError(t("onboarding.claude.installerFailed"));
         return;
       }
       setClaudePhase("waiting-for-install");
@@ -1003,9 +1006,9 @@ export function ConnectAppsScreen({
     if (status.running) {
       restartConfirmed = await confirmDialog(
         enabling
-          ? "Reiniciar Claude Desktop para usar Ollama? Qualquer tarefa em execução será interrompida."
-          : "Reiniciar Claude Desktop para remover Ollama? Qualquer tarefa em execução será interrompida.",
-        { confirmLabel: "Reiniciar" },
+          ? t("onboarding.claude.restartToUse")
+          : t("onboarding.claude.restartToRemove"),
+        { confirmLabel: t("onboarding.claude.restartLabel") },
       );
       if (!screenMounted.current) return;
       if (!restartConfirmed) {
@@ -1035,17 +1038,17 @@ export function ConnectAppsScreen({
         (enabling ? !result.status.connected : result.status.configured)
       ) {
         actionError = enabling
-          ? "O Hades não conseguiu conectar ao Claude."
-          : "O Hades não conseguiu desconectar do Claude.";
+          ? t("onboarding.claude.connectFailed")
+          : t("onboarding.claude.disconnectFailed");
       }
       setClaudeError(actionError);
     } catch (error) {
       setClaudeError(
         error instanceof ClaudeConnectionTimeoutError
-          ? `O Claude está demorando demais para ${enabling ? "conectar" : "desconectar"}. Tente de novo.`
+          ? t("onboarding.claude.timeoutAction", { action: enabling ? t("onboarding.claude.actionConnect") : t("onboarding.claude.actionDisconnect") })
           : enabling
-            ? "O Hades não conseguiu conectar ao Claude."
-            : "O Hades não conseguiu desconectar do Claude.",
+            ? t("onboarding.claude.connectFailed")
+            : t("onboarding.claude.disconnectFailed"),
       );
     } finally {
       if (!claudeConnectedIntroPending.current) {
@@ -1063,7 +1066,7 @@ export function ConnectAppsScreen({
     : (integrationStatuses?.find((item) => item.id === "chatgpt") ?? {
         id: "chatgpt",
         name: "ChatGPT (Desktop)",
-        description: "Use os modelos do Hades no ChatGPT",
+        description: t("onboarding.chatgpt.description"),
         installed: false,
       });
   const launchIntegrations =
@@ -1093,15 +1096,15 @@ export function ConnectAppsScreen({
   const isConnectingClaude = claudePhase !== "idle";
   const claudeStatusLabel =
     claudePhase === "installing"
-      ? "Baixando…"
+      ? t("onboarding.claude.statusDownloading")
       : claudePhase === "waiting-for-install"
-        ? "Conclua a instalação…"
+        ? t("onboarding.claude.statusFinishingInstall")
         : claudePhase === "connecting"
-          ? "Conectando…"
+          ? t("onboarding.claude.statusConnecting")
           : claudePhase === "launching"
-            ? "Abrindo…"
+            ? t("onboarding.claude.statusLaunching")
             : claudePhase === "disconnecting"
-              ? "Desconectando…"
+              ? t("onboarding.claude.statusDisconnecting")
               : null;
   const claudeGuidance = claudeDesktopRecoveryMessage(
     claudeStatus?.error,
@@ -1118,8 +1121,8 @@ export function ConnectAppsScreen({
         onClick={() => copyLaunchCommand(item)}
         aria-label={
           copied
-            ? `Comando do ${item.name} copiado`
-            : `Copiar comando do ${item.name}`
+            ? t("onboarding.apps.copiedAria", { name: item.name })
+            : t("onboarding.apps.copyAria", { name: item.name })
         }
         title={item.description}
         className="relative isolate flex min-w-0 items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-left transition-colors duration-700 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500 motion-reduce:transition-none dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
@@ -1155,20 +1158,20 @@ export function ConnectAppsScreen({
           >
             {claudeGuidance ??
               (claudeConnected
-                ? `Conectado ao Hades · ${claudeDesktopRequestCountLabel(claudeStatus?.routedRequests ?? 0)}`
+                ? t("onboarding.claude.connected", { count: claudeDesktopRequestCountLabel(claudeStatus?.routedRequests ?? 0) })
                 : claudePhase === "installing"
-                  ? "O Hades está baixando o instalador do Claude…"
+                  ? t("onboarding.claude.installing")
                   : claudePhase === "waiting-for-install"
-                    ? "Conclua a instalação do Claude. O Hades vai conectá-lo automaticamente."
+                    ? t("onboarding.claude.waitingInstall")
                     : claudePhase === "connecting"
-                      ? "Conectando o Claude ao Hades…"
+                      ? t("onboarding.claude.connectingDetail")
                       : claudePhase === "launching"
-                        ? "Abrindo o Claude…"
+                        ? t("onboarding.claude.launchingDetail")
                         : claudePhase === "disconnecting"
-                          ? "Restaurando a conexão normal do Claude…"
+                          ? t("onboarding.claude.disconnectingDetail")
                           : !claudeInstalled
-                            ? "Vamos baixar o Claude e conectá-lo ao Hades."
-                            : "Use os modelos do Hades no seu Claude Code.")}
+                            ? t("onboarding.claude.notInstalled")
+                            : t("onboarding.claude.ready"))}
           </p>
         </div>
       </div>
@@ -1178,12 +1181,12 @@ export function ConnectAppsScreen({
         progress={isConnectingClaude ? claudeStatusLabel : null}
         label={
           claudeConfigured
-            ? "Desconectar Claude"
+            ? t("onboarding.claude.disconnect")
             : isConnectingClaude
-              ? "Conectando Claude"
-              : "Conectar Claude"
+              ? t("onboarding.claude.connecting")
+              : t("onboarding.claude.connect")
         }
-        title={claudeConfigured ? "Desconectar" : "Conectar"}
+        title={claudeConfigured ? t("onboarding.claude.disconnectTitle") : t("onboarding.claude.connectTitle")}
         disabled={!initialClaudeStatusSettled || isConnectingClaude}
         onClick={connectClaude}
       />
@@ -1203,7 +1206,7 @@ export function ConnectAppsScreen({
                       id="recommended-heading"
                       className="text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500"
                     >
-                      Recomendados
+                      {t("onboarding.apps.recommended")}
                     </h2>
                     <div className="mt-2 space-y-2 bg-white dark:bg-neutral-900">
                       {claudeRow}
@@ -1223,7 +1226,7 @@ export function ConnectAppsScreen({
                       id="terminal-heading"
                       className="text-xs font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500"
                     >
-                      {isWindows ? "Apps" : "Outros apps"}
+                      {isWindows ? t("onboarding.apps.titleApps") : t("onboarding.apps.titleOthers")}
                     </h2>
                     <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {launchIntegrations.map(launchIntegrationCard)}
@@ -1235,17 +1238,17 @@ export function ConnectAppsScreen({
                   !codexIntegration &&
                   launchIntegrations.length === 0 && (
                     <p className="py-12 text-center text-sm text-neutral-400 dark:text-neutral-500">
-                      Nenhum app encontrado.
+                      {t("onboarding.apps.empty")}
                     </p>
                   )}
               </div>
             ) : statusError ? (
               <p role="alert" className="mt-8 text-sm text-red-600">
-                Não foi possível carregar as integrações.
+                {t("onboarding.apps.loadFailed")}
               </p>
             ) : (
               <p className="mt-8 text-sm text-neutral-400 dark:text-neutral-500">
-                Verificando integrações…
+                {t("onboarding.apps.checking")}
               </p>
             )}
           </div>
@@ -1271,13 +1274,13 @@ export function ConnectAppsScreen({
             <div className="min-w-0 flex-1">
               <p className="font-semibold leading-5 text-neutral-900 dark:text-neutral-100">
                 {copyNotice.copied
-                  ? "Comando de inicialização copiado."
-                  : `Não foi possível copiar o comando do ${copyNotice.name}`}
+                  ? t("onboarding.apps.copiedTitle")
+                  : t("onboarding.apps.copyFailedTitle", { name: copyNotice.name })}
               </p>
               <p className="mt-0.5 leading-5 text-neutral-600 dark:text-neutral-200">
                 {copyNotice.copied
-                  ? "Cole no seu terminal"
-                  : "Selecione e copie o comando abaixo e cole no seu terminal."}
+                  ? t("onboarding.apps.pasteHint")
+                  : t("onboarding.apps.selectHint")}
               </p>
               {!copyNotice.copied && (
                 <code className="mt-2 block select-all break-all rounded-md bg-white/70 px-3 py-2 text-xs dark:bg-neutral-900/60">
@@ -1308,6 +1311,7 @@ interface OnboardingProps extends ScreenProps {
 }
 
 export default function Onboarding(props: OnboardingProps) {
+  const { t } = useT();
   const [step, setStep] = useState<OnboardingStep>("intro");
   const [isLeaving, setIsLeaving] = useState(false);
   const [cloudOptIn, setCloudOptIn] = useState(false);
@@ -1325,7 +1329,7 @@ export default function Onboarding(props: OnboardingProps) {
         await enableCloudModelsOptIn();
         setCloudError(null);
       } catch {
-        setCloudError("Não foi possível salvar sua escolha de modelos de nuvem. A ativação não foi confirmada; tente novamente.");
+        setCloudError(t("onboarding.welcome.saveCloudFailed"));
         leavingRef.current = false;
         setIsLeaving(false);
         return;
@@ -1370,7 +1374,21 @@ export default function Onboarding(props: OnboardingProps) {
       <IntroScreen
         completionError={props.completionError}
         isLeaving={isLeaving}
-        onRetryCompletion={() => void leave()}
+        /**
+         * E-936 (cura do `E-818`): **«Tentar de novo» TEM DE VOLTAR A GRAVAR.**
+         *
+         * Estava `() => void leave()`, e o `E-935` mediu a consequencia: *o botao ao lado de
+         * «Unable to save setup. Please try again.» **sai da pagina em vez de repetir a
+         * escrita*** - e' o `E-818` do dono: «Tentar de novo apaga o erro e nao grava».
+         *
+         * `props.onRetryCompletion` e' o `retryCompletion` de `routes/onboarding.tsx:113-117`,
+         * que chama `completeOnboarding(true)` - *com `forcar`, que e' o que faz a escrita
+         * repetida passar a guarda (`useSettings.ts:278`)*.
+         *
+         * *O `leave()` continua nos `onContinue`, que e' onde ele faz sentido: sair quando a
+         * gravacao **correu bem**.*
+         */
+        onRetryCompletion={props.onRetryCompletion}
         onContinue={() => {
           if (props.isAuthenticated && props.isLocalOnly) setStep("run");
           else if (props.isAuthenticated) void leave();
@@ -1387,7 +1405,9 @@ export default function Onboarding(props: OnboardingProps) {
       cloudOptIn={cloudOptIn}
       onCloudOptInChange={(enabled) => { setCloudOptIn(enabled); setCloudError(null); }}
       isLeaving={isLeaving}
-      onRetryCompletion={() => void leave()}
+      // E-936: mesma cura do `IntroScreen` - *ver o commentario acima.* O `E-935` mediu que
+      // estes dois botoes chamavam `leave()` em vez de `retryCompletion()`.
+      onRetryCompletion={props.onRetryCompletion}
       onLocal={() => {
         if (leavingRef.current) return;
         props.onUseLocal();

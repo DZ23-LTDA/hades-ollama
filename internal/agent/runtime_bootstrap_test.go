@@ -10,7 +10,7 @@ import (
 
 func TestCreateMissionProviderResolutionFailurePersistsFailedState(t *testing.T) {
 	store := NewMemoryStore()
-	runtime, err := NewRuntime(RuntimeConfig{Store: store, WorkspaceRoot: t.TempDir()})
+	runtime, err := NewRuntime(RuntimeConfig{Store: store, WorkspaceRoot: t.TempDir(), DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestRuntimeUsesLocalModelResolver(t *testing.T) {
 	runtime, err := NewRuntime(RuntimeConfig{
 		Store:           NewMemoryStore(),
 		PlannerResolver: resolver,
-		WorkspaceRoot:   t.TempDir(),
+		WorkspaceRoot:   t.TempDir(), DataRoot: t.TempDir(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -92,7 +92,7 @@ func TestRuntimeBindsMissionToProjectOrganizationAndWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime, err := NewRuntime(RuntimeConfig{Context: contextStore, Planner: RulePlanner{}, WorkspaceRoot: root})
+	runtime, err := NewRuntime(RuntimeConfig{Context: contextStore, Planner: RulePlanner{}, WorkspaceRoot: root, DataRoot: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

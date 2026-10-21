@@ -76,13 +76,47 @@ def auditar_idiomas(raiz: Path = RAIZ) -> list[str]:
     return violacoes
 
 
+# Anti-XXE / billion-laughs SEM dependencia externa (o achado Semgrep
+# `use-defused-xml` aponta `ET.fromstring` neste ficheiro).
+#
+# PORQUE NAO SE USA `defusedxml`: ele nao esta' instalado e o projecto nao tem
+# `requirements.txt`/`pyproject.toml` -- acrescentar uma dependencia a um script de
+# verificacao local que corre em qualquer maquina seria trocar um risco por uma
+# fragilidade de instalacao.
+#
+# O VECTOR REAL, e como o fechar:
+#   - entidades EXTERNAS (`SYSTEM`/`PUBLIC`): o Python 3 NAO as resolve por omissao;
+#   - entidades INTERNAS recursivas ("billion laughs"): o Python 3 RESOLVE e pode esgotar
+#     memoria -- a defesa e' RECUSAR qualquer `<!DOCTYPE`/`<!ENTITY`, que um sitemap do
+#     protocolo nunca tem;
+#   - payload gigante: limite de tamanho antes de parsear.
+TAMANHO_MAXIMO_SITEMAP = 8 * 1024 * 1024  # 8 MiB; o limite do protocolo e' 50 MB descomprimido
+
+
+def _ler_xml_seguro(caminho: Path) -> str:
+    """Le o XML recusando o que nenhum sitemap do protocolo tem: DOCTYPE/ENTITY e tamanho absurdo."""
+    texto = caminho.read_text(encoding="utf-8")
+    if len(texto) > TAMANHO_MAXIMO_SITEMAP:
+        raise ValueError(f"sitemap.xml excede {TAMANHO_MAXIMO_SITEMAP} bytes")
+    # Case-insensitive e sem depender de espacos: `<!doctype`, `<!DocType` e `<! DOCTYPE`
+    # sao a mesma construcao. *Recusar so' a forma que eu imaginei seria um filtro que se
+    # testa a si proprio.*
+    normalizado = texto.upper().replace(" ", "").replace("\t", "").replace("\n", "")
+    for construcao in ("<!DOCTYPE", "<!ENTITY"):
+        if construcao in normalizado:
+            raise ValueError(f"sitemap.xml contem {construcao}, recusado por seguranca")
+    return texto
+
+
 def validar_sitemap(caminho: Path) -> list[str]:
     """Sitemap só é validado se existir — e então precisa ser XML válido com URLs ABSOLUTAS."""
     if not caminho.exists():
         return []
     violacoes: list[str] = []
     try:
-        arvore = ET.fromstring(caminho.read_text(encoding="utf-8"))
+        arvore = ET.fromstring(_ler_xml_seguro(caminho))
+    except ValueError as erro:
+        return [f"sitemap.xml recusado: {erro}"]
     except ET.ParseError as erro:
         return [f"sitemap.xml inválido: {erro}"]
     # MEDIDO: ler só o namespace oficial deixava passar sitemap SEM namespace (meu próprio fixture provou).

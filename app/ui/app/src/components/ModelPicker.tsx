@@ -154,7 +154,28 @@ export const ModelPicker = forwardRef<
 
   const handleModelSelect = (model: Model) => {
     if (!isModelSelectable(model)) return;
-    if (!onModelSelectModel) setSettings({ SelectedModel: model.model });
+    /**
+     * 🚨 E-920: ***A ESCOLHA DO MODELO TEM DE CHEGAR AO `settings` - MESMO QUANDO HA' `onModelSelectModel`.***
+     *
+     * **O defeito, medido (`E-917`/`E-918`/`E-920`)**: a linha era
+     * `if (!onModelSelectModel) setSettings({ SelectedModel: model.model });` - *ou seja, **com** callback a
+     * escolha **nao era escrita** no `settings`, e ia apenas para o `onModelSelectModel`.*
+     *
+     * O `HomePage` e' o unico consumidor com callback (`:207`, `onModelSelectModel={setManualModel}`) e
+     * usa-o para montar o **query param** da missao (`:98`, `params.set("model", ...)`) - *o que e' o
+     * desenho dele.* Mas o `settings.SelectedModel` e' a **fonte canonica** que o resto da app le':
+     * o `useSelectedModel` deriva dele (`:166`, `:175`) e o `useSendMessage` faz
+     * **`throw new Error("No model selected")`** (`useChats.ts:302-304`) quando ele esta' vazio.
+     *
+     * *Resultado medido*: a UI **mostrava** o modelo escolhido (`:53`, via `selectedModelOverride`), o
+     * botao `Enviar` ficava `enabled`, e o clique **nao produzia nenhum `/api/chat`** - **`0` pedidos e
+     * `12` respostas `501`** (`E-917`).
+     *
+     * **A cura**: escrever **sempre** no `settings` e **continuar** a chamar o callback. *O `HomePage`
+     * mantem o override para o URL; o que muda e' que a escolha deixa de ficar presa num `useState`
+     * local que ninguem le.*
+     */
+    setSettings({ SelectedModel: model.model });
     setIsOpen(false);
     onModelSelectModel?.(model);
     onModelSelect?.();
