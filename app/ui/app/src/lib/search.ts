@@ -3,53 +3,72 @@ export type SearchItem = {
   label: string;
   hint: string;
   href: string;
+  // Chaves i18n opcionais: quando presentes, o SearchDialog resolve o texto no idioma
+  // activo ANTES de procurar, para que a busca funcione no idioma escolhido (escrever
+  // "Settings" tem de encontrar a pagina, nao so' "Configuracoes").
+  labelKey?: string;
+  hintKey?: string;
 };
 
 // Pages reachable from the sidebar. Kept here so search covers navigation
 // even before any chat exists.
+// `label`/`hint` ficam como texto canonico pt-BR (usado por testes e como fallback);
+// `labelKey`/`hintKey` sao o que a UI usa.
 export const SEARCH_PAGES: SearchItem[] = [
-  { id: "page-new", label: "Nova tarefa", hint: "Página", href: "/" },
-  { id: "page-agentic", label: "Agente", hint: "Página", href: "/agentic" },
-  { id: "page-tasks", label: "Tarefas", hint: "Página", href: "/tasks" },
+  { id: "page-new", label: "Nova tarefa", hint: "Página", href: "/", labelKey: "appSidebar.newTask", hintKey: "search.hint.page" },
+  { id: "page-agentic", label: "Agente", hint: "Página", href: "/agentic", labelKey: "search.page.agentic", hintKey: "search.hint.page" },
+  { id: "page-tasks", label: "Tarefas", hint: "Página", href: "/tasks", labelKey: "appSidebar.nav.tasks", hintKey: "search.hint.page" },
   {
     id: "page-scheduled",
     label: "Agendado",
     hint: "Página",
     href: "/scheduled",
+    labelKey: "search.page.scheduled",
+    hintKey: "search.hint.page",
   },
-  { id: "page-company", label: "Empresa", hint: "Página", href: "/company" },
-  { id: "page-skills", label: "Habilidades", hint: "Página", href: "/skills" },
+  { id: "page-company", label: "Empresa", hint: "Página", href: "/company", labelKey: "appSidebar.nav.company", hintKey: "search.hint.page" },
+  { id: "page-skills", label: "Habilidades", hint: "Página", href: "/skills", labelKey: "appSidebar.nav.skills", hintKey: "search.hint.page" },
   {
     id: "page-connectors",
     label: "Conectores",
     hint: "Página",
     href: "/connectors",
+    labelKey: "search.page.connectors",
+    hintKey: "search.hint.page",
   },
-  { id: "page-library", label: "Biblioteca", hint: "Página", href: "/library" },
-  { id: "page-projects", label: "Projetos", hint: "Página", href: "/projects" },
+  { id: "page-library", label: "Biblioteca", hint: "Página", href: "/library", labelKey: "appSidebar.nav.library", hintKey: "search.hint.page" },
+  { id: "page-projects", label: "Projetos", hint: "Página", href: "/projects", labelKey: "appSidebar.section.projects", hintKey: "search.hint.page" },
   {
     id: "page-connect",
     label: "Apps e providers",
     hint: "Página",
     href: "/connect",
+    labelKey: "search.page.connect",
+    hintKey: "search.hint.page",
   },
   {
     id: "page-providers",
     label: "Provedores de IA",
     hint: "Página",
     href: "/providers",
+    labelKey: "search.page.providers",
+    hintKey: "search.hint.page",
   },
   {
     id: "page-endpoint",
     label: "Endpoint da API",
     hint: "Configurações",
     href: "/endpoint",
+    labelKey: "search.page.endpoint",
+    hintKey: "appSidebar.nav.settings",
   },
   {
     id: "page-settings",
     label: "Configurações",
     hint: "Página",
     href: "/settings",
+    labelKey: "appSidebar.nav.settings",
+    hintKey: "search.hint.page",
   },
 ];
 

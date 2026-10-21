@@ -2027,4 +2027,16 @@ export const enMessages: Record<string, string> = {
   "agenticClient.error.unexpectedHtml": "Agent API unavailable: unexpected response from the server",
   "agenticClient.error.requestFailed": "Agent API request failed.",
   "agenticClient.error.connectRuntime": "Could not connect to the local agentic runtime. Check that it is running and try again.",
+  // Search (SearchDialog): page names that did not exist in the sidebar yet
+  "search.hint.page": "Page",
+  "search.page.agentic": "Agent",
+  "search.page.scheduled": "Scheduled",
+  "search.page.connectors": "Connectors",
+  "search.page.connect": "Apps and providers",
+  "search.page.providers": "AI providers",
+  "search.page.endpoint": "API endpoint",
+  "search.placeholder": "Search chats and pages",
+  "search.results": "Results",
+  "search.chat.untitled": "Untitled chat",
+  "search.chat.hint": "Chat",
 };

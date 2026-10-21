@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { getChats } from "@/api";
 import { SEARCH_PAGES, searchItems, type SearchItem } from "@/lib/search";
+import { useT } from "@/i18n";
 
 export function SearchDialog({
   open,
@@ -10,6 +11,7 @@ export function SearchDialog({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const [query, setQuery] = useState("");
   const [chats, setChats] = useState<SearchItem[]>([]);
   const [active, setActive] = useState(0);
@@ -25,8 +27,8 @@ export function SearchDialog({
         setChats(
           (response.chatInfos ?? []).map((chat) => ({
             id: `chat-${chat.id}`,
-            label: chat.title || chat.userExcerpt || "Conversa sem título",
-            hint: chat.userExcerpt || "Conversa",
+            label: chat.title || chat.userExcerpt || t("search.chat.untitled"),
+            hint: chat.userExcerpt || t("search.chat.hint"),
             href: `/c/${chat.id}`,
           })),
         ),
@@ -34,9 +36,22 @@ export function SearchDialog({
       .catch(() => setChats([]));
   }, [open]);
 
+  // As paginas sao resolvidas para o idioma activo ANTES da busca: escrever "Settings"
+  // no idioma ingles tem de encontrar Configuracoes. Sem isto, a busca so' casaria os
+  // rotulos pt-BR e o utilizador em ingles nao encontraria nada.
+  const paginasLocalizadas = useMemo(
+    () =>
+      SEARCH_PAGES.map((item) => ({
+        ...item,
+        label: item.labelKey ? t(item.labelKey) : item.label,
+        hint: item.hintKey ? t(item.hintKey) : item.hint,
+      })),
+    [t],
+  );
+
   const results = useMemo(
-    () => searchItems([...SEARCH_PAGES, ...chats], query),
-    [chats, query],
+    () => searchItems([...paginasLocalizadas, ...chats], query),
+    [paginasLocalizadas, chats, query],
   );
 
   if (!open) return null;
@@ -82,14 +97,14 @@ export function SearchDialog({
                 go(results[active]);
               }
             }}
-            placeholder="Pesquisar conversas e páginas"
-            aria-label="Pesquisar conversas e páginas"
+            placeholder={t("search.placeholder")}
+            aria-label={t("search.placeholder")}
             className="w-full bg-transparent text-sm text-neutral-900 outline-none placeholder:text-neutral-400 dark:text-neutral-100"
           />
         </label>
         <ul
           role="listbox"
-          aria-label="Resultados"
+          aria-label={t("search.results")}
           className="max-h-[50vh] overflow-y-auto p-2"
         >
           {results.length === 0 && (

@@ -2049,4 +2049,16 @@ export const ptBRMessages: Record<string, string> = {
   "agenticClient.error.unexpectedHtml": "Agent API indisponível: resposta inesperada do servidor",
   "agenticClient.error.requestFailed": "Falha na requisição à Agent API.",
   "agenticClient.error.connectRuntime": "Não foi possível conectar ao runtime agentic local. Verifique se ele está em execução e tente novamente.",
+  // Busca (SearchDialog): nomes de pagina que ainda nao existiam na sidebar
+  "search.hint.page": "Página",
+  "search.page.agentic": "Agente",
+  "search.page.scheduled": "Agendado",
+  "search.page.connectors": "Conectores",
+  "search.page.connect": "Apps e providers",
+  "search.page.providers": "Provedores de IA",
+  "search.page.endpoint": "Endpoint da API",
+  "search.placeholder": "Pesquisar conversas e páginas",
+  "search.results": "Resultados",
+  "search.chat.untitled": "Conversa sem título",
+  "search.chat.hint": "Conversa",
 };
