@@ -212,6 +212,22 @@ jobs:
         run: python3 scripts/hades_testes_hermeticos_check.py
       - name: Verify traceability of requirements to evidence
         run: python3 scripts/hades_traceability_check.py
+      # E-1512: cinco instrumentos medidos antes de entrar (exit 0; 0.1-0.3 s; sem rede). Sao baratos e
+      # cada um mede uma propriedade que ninguem verificava no PR: os proprios checkers, a arquitectura
+      # declarada, o contrato entre agentes, o catalogo de agentes e o inventario de auditoria.
+      #
+      # `hades_stability_check.py` NAO entra aqui de proposito: medido a 64 s, tem de entrar sozinho e
+      # com o tempo declarado, para que o custo do job nao cresca sem que alguem saiba porque.
+      - name: Verify the checkers themselves (self-test)
+        run: python3 scripts/hades_checkers_autoteste.py
+      - name: Verify the declared architecture matches the tree
+        run: python3 scripts/hades_architecture_check.py
+      - name: Verify the agent contract between layers
+        run: python3 scripts/hades_agent_contract_check.py
+      - name: Verify the agent catalogue
+        run: python3 scripts/hades_agents_check.py
+      - name: Verify the audit inventory
+        run: python3 scripts/hades_audit_inventory_check.py
       # E-661: o gate anterior era `test -z "$(gofmt -l ...)"` - e um arquivo que NAO PARSEIA faz o gofmt
       # escrever o erro em STDERR e sair com STDOUT VAZIO => `test -z ""` PASSAVA. Verde por construcao:
       # foi assim que um `internal/agent/adaptive_router.go` com um `}` faltando atravessou o CI verde.
