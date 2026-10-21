@@ -279,3 +279,25 @@ das duas.
 **O que desbloqueia.** Uma excepção de antivírus para `_tmp\goroot12610\go\bin\go.exe` (decisão do
 dono da máquina), ou um host com o toolchain 1.26.10 estável. Quando chegar, a bateria completa
 torna-se executável e o 81/81 passa a ser medível aqui.
+
+## i18n: limitação conhecida e medida (não é omissão, é fronteira declarada)
+
+Depois de 5 fatias (989 chaves em pt-BR e en, paridade exacta), há **uma** limitação real na
+camada de tradução, e ela fica escrita porque afecta o critério B11:
+
+- **Num módulo de dados `.ts`, `t()` é avaliado no carregamento do módulo.** Consequência medida:
+  as `description` do catálogo de conectores (`lib/connectorCatalog.ts`) e outros valores de
+  dados **não repintam ao trocar de idioma sem recarregar a página**. Componentes React (que usam
+  `useT()`) repintam correctamente; catálogos de dados não.
+- **Correção exigiria** expor o catálogo como **função** (`getCatalog()`) em vez de constante, o
+  que quebra a API consumida por `mergeConnectorCatalog` e pelos ecrãs que hoje recebem a lista
+  pronta. Não foi feito dentro da migração: é mudança de arquitectura, com risco próprio.
+- **Escopo de tradução deliberadamente não coberto:** `category` dos conectores (19 strings) é
+  **identidade de contrato** vinda do backend — `ConnectorsPage` casa por igualdade exacta em
+  `CATEGORY_GROUPS` e a mesma string é chave de `CATEGORY_ACCENT`. Traduzi-la quebraria o filtro
+  e a cor dos tiles. Nomes de produto, comandos CLI, rotas de API e payloads enviados ao backend
+  também ficam como estão, por desenho.
+
+Portanto B11 está **parcialmente** provado: a camada existe, tem 989 chaves com paridade, teste de
+superconjunto e prova em ficheiro; **não** está provado que toda a UI alterna de idioma em tempo
+real, e a lacuna está identificada acima com a sua causa.

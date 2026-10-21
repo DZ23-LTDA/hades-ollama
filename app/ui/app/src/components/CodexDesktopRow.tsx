@@ -14,32 +14,34 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useT, type Translator } from "@/i18n";
 
 export const CODEX_DESKTOP_INSTALL_TIMEOUT_MS = 120_000;
 const acknowledgmentKey = ["codex-desktop-acknowledgment"];
 
+// Guardamos CHAVES (nao textos): o literal so' e' resolvido no render, para que
+// a troca de idioma repinte a faixa sem recarregar o modulo.
 const connectionProgress = {
   idle: null,
   installing: {
-    label: "Baixando…",
-    description: "O Hades está baixando o instalador do ChatGPT…",
+    label: "codexDesktop.progress.installing.label",
+    description: "codexDesktop.progress.installing.description",
   },
   "waiting-for-install": {
-    label: "Conclua a instalação…",
-    description:
-      "Conclua a instalação do ChatGPT. O Hades vai conectá-lo automaticamente.",
+    label: "codexDesktop.progress.waitingForInstall.label",
+    description: "codexDesktop.progress.waitingForInstall.description",
   },
   connecting: {
-    label: "Conectando…",
-    description: "Conectando o ChatGPT ao Hades…",
+    label: "codexDesktop.progress.connecting.label",
+    description: "codexDesktop.progress.connecting.description",
   },
   saving: {
-    label: "Salvando…",
-    description: "Salvando seu progresso…",
+    label: "codexDesktop.progress.saving.label",
+    description: "codexDesktop.progress.saving.description",
   },
   disconnecting: {
-    label: "Desconectando…",
-    description: "Restaurando a conexão normal do ChatGPT…",
+    label: "codexDesktop.progress.disconnecting.label",
+    description: "codexDesktop.progress.disconnecting.description",
   },
 } as const;
 
@@ -77,18 +79,25 @@ function CodexIcon({ integration }: { integration: IntegrationStatus }) {
 }
 
 function codexDesktopDescription(
+  t: Translator,
   status: CodexDesktopStatus | null,
   defaultDescription: string,
 ): string {
   if (!status?.connected) return defaultDescription;
   const requestCount = status.requests ?? 0;
-  return `Conectado ao Hades · ${requestCount} ${requestCount === 1 ? "requisição" : "requisições"} nesta sessão`;
+  // Plural por duas chaves: `requisição` (1) e `requisições` (resto).
+  const key =
+    requestCount === 1
+      ? "codexDesktop.description.connectedOne"
+      : "codexDesktop.description.connectedMany";
+  return t(key, { count: requestCount });
 }
 
 export function CodexDesktopRow({
   integration,
   initialStatus,
 }: CodexDesktopRowProps) {
+  const { t } = useT();
   const [status, setStatus] = useState<CodexDesktopStatus | null>(
     initialStatus ?? null,
   );
@@ -186,10 +195,9 @@ export function CodexDesktopRow({
       setError(null);
       setNotice(null);
     } catch {
-      if (isCurrent())
-        setError("O Hades não conseguiu ler o status da conexão com o ChatGPT.");
+      if (isCurrent()) setError(t("codexDesktop.error.readStatus"));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!initialStatus) void refreshStatus();
@@ -255,9 +263,7 @@ export function CodexDesktopRow({
         completing = true;
 
         if (next.running) {
-          setError(
-            "O ChatGPT está instalado. Clique em Conectar para reiniciá-lo com os modelos do Hades.",
-          );
+          setError(t("codexDesktop.error.restartToConnect"));
           return;
         }
 
@@ -271,20 +277,16 @@ export function CodexDesktopRow({
         if (!mounted.current) return;
         setStatus(result.status);
         if (result.restartConfirmationRequired) {
-          setError(
-            "O ChatGPT está instalado. Clique em Conectar para reiniciá-lo com os modelos do Hades.",
-          );
+          setError(t("codexDesktop.error.restartToConnect"));
         } else if (result.error || !result.status.connected) {
-          setError(
-            result.error || "O Hades não conseguiu adicionar seus modelos ao ChatGPT.",
-          );
+          setError(result.error || t("codexDesktop.error.addModels"));
         } else {
-          setNotice("Modelos do Hades adicionados ao lado dos modelos do Codex");
+          setNotice(t("codexDesktop.notice.modelsAdded"));
         }
       } catch {
         if (!mounted.current || (!active && !completing)) return;
         setPhase("idle");
-        setError("O Hades não conseguiu concluir a conexão com o ChatGPT.");
+        setError(t("codexDesktop.error.completeConnection"));
       } finally {
         checking = false;
         if (completing) finishOperation();
@@ -297,14 +299,14 @@ export function CodexDesktopRow({
       if (!active || completing) return;
       active = false;
       setPhase("idle");
-      setError("A instalação do ChatGPT não foi detectada. Tente de novo.");
+      setError(t("codexDesktop.error.installNotDetected"));
     }, CODEX_DESKTOP_INSTALL_TIMEOUT_MS);
     return () => {
       active = false;
       window.clearInterval(interval);
       window.clearTimeout(timeout);
     };
-  }, [phase, beginOperation, finishOperation]);
+  }, [phase, beginOperation, finishOperation, t]);
 
   const connected = status?.connected ?? false;
   const installed = status?.installed ?? integration.installed ?? false;
@@ -318,21 +320,20 @@ export function CodexDesktopRow({
         phase === "waiting-for-install" ||
         phase === "connecting";
   const progress = connectionProgress[savingAcknowledgment ? "saving" : phase];
-  const statusLabel = progress?.label ?? null;
+  const statusLabel = progress ? t(progress.label) : null;
   const actionError =
     error ??
-    (acknowledgmentFailed
-      ? "O Hades não conseguiu salvar seu progresso. Tente de novo."
-      : null);
+    (acknowledgmentFailed ? t("codexDesktop.error.saveProgress") : null);
   const description =
     actionError ??
     notice ??
-    progress?.description ??
+    (progress ? t(progress.description) : null) ??
     codexDesktopDescription(
+      t,
       status,
       installed
-        ? "Use os modelos do Hades no modo Codex do ChatGPT."
-        : "Vamos baixar o ChatGPT e conectá-lo ao Hades.",
+        ? t("codexDesktop.description.useCodexModels")
+        : t("codexDesktop.description.downloadIntro"),
     );
 
   const saveAcknowledgment = async (): Promise<boolean> => {
@@ -379,24 +380,24 @@ export function CodexDesktopRow({
     }
     try {
       if (!window.setCodexDesktopConnected) {
-        setError("A integração com o ChatGPT está indisponível.");
+        setError(t("codexDesktop.error.integrationUnavailable"));
         return;
       }
       if (enabled && !installed) {
         if (!window.installCodexDesktop || !window.getCodexDesktopStatus) {
-          setError("O Hades não conseguiu instalar o ChatGPT.");
+          setError(t("codexDesktop.error.installFailed"));
           return;
         }
         const installResult = await window.installCodexDesktop();
         if (!mounted.current) return;
         if (installResult === "opened") finalPhase = "waiting-for-install";
         else if (installResult !== "cancelled")
-          setError("O Hades não conseguiu instalar o ChatGPT.");
+          setError(t("codexDesktop.error.installFailed"));
         return;
       }
       if (fromIntro || (enabled && !status?.used && !used.current)) {
         if (!window.getCodexDesktopStatus) {
-          setError("O Hades não conseguiu ler o status da conexão com o ChatGPT.");
+          setError(t("codexDesktop.error.readStatus"));
           return;
         }
         const liveStatus = await window.getCodexDesktopStatus();
@@ -404,8 +405,8 @@ export function CodexDesktopRow({
         setStatus(liveStatus);
         if (liveStatus.running && !restartConfirmed) {
           restartConfirmed = await confirmDialog(
-            "Reiniciar ChatGPT para adicionar modelos Ollama? Qualquer tarefa em execução será interrompida.",
-            { confirmLabel: "Reiniciar" },
+            t("codexDesktop.confirm.restartToAdd"),
+            { confirmLabel: t("codexDesktop.confirm.restartLabel") },
           );
           if (!restartConfirmed) return;
         }
@@ -428,9 +429,9 @@ export function CodexDesktopRow({
         if (
           !(await confirmDialog(
             enabled
-              ? "Reiniciar ChatGPT para adicionar modelos Ollama? Qualquer tarefa em execução será interrompida."
-              : "Reiniciar ChatGPT para remover modelos Ollama? Qualquer tarefa em execução será interrompida.",
-            { confirmLabel: "Reiniciar" },
+              ? t("codexDesktop.confirm.restartToAdd")
+              : t("codexDesktop.confirm.restartToRemove"),
+            { confirmLabel: t("codexDesktop.confirm.restartLabel") },
           )) ||
           !mounted.current
         ) {
@@ -449,8 +450,8 @@ export function CodexDesktopRow({
       if (result.status.connected !== enabled) {
         setError(
           enabled
-            ? "O Hades não conseguiu adicionar seus modelos ao ChatGPT."
-            : "O Hades não conseguiu remover seus modelos do ChatGPT.",
+            ? t("codexDesktop.error.addModels")
+            : t("codexDesktop.error.removeModels"),
         );
         return;
       }
@@ -459,17 +460,17 @@ export function CodexDesktopRow({
         if (!(await saveAcknowledgment())) return;
       }
       if (enabled) {
-        setNotice("Modelos do Hades adicionados ao lado dos modelos do Codex");
+        setNotice(t("codexDesktop.notice.modelsAdded"));
       } else {
-        setNotice("Modelos do Hades removidos · os modelos do Codex continuam disponíveis");
+        setNotice(t("codexDesktop.notice.modelsRemoved"));
       }
     } catch {
       setError(
         nextPhase === "installing"
-          ? "O Hades não conseguiu instalar o ChatGPT."
+          ? t("codexDesktop.error.installFailed")
           : enabled
-            ? "O Hades não conseguiu adicionar seus modelos ao ChatGPT."
-            : "O Hades não conseguiu remover seus modelos do ChatGPT.",
+            ? t("codexDesktop.error.addModels")
+            : t("codexDesktop.error.removeModels"),
       );
     } finally {
       finishOperation(finalPhase);
@@ -499,12 +500,12 @@ export function CodexDesktopRow({
         {acknowledgmentFailed && (
           <button
             type="button"
-            aria-label="Tentar salvar o progresso de novo"
+            aria-label={t("codexDesktop.action.retryAria")}
             disabled={pending}
             onClick={() => void retryAcknowledgment()}
             className="text-xs font-medium text-neutral-700 hover:underline disabled:cursor-wait disabled:opacity-50 dark:text-neutral-300"
           >
-            Tentar novamente
+            {t("codexDesktop.action.retry")}
           </button>
         )}
         <IntegrationConnectButton
@@ -513,19 +514,19 @@ export function CodexDesktopRow({
           progress={statusLabel}
           label={
             showIntro
-              ? "Concluir a conexão do ChatGPT"
+              ? t("codexDesktop.action.finishConnection")
               : connected
-                ? "Remover os modelos do Hades do ChatGPT"
+                ? t("codexDesktop.action.removeModels")
                 : pending
-                  ? "Conectando ChatGPT"
-                  : "Adicionar os modelos do Hades ao ChatGPT"
+                  ? t("codexDesktop.action.connecting")
+                  : t("codexDesktop.action.addModels")
           }
           title={
             connected
-              ? "Remover modelos do Hades"
+              ? t("codexDesktop.action.removeModelsTitle")
               : installed
-                ? "Adicionar modelos do Hades"
-                : "Instalar o ChatGPT e adicionar os modelos do Hades"
+                ? t("codexDesktop.action.addModelsTitle")
+                : t("codexDesktop.action.installTitle")
           }
           disabled={pending || showIntro}
           onClick={() => void toggleConnection()}
