@@ -135,3 +135,32 @@ caminho versionado (versões + restauro) ou o `UpdateVisual` do builder, com lim
 
 **Decisão de segurança registada:** não será criado um endpoint que escreva ficheiros arbitrários no
 workspace. A edição usa o versionamento existente.
+---
+
+## CLI — `ollama list` panicava com digests curtos — **DONE** (verde 28/28)
+
+**Report do dono:** «o hades não funciona em outros aplicativos».
+
+**Causa-raiz:** `cmd/cmd.go:1184` e `1236` faziam `m.Digest[:12]`. Modelos remotos têm digest de 11
+(`remote:aliba`, `remote:anthr`) → `panic: slice bounds out of range [:12] with length 11` em
+`cmd.ListHandler`. O `/api/tags` respondia 200 em 0,1 s: o servidor estava bom, o **binário** morria.
+
+**Prova:** `TestShortDigestNaoRebentaComDigestCurto` 5/5 (11, vazio, 1, 12, 64) + `ollama list`
+reconstruído → tabela completa, exit 0, sem panic. Entregue ao produto: instalador reconstruído,
+reinstalado, e o CLI **instalado** lista 7 modelos.
+
+---
+
+## Autostart do motor — **DONE** (verde 28/28, commit `dd7c2fe14`)
+
+**Dois defeitos:**
+1. `createLoginShortcut()` copia `{app}\lib\Ollama.lnk`, mas o `.iss` criava `lib\Hades.lnk`
+   (`{#MyAppName}`). E ao corrigir o nome, o Inno gerou `Ollama.lnk.lnk` — a forma certa é `Name`
+   **sem** extensão.
+2. A chave `HKCU Run\Ollama` apontava para `...\Programs\Ollama\ollama app.exe`, **caminho morto**
+   desde a desinstalação do Ollama antigo.
+
+**Prova medida no sistema após instalar:** `lib\Ollama.lnk: True` e
+`Run\Ollama = ...\Programs\Hades\ollama app.exe --hide`.
+
+**Limite declarado:** a prova do arranque **no login** exige reiniciar a sessão — não executada.
