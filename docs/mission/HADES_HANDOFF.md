@@ -6808,3 +6808,11 @@ product-gap, #18 tenant guards, #19 security axes, #20 test hermeticity, #21 tra
 *«Passo presente no workflow» e «passo executado» sao estados diferentes, e a diferenca so' se ve
 abrindo o job.* Limite: as outras verificacoes desse SHA ainda corriam, logo **nao ha' veredito completo**
 de `9f0130005`; e 37 checkers continuam so' locais.
+
+**Actualizacao de retomada (E-1512):** **os DEZ instrumentos recuperados correm e passam no CI** --
+job `Preserve Class A+ surfaces` de `2d7c15bc9` = **success** (00:04:21Z), com os cinco novos lidos
+passo a passo: #22 checkers self-test, #23 architecture, #24 agent contract, #25 agent catalogue,
+#26 audit inventory -- todos `success`. Com #17-#21 (product-gap, tenant guards, security axes,
+hermeticity, traceability) sao **dez**. O job passou a **27 passos** (25 de verificacao) e continua a
+levar **28 s** -- a recuperacao nao custou tempo de runner. **32 checkers continuam so' locais** (eram
+41). `release_state` continua `NOT_RELEASE_READY`.
