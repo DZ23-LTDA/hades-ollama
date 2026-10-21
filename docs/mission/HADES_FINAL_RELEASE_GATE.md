@@ -13,10 +13,10 @@
 | **Commit medido** (`measured_commit`) | `31487dca404a71dbb1216c4ae863e8b8b4f74fa9` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
 | **Gerado em** (`measured_at`) | 2026-10-20T23:10:53-03:00 |
-| **Snapshot real** (`gate_head`) | `31487dca404a71dbb1216c4ae863e8b8b4f74fa9` |
+| **Snapshot real** (`gate_head`) | `b804853d35ce65cb6217958486b19702449d6896` |
 | **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
-| **Entradas nao commitadas** (`gate_dirty`) | 18 |
-| **O gate prova o snapshot candidato?** (`gate_snapshot`) | **MESMO** |
+| **Entradas nao commitadas** (`gate_dirty`) | 1 |
+| **O gate prova o snapshot candidato?** (`gate_snapshot`) | **DIVERGENTE** - 18 commits depois do `measured_commit` |
 
 *Dois campos, e não um: o `E-552` mediu que este derivado **não** citava commit nenhum, e que o
 `HADES_BASELINE_REPORT.md` citava **só** a `main` — *o que não está errado (*ele mede o baseline, e o baseline é da
@@ -31,7 +31,7 @@ subjetiva.
 
 ## Matriz de aceite (seção 9 das diretrizes)
 
-Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 5 · DONE: 19
+Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 4 · DONE: 20
 
 | # | Requisito | Status | Evidência / limite | O que destrava |
 | --- | --- | --- | --- | --- |
@@ -51,7 +51,7 @@ Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 5 · DONE: 19
 | 14 | O Builder entrega aplicações utilizáveis | **DONE** | E-178: app do Studio criado, **publicado**, **servido por HTTP (200)** e **aberto em navegador real**, que renderizou 3 componentes no canvas com **0 erros de console** (`docs/mission/evidence/`). **LIMITE**: app de **demonstração** (heading/table/button) — **não** é full-stack com banco/auth/CRUD | App full-stack com banco, autenticação e CRUD navegado ponta a ponta (estágio 12) |
 | 15 | O agente de código entrega correções testadas | **DONE** | Fluxo issue → teste → correção → PR comprovado (estágio 11) | — |
 | 16 | Workflows executam os nós realmente suportados | **DONE** | Motor determinístico com retry/DLQ e log por nó (estágio 13) | — |
-| 17 | Browser/computer-use funciona nos ambientes homologados | **BLOCKED_BY_EXTERNAL_DEPENDENCY** | B-09 residual: Python ausente para o E2E de browser | Ambiente com navegador/Python para o E2E (estágio 14) |
+| 17 | Browser/computer-use funciona nos ambientes homologados | **DONE** | **Medido em 2 ambientes com o helper do proprio produto** (`internal/agent/browser_helper.py`). (a) **CI, runner Windows**: job *Go agentic Windows portability* -> `TestBrowserOperatorNavigateAndSnapshot` **pass** (run 39541806198) depois de a causa-raiz do tecto de 15 s ter sido fechada. (b) **Host local Windows**: driver sobre o helper -> `navigate` rc=0 com title `DZ23` e screenshot JPEG real; `snapshot` rc=0 com content `Hello Browser`; **recusa** de destino privado sem `OLLAMA_AGENT_BROWSER_ALLOW_PRIVATE` -> rc=1 com erro `browser URL resolves to a non-public address`. Playwright 1.64.0 + Chromium do host. **Limite declarado**: a prova e' em Windows (CI + local); a cobertura Linux/macOS do operador pertence aos itens #21/B5 e **nao** e' reclamada aqui | — |
 | 18 | A memória respeita os escopos | **DONE** | Isolamento entre organizações com prova em disco (estágio 15). **E-289/E-290**: a escrita passou a **recusar** sobrescrever trabalho de outro escritor — **intenção declarada por caminho** (não-destrutivos guardados, destrutivos por intenção) e detecção também por **revisão**. Limites: os 3 caminhos destrutivos seguem **sem guarda por intenção**; a trava do arquivo é **ADVISORY**; sem **fila de escritas** | — |
 | 19 | A segurança multitenant está validada | **DONE** | **E-294 — lastro medido**: o job de CI *PostgreSQL RLS, Redis DLQ and OTLP integration* sobe um **PostgreSQL 16 real** com **três papéis distintos** (admin/runtime/migrator, senhas geradas por execução), restringe a autenticação **por papel** via `pg_hba`, roda as migrações e executa com `-tags integration`: `TestDistributedPostgresRLSAndEvents`, `...RuntimeRejectsRLSDrift` (**guarda**: recusa quando o RLS desvia), `...RuntimeCannotConnectOutsideApplicationDatabase` (**sonda negativa** de permissão), `...TenantKeyRotation` e a suíte `TestDistributed` completa (**32 testes**). Limite: roda no runner Linux do CI, não no host de desenvolvimento, e **não** mede inferência por timing | — |
 | 20 | A suíte obrigatória está aprovada | **DONE** | Lint, contrato, suíte Go e paridade Linux (com detector de corrida) verdes na rodada mais recente | — |
