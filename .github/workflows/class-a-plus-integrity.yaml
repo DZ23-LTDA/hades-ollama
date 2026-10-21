@@ -285,8 +285,16 @@ jobs:
       # E-1516: seis medidos (exit 0, so' leitura, <= 5.7 s). Excluido, com razao medida:
       #   hades_t2_contexto.py -- escreveu no repositorio quando corrido (conferido com `git status`);
       #   um passo que altera a arvore em cada PR seria uma alteracao silenciosa, nao um gate.
-      - name: Verify the native host roundtrip
-        run: python3 scripts/hades_native_host_roundtrip.py
+      # E-1518: `hades_native_host_roundtrip.py` foi ligado no `E-1516` e **FALHOU no runner** em
+      # `833a1dca5` (passo 41), e outra vez os passos seguintes -- incluindo o `gofmt` -- foram saltados.
+      # Localmente media `exit 0` (1.3 s); no runner NAO, porque o "roundtrip" pressupoe um native host
+      # instalado e o checkout do CI so' tem o template.
+      #
+      # DOIS CASOS SEGUIDOS (`ci_timeout` no E-1517, `native_host_roundtrip` aqui): a classe de
+      # instrumentos que NAO serve para o CI e' aquela que depende de ESTADO DA MAQUINA -- host
+      # instalado, browser, pacote do sistema. Um gate so' pode medir o que o checkout contem.
+      #
+      #   *Nao e' o instrumento que esta' errado: e' o sitio onde o pus.*
       - name: Verify the Linux package
         run: python3 scripts/hades_linux_package.py
       - name: Verify the competitive surface
