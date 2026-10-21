@@ -246,6 +246,25 @@ jobs:
         run: python3 scripts/hades_mcp_check.py
       - name: Verify the plugins surface
         run: python3 scripts/hades_plugins_check.py
+      # E-1514: mais sete medidos (exit 0, so' leitura, <= 2.5 s). Ficam DE FORA, com razao:
+      #   hades_native_host.py ......... mediu exit=1 isolado -- um passo que falha por construcao
+      #                                  ensina a ignorar o gate; precisa de diagnostico primeiro
+      #   hades_extension_engines_check.py (49.7 s) e hades_firefox_package.py (28.7 s)
+      #                                  entram sozinhos, com o tempo declarado
+      - name: Verify the browser bridge package
+        run: python3 scripts/hades_browser_bridge_package.py
+      - name: Verify the extension surface
+        run: python3 scripts/hades_extension_check.py
+      - name: Verify the harness surface
+        run: python3 scripts/hades_harness_check.py
+      - name: Verify the stage artifacts
+        run: python3 scripts/hades_stage_artifacts_check.py
+      - name: Verify the UX onboarding surface
+        run: python3 scripts/hades_ux_onboarding_check.py
+      - name: Verify the derived artifacts
+        run: python3 scripts/hades_derivados_check.py
+      - name: Verify the findings revalidation
+        run: python3 scripts/hades_findings_revalidation.py
       # E-661: o gate anterior era `test -z "$(gofmt -l ...)"` - e um arquivo que NAO PARSEIA faz o gofmt
       # escrever o erro em STDERR e sair com STDOUT VAZIO => `test -z ""` PASSAVA. Verde por construcao:
       # foi assim que um `internal/agent/adaptive_router.go` com um `}` faltando atravessou o CI verde.
