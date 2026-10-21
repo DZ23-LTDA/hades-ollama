@@ -189,3 +189,32 @@ reinstalado, e o CLI **instalado** lista 7 modelos.
 
 **Decisão de segurança registada:** a edição **não** aceita caminho de ficheiro. Escreve conteúdo no
 armazém de artefactos versionado, com limite de tamanho e CAS. Nada de `path` vindo do cliente.
+---
+
+## FATIA 2 — Multi-provedor com fallback EXPLICÁVEL
+
+**Medição feita antes de código (2026-10-21):**
+
+| facto | evidência |
+| --- | --- |
+| O roteamento já existe e tem testes | `internal/multillm/proxy_test.go` (rotas por modelo, gateway local, metadata do harness router), `native chat` |
+| A regra local-only é testada | `internal/multillm/local_only_locality_test.go:37` — local-only nao escolhe remoto |
+| NÃO existe explicação de fallback | busca por `Fallback|Explain|Motivo|Razao` só devolve `stop_reason` (fim de geração, outra coisa) |
+
+**Aceite:**
+
+| # | critério | prova exigida |
+| --- | --- | --- |
+| F1 | Toda resposta traz **qual** provedor/modelo serviu e **por que** foi escolhido. | teste positivo (campo presente e correto) |
+| F2 | Quando há fallback, a resposta diz **o que falhou antes** (provedor + motivo), em ordem. | teste positivo (1 falha -> 1 entrada na cadeia) |
+| F3 | Sem credencial para o provedor pedido: **erro claro e imediato**, sem cair para outro em silêncio. | teste negativo (status 4xx + mensagem; assert que nenhum outro provedor foi chamado) |
+| F4 | Modo `local-only` nunca escolhe remoto, mesmo que haja credencial remota e local ocupado. | teste negativo (reusa `local_only_locality_test.go`) |
+| F5 | A explicação não vaza credenciais (só nomes de provedor/modelo). | teste negativo (assert de ausência de chave/token no payload) |
+
+**Decisão registada:** «explicável» significa **dados**, não prosa: a resposta leva uma cadeia estruturada
+(`serviu`, `cadeia[{provedor, motivo_da_falha}]`), e a UI apenas a mostra. Nada de log solto — o cliente
+tem de poder distinguir.
+
+**Limite declarado:** a prova de fallback com **falha real de rede** exige provedor externo; será feita com
+servidor HTTP falso que devolve erro conhecido (httptest), e a prova com provedor verdadeiro fica em
+PEDIDOS_EXTERNOS (credencial real).
