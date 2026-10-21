@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { descreverEvento } from "./LiveBuildPage";
+import { descreverEvento, urlExecucao } from "./LiveBuildPage";
 import type { AgentEvent } from "@/lib/agenticClient";
 
 function evento(type: string, payload?: unknown): AgentEvent {
@@ -38,5 +38,21 @@ describe("descreverEvento", () => {
     const passo = descreverEvento(evento("plan.created"));
     expect(passo.id).toBe("e-plan.created");
     expect(passo.quando).toBe("2026-10-21T10:00:00Z");
+  });
+});
+
+// I1a: a URL de execucao tem de pedir o modo inline (executa) e escapar os ids.
+describe("urlExecucao", () => {
+  it("pede inline e aponta para a rota do artefacto", () => {
+    const url = urlExecucao("m1", "a1");
+    expect(url).toBe("/api/agent/v1/missions/m1/artifacts/a1?inline=1");
+  });
+
+  it("NEGATIVO: sem inline o servidor responde como download (nao e' o que queremos)", () => {
+    expect(urlExecucao("m1", "a1")).toContain("inline=1");
+  });
+
+  it("escapa ids com caracteres especiais", () => {
+    expect(urlExecucao("a/b", "c d")).toBe("/api/agent/v1/missions/a%2Fb/artifacts/c%20d?inline=1");
   });
 });

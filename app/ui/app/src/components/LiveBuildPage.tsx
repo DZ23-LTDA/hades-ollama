@@ -294,7 +294,7 @@ export function LiveBuildPanel() {
                 // sandbox sem same-origin: o conteudo gerado nao herda a sessao da app.
                 <iframe
                   title={t("liveBuild.preview")}
-                  src={previewUrl}
+                  src={missaoId && artefactoAtual ? urlExecucao(missaoId, artefactoAtual.id) : previewUrl}
                   sandbox="allow-scripts"
                   className="h-full w-full border-0 bg-white"
                 />
@@ -304,5 +304,23 @@ export function LiveBuildPanel() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * URL que EXECUTA o artefacto no servidor (modo inline), em vez de o descarregar.
+ *
+ * I1a: a rota do artefacto usa c.FileAttachment (Content-Disposition: attachment), por isso um
+ * iframe apontado a ela DESCARREGAVA o ficheiro -- era a razao de o painel usar um blob
+ * temporario. Com ?inline=1 o servidor serve o mesmo conteudo com Content-Disposition: inline e
+ * o content-type certo, e o iframe passa a correr a app gerada de verdade, same-origin.
+ */
+export function urlExecucao(missionId: string, artifactId: string): string {
+  return (
+    "/api/agent/v1/missions/" +
+    encodeURIComponent(missionId) +
+    "/artifacts/" +
+    encodeURIComponent(artifactId) +
+    "?inline=1"
   );
 }

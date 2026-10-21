@@ -4445,7 +4445,44 @@ func (a *agentAPI) artifact(c *gin.Context) {
 	defer os.Remove(path)
 	defer agent.CloseArtifactSnapshot(path)
 	c.Header("X-Artifact-SHA256", manifest.SHA256)
+	// I1a: o painel "Construcao ao vivo" precisa de EXECUTAR o artefacto gerado, nao de o
+	// descarregar. FileAttachment manda Content-Disposition: attachment, e um iframe apontado
+	// a essa URL descarrega o ficheiro em vez de o renderizar (era por isso que a UI tinha de
+	// usar um blob temporario). Com ?inline=1 servimos INLINE, com o content-type do ficheiro,
+	// mantendo o SHA256. O comportamento por omissao continua a ser download -- nenhum cliente
+	// existente muda.
+	if strings.EqualFold(c.Query("inline"), "1") {
+		c.Header("Content-Disposition", "inline")
+		c.Header("Content-Type", inlineContentType(manifest.Name))
+		// Sem cache: o preview acompanha a construcao e precisa de bytes frescos.
+		c.Header("Cache-Control", "no-store")
+		c.File(path)
+		return
+	}
 	c.FileAttachment(path, manifest.Name)
+}
+
+// inlineContentType devolve o content-type pelo sufixo do nome do artefacto.
+// O `default` e' text/html porque o alvo do preview e' uma app web gerada.
+func inlineContentType(name string) string {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".json":
+		return "application/json; charset=utf-8"
+	case ".css":
+		return "text/css; charset=utf-8"
+	case ".js", ".mjs":
+		return "text/javascript; charset=utf-8"
+	case ".svg":
+		return "image/svg+xml"
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".txt", ".md":
+		return "text/plain; charset=utf-8"
+	default:
+		return "text/html; charset=utf-8"
+	}
 }
 
 func (a *agentAPI) runMission(c *gin.Context) {
