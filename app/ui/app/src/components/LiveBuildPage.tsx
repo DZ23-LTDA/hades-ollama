@@ -1,8 +1,6 @@
 import { ArrowTopRightOnSquareIcon, BoltIcon, CodeBracketIcon, EyeIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { AppSidebar } from "@/components/AppSidebar";
-import { SidebarLayout } from "@/components/layout/layout";
 import { useT } from "@/i18n";
 import {
   agentFetchBlob,
@@ -63,7 +61,7 @@ function horaCurta(iso: string): string {
 
 const ESTADOS_TERMINAIS = ["done", "completed", "failed", "cancelled", "error"];
 
-export function LiveBuildPage() {
+export function LiveBuildPanel() {
   const { t } = useT();
   const [missoes, setMissoes] = useState<AgentMission[]>([]);
   const [missaoId, setMissaoId] = useState<string>("");
@@ -171,7 +169,7 @@ export function LiveBuildPage() {
   }, [passos.length]);
 
   return (
-    <SidebarLayout sidebar={<AppSidebar current="studio" />} title={t("liveBuild.title")}>
+    <div className="h-full min-h-0">
       <div className="flex h-full min-h-0 flex-col">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200/70 px-4 py-3 dark:border-neutral-800">
           <div className="min-w-0">
@@ -305,6 +303,6 @@ export function LiveBuildPage() {
           </section>
         </div>
       </div>
-    </SidebarLayout>
+    </div>
   );
 }

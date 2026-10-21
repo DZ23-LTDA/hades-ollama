@@ -2067,7 +2067,6 @@ export const ptBRMessages: Record<string, string> = {
   "settings.tab.endpoint": "Computadores & API",
   "settings.tab.connectors": "Conectores e Plugins",
   "settings.tab.apps": "Harnesses & Codex",
-  "appSidebar.nav.liveBuild": "Construcao ao vivo",
   "liveBuild.title": "Construcao ao vivo",
   "liveBuild.subtitle": "Os passos da missao a esquerda, a pre-visualizacao do artefacto a direita -- a acompanhar enquanto a missao corre.",
   "liveBuild.selectMission": "Missao:",

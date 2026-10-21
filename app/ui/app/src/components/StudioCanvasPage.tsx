@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { LiveBuildPanel } from "@/components/LiveBuildPage";
 import { SidebarLayout } from "@/components/layout/layout";
 import { missionStateLabel } from "@/lib/labels";
 import { generateStudioHTML } from "@/lib/studioHtml";
@@ -40,6 +41,7 @@ import {
   PuzzlePieceIcon,
   DevicePhoneMobileIcon,
   ChartBarIcon,
+  BoltIcon,
 } from "@heroicons/react/24/outline";
 // Relatório de publicação local (E-281/E-282): o que a cópia ENTREGOU de fato.
 import { PublishReportNotice } from "./PublishReportNotice";
@@ -266,7 +268,7 @@ export function StudioCanvasPage() {
   const { t } = useT();
   const [project, setProject] = useState<BuilderProject | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"canvas" | "preview">("canvas");
+  const [activeTab, setActiveTab] = useState<"canvas" | "preview" | "live">("canvas");
   const [selectedCompId, setSelectedCompId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [aiPrompt, setAiPrompt] = useState("");
@@ -797,6 +799,18 @@ export function StudioCanvasPage() {
                 <EyeIcon className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{t("studio.header.tabPreview")}</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("live")}
+                className={`flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium ${
+                  activeTab === "live"
+                    ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-white"
+                    : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+                }`}
+              >
+                <BoltIcon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t("liveBuild.title")}</span>
+              </button>
             </div>
 
             {/* Traceable Export (ZIP) */}
@@ -1003,7 +1017,9 @@ export function StudioCanvasPage() {
                 </button>
               ))}
             </div>
-            {activeTab === "canvas" ? (
+            {activeTab === "live" ? (
+          <LiveBuildPanel />
+        ) : activeTab === "canvas" ? (
               <div className="mx-auto max-w-4xl">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="text-xs font-medium text-neutral-500">

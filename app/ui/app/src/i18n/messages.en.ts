@@ -2045,7 +2045,6 @@ export const enMessages: Record<string, string> = {
   "settings.tab.endpoint": "Computers & API",
   "settings.tab.connectors": "Connectors & Plugins",
   "settings.tab.apps": "Harnesses & Codex",
-  "appSidebar.nav.liveBuild": "Live build",
   "liveBuild.title": "Live build",
   "liveBuild.subtitle": "Mission steps on the left, the artifact preview on the right -- updating while the mission runs.",
   "liveBuild.selectMission": "Mission:",
