@@ -984,4 +984,245 @@ export const ptBRMessages: Record<string, string> = {
   "onboarding.claude.statusConnecting": "Conectando…",
   "onboarding.claude.statusLaunching": "Abrindo…",
   "onboarding.claude.statusDisconnecting": "Desconectando…",
+
+  // Agent Center (AgentCenterPanel)
+  "agentCenter.title": "Agentes e Equipas",
+  "agentCenter.subtitle": "ledger determinístico · drift por hash",
+  "agentCenter.actions.list": "Listar agentes",
+  "agentCenter.actions.catalog": "Ver catálogo",
+  "agentCenter.actions.evaluation": "Ver critérios de avaliação",
+  "agentCenter.actions.teams": "Ver equipas",
+  "agentCenter.actions.runEvaluation": "Correr avaliação real",
+  "agentCenter.actions.quarantine": "Reter em quarentena",
+  "agentCenter.actions.triage": "Triar importação",
+  "agentCenter.actions.backup": "Backup e restauro",
+  "agentCenter.actions.drift": "Verificar integridade",
+  "agentCenter.actions.remove": "Remover instalacao",
+  "agentCenter.actions.update": "Actualizar (com backup)",
+  "agentCenter.actions.install": "Registar instalação",
+  "agentCenter.target.aria": "Formato de destino",
+  "agentCenter.destination.placeholder": "destino relativo",
+  "agentCenter.destination.aria": "Destino relativo",
+  "agentCenter.idle": "Nada consultado nesta sessão.",
+  "agentCenter.loading": "A consultar...",
+  "agentCenter.list.countOne": "{count} instalação registada",
+  "agentCenter.list.countMany": "{count} instalações registadas",
+  "agentCenter.catalog.version":
+    "versão {version} · {total} persona(s) · {evaluated} avaliada(s)",
+  "agentCenter.catalog.noneEvaluated":
+    "Nenhuma persona do catálogo foi avaliada. Isto não é «aprovado»: é «não medido».",
+  "agentCenter.catalog.unrated": "NÃO AVALIADO",
+  "agentCenter.evaluation.noNote": "sem nota do servidor",
+  "agentCenter.evaluation.inferenceOn": "execução ligada a um motor",
+  "agentCenter.evaluation.inferenceOff":
+    "execução contra modelo NÃO ligada neste runtime",
+  "agentCenter.evaluation.suiteLine":
+    "{division} · v{version} · {cases} caso(s) · {refusals} de recusa/injeção",
+  "agentCenter.evaluation.states":
+    "{count} estados declarados · {terminal} terminal(is)",
+  "agentCenter.teams.summary":
+    "{total} equipa(s) · {functional} funcional(is) · {missing} com ferramentas em falta · {invalid} inválida(s)",
+  "agentCenter.teams.noneProven":
+    "nenhuma equipa foi provada numa missão real",
+  "agentCenter.teams.rolesOne": "{count} papel",
+  "agentCenter.teams.rolesMany": "{count} papéis",
+  "agentCenter.teams.valid": "válida",
+  "agentCenter.teams.invalid": "INVÁLIDA ({count})",
+  "agentCenter.teams.missingTools": "falta: {tools}",
+  "agentCenter.teams.noMissingTools": "sem ferramentas em falta declaradas",
+  "agentCenter.triage.placeholder":
+    "Cole o manifesto da persona (JSON) para triagem",
+  "agentCenter.triage.status":
+    "estado: {state} · {blocks} bloqueio(s) · {warnings} aviso(s) · {install}",
+  "agentCenter.triage.installed": "INSTALADO",
+  "agentCenter.triage.notInstalled": "nada instalado",
+  "agentCenter.triage.note":
+    "a triagem lê e recusa; não escreve nem ativa nada",
+  "agentCenter.realEval.status":
+    "estado: {state} · {cases} caso(s) · {failed} falha(s) · motor: {engine}",
+  "agentCenter.realEval.note":
+    "corre a suite contra o motor local; não aprova para produção",
+  "agentCenter.realEval.passed": "passou",
+  "agentCenter.realEval.failed": "falhou",
+  "agentCenter.quarantine.countOne": "{count} persona retida",
+  "agentCenter.quarantine.countMany": "{count} personas retidas",
+  "agentCenter.quarantine.release": "libertar",
+  "agentCenter.quarantine.empty":
+    "Nenhuma persona retida. Reter uma cria a primeira entrada.",
+  "agentCenter.quarantine.reviewerPlaceholder":
+    "revisor (obrigatório para libertar)",
+  "agentCenter.quarantine.releaseNote":
+    "Libertar leva a SECURITY_REVIEWED e exige revisor. Não aprova para produção.",
+  "agentCenter.backups.countOne": "{count} backup guardado",
+  "agentCenter.backups.countMany": "{count} backups guardados",
+  "agentCenter.backups.restore": "restaurar",
+  "agentCenter.backups.restored": "Restaurado do backup",
+  "agentCenter.backups.empty":
+    "Nenhum backup ainda. Guardar um cria o primeiro.",
+  "agentCenter.backups.restoreNote":
+    "Restaurar exige escolher um id: não há «restaurar o mais recente».",
+  "agentCenter.install.created":
+    "201 criado · {id} · {bytes} bytes renderizados",
+  "agentCenter.install.existing":
+    "200 já registado · {id} · {bytes} bytes renderizados",
+  "agentCenter.install.noId": "sem id",
+  "agentCenter.update.done": "Actualizado com backup",
+  "agentCenter.update.bytes": "bytes",
+  "agentCenter.remove.line": "Removido do ledger: {id} · {state}",
+  "agentCenter.remove.fileKept": "o ficheiro no destino foi preservado",
+  "agentCenter.remove.noFile": "sem ficheiro a preservar",
+  "agentCenter.error.centerMissing":
+    "O Agent Center não está ligado neste runtime (503): não é «nenhum agente», é «sem armazenamento».",
+  "agentCenter.error.conflict":
+    "Já existe um registo com esta chave e hashes diferentes: resolva o conflito, não reinstale por cima.",
+  "agentCenter.error.generic": "Não foi possível correr.",
+  "agentCenter.footer":
+    "Registar uma instalação não escreve no destino: calcula os hashes e grava no ledger. O destino tem de ser relativo e o servidor recusa `..` — um destino que o cliente escreve é um destino que o cliente escolhe.",
+  // Settings (Settings.tsx)
+  "settings.interfaceMode.title": "Modo da interface",
+  "settings.interfaceMode.description":
+    "Simples mostra só o essencial. Avançado também mostra MCP, diagnósticos e detalhes técnicos.",
+  "settings.interfaceMode.simple": "Simples",
+  "settings.interfaceMode.advanced": "Avançado",
+  "settings.discardDrafts.message":
+    "Descartar as alterações de modelos dos apps que ainda não foram aplicadas?",
+  "settings.discardDrafts.confirm": "Descartar",
+  "settings.reset.failed":
+    "Não foi possível restaurar todas as configurações. Confira as opções acima e tente novamente.",
+  "settings.reset.restoring": "Restaurando…",
+  "settings.reset.action": "Restaurar padrões",
+  "settings.native.loading": "Consultando configuração nativa…",
+  "settings.native.unavailable": "Configuração nativa indisponível neste momento",
+  "settings.native.unavailableHint":
+    "O painel agentic acima continua disponível para diagnóstico sanitizado; inicie o servidor Ollama para editar as preferências nativas.",
+  "settings.account.upgrade": "Fazer upgrade",
+  "settings.account.manage": "Gerenciar",
+  "settings.account.disconnect": "Desconectar",
+  "settings.account.connect": "Entrar",
+  "settings.account.label": "Conta Ollama",
+  "settings.account.notConnected":
+    "Não conectada · entre para usar modelos na nuvem e busca na web",
+  "settings.account.title": "Conta & Operador ({name})",
+  "settings.account.storageLabel": "Armazenamento Local:",
+  "settings.account.storageFallback": "Workspace local ativo",
+  "settings.account.databaseLabel": "Banco de Dados:",
+  "settings.account.databaseValue": "SQLite (armazenamento local)",
+  "settings.account.modeLabel": "Modo:",
+  "settings.account.modeValue": "Local-first (sem dependência de nuvem)",
+  "settings.cloud.label": "Nuvem",
+  "settings.cloud.forcedOff":
+    "A variável de ambiente OLLAMA_NO_CLOUD está forçando a nuvem desligada.",
+  "settings.cloud.description": "Ativar modelos na nuvem e busca na web.",
+  "settings.appsMenu.label": "Mostrar apps no menu",
+  "settings.appsMenu.description":
+    "Exibir os apps conectados no topo do menu do Ollama.",
+  "settings.autoUpdate.label": "Baixar atualizações automaticamente",
+  "settings.autoUpdate.on":
+    "Baixar atualizações automaticamente quando disponíveis.",
+  "settings.autoUpdate.off": "As atualizações não serão baixadas automaticamente.",
+  "settings.expose.label": "Expor o Hades na rede",
+  "settings.expose.description":
+    "Permitir que outros dispositivos ou serviços acessem o Hades.",
+  "settings.modelsDir.label": "Local dos modelos",
+  "settings.modelsDir.description": "Local onde os modelos são armazenados.",
+  "settings.modelsDir.browse": "Procurar",
+  "settings.context.label": "Tamanho do contexto",
+  "settings.context.description":
+    "O tamanho do contexto define quanto da conversa o modelo consegue lembrar e usar para gerar as respostas. Valores maiores mantêm mais histórico, mas consomem mais memória.",
+  "settings.apps.heading": "Apps",
+  "settings.agentMode.label": "Ativar modo agente",
+  "settings.agentMode.description":
+    "Usar ferramentas em múltiplas etapas para cumprir solicitações",
+  "settings.toolsMode.label": "Ativar modo ferramentas",
+  "settings.toolsMode.description":
+    "Usar ferramentas em uma única etapa para cumprir solicitações",
+  "settings.personalization.title": "Personalização",
+  "settings.personalization.description":
+    "Instruções personalizadas e memória de longo prazo para orientar o comportamento do agente.",
+  "settings.personalization.languageLabel": "Idioma:",
+  "settings.personalization.languageBefore": "o Hades responde sempre em",
+  "settings.personalization.languageName": "português do Brasil",
+  "settings.personalization.languageAfter":
+    "por padrão (a menos que você peça outro idioma na conversa). Isso já está ativo.",
+  "settings.personalization.instructionsLabel": "Instruções personalizadas",
+  "settings.personalization.instructionsBefore":
+    "Anote preferências de estilo/resposta. Estas instruções são salvas neste computador e",
+  "settings.personalization.instructionsStrong":
+    "enviadas ao modelo em toda conversa",
+  "settings.personalization.instructionsAfter":
+    ", junto com o comportamento padrão do Hades.",
+  "settings.personalization.instructionsPlaceholder":
+    "Ex.: respostas curtas e diretas; sempre com exemplos.",
+  "settings.personalization.memoryTitle": "Memória de Longo Prazo",
+  "settings.personalization.memoryDescription":
+    "Consulta de contexto entre sessões ainda não está configurada neste ambiente.",
+  "settings.personalization.memoryUnavailable": "Indisponível",
+  "settings.saved": "Salvo",
+  "settings.operator.defaultName": "Operador local",
+  "settings.operator.defaultPlan": "Modo Local-first",
+  "settings.error.connectUrl": "Failed to get connect URL",
+  "settings.error.connectFailed": "Failed to connect to Ollama account",
+  "settings.error.disconnectFailed": "Failed to disconnect Ollama account",
+  // Company campaign scheduling (CompanyCampaignSchedulingPanel)
+  "companyCampaign.load.panelFailed": "Painel de campanhas indisponível.",
+  "companyCampaign.load.channelsFailed": "Catálogo de marketplaces indisponível.",
+  "companyCampaign.action.failed": "A operação de campanha falhou.",
+  "companyCampaign.sync.done":
+    "Sincronização executada contra o dublê de sandbox.",
+  "companyCampaign.sync.failed": "A sincronização falhou.",
+  "companyCampaign.eyebrow": "Campanhas e marketplaces",
+  "companyCampaign.title":
+    "Agendamento, métricas medidas e sincronização em sandbox",
+  "companyCampaign.intro.before":
+    "Agendar exige campanha aprovada e início no futuro; métrica exige campanha que já executou e apenas soma. A sincronização de marketplace envia",
+  "companyCampaign.intro.items": "os itens que você montar",
+  "companyCampaign.intro.after": "contra um dublê local:",
+  "companyCampaign.intro.never": "nada é publicado em plataforma externa",
+  "companyCampaign.refresh": "Atualizar painel",
+  "companyCampaign.external.label": "Publicação externa:",
+  "companyCampaign.schedule.heading": "Agendar e medir campanha",
+  "companyCampaign.fields.hours": "Início em horas",
+  "companyCampaign.fields.impressions": "Impressões medidas",
+  "companyCampaign.fields.clicks": "Cliques medidos",
+  "companyCampaign.campaigns.empty":
+    "Nenhuma campanha ainda: crie uma no painel Growth OS acima.",
+  "companyCampaign.scheduledFor": "Agendada para {date}",
+  "companyCampaign.measured":
+    "Medido: {impressions} impressões · {clicks} cliques · {conversions} conversões",
+  "companyCampaign.action.schedule": "Agendar",
+  "companyCampaign.action.metrics": "Registrar métricas",
+  "companyCampaign.success.scheduled": "Campanha agendada no sandbox.",
+  "companyCampaign.success.metrics":
+    "Métricas medidas registradas (somam ao total).",
+  "companyCampaign.total":
+    "Total medido: {impressions} impressões · {clicks} cliques · CTR {ctr} · conversão {conversion} · gasto {spend}",
+  "companyCampaign.ingestions.prefix":
+    "Entregas aceitas (idempotência): {count} — reentrega com a mesma chave",
+  "companyCampaign.ingestions.noSum": "não soma",
+  "companyCampaign.manual.prefix":
+    "Nenhuma entrega automática registrada: os números acima vêm de",
+  "companyCampaign.manual.badge": "registro manual",
+  "companyCampaign.marketplaces.heading": "Marketplaces",
+  "companyCampaign.marketplaces.descriptionBefore":
+    "O catálogo informa o estado",
+  "companyCampaign.marketplaces.descriptionStrong": "real",
+  "companyCampaign.marketplaces.descriptionAfter":
+    "do canal. Sem credencial configurada, o canal não está pronto — e o painel diz isso em vez de exibir um selo verde.",
+  "companyCampaign.channels.empty": "Nenhum canal no catálogo.",
+  "companyCampaign.liveTested": "Testado ao vivo: {value}",
+  "companyCampaign.yes": "sim",
+  "companyCampaign.no": "não",
+  "companyCampaign.items.heading": "Itens a sincronizar",
+  "companyCampaign.items.noProducts":
+    "Nenhum produto no catálogo: cadastre um produto no Growth OS para montar o item.",
+  "companyCampaign.items.stock": "Estoque",
+  "companyCampaign.items.add": "Adicionar item",
+  "companyCampaign.items.line":
+    "{entity} · {sku} · versão {version} · estoque {quantity}",
+  "companyCampaign.items.syncOne": "Sincronizar {count} item (sandbox)",
+  "companyCampaign.items.syncMany": "Sincronizar {count} itens (sandbox)",
+  "companyCampaign.items.needOne":
+    "Adicione ao menos um item: sincronizar sem item é recusado pelo servidor.",
+  "companyCampaign.sync.summary":
+    "{applied} aplicados · {skipped} ignorados · {conflicts} conflitos · {used}/{limit} operações · {homologation}",
 };

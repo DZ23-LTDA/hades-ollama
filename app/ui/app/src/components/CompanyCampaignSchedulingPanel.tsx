@@ -13,6 +13,7 @@ import type {
   MarketplaceSyncItem,
   MarketplaceSyncReport,
 } from "@/lib/agenticClient";
+import { useT } from "@/i18n";
 
 const field = "h-10 w-full rounded-xl border border-neutral-300 bg-transparent px-3 text-sm outline-none focus:border-neutral-500 dark:border-neutral-700 dark:text-neutral-100";
 const button = "rounded-xl bg-neutral-950 px-3 py-2 text-xs font-medium text-white disabled:opacity-40 dark:bg-white dark:text-neutral-950";
@@ -37,6 +38,7 @@ export function CompanyCampaignSchedulingPanel({
   company: AgentCompany;
   onCompanyChange: (company: AgentCompany) => void;
 }) {
+  const { t } = useT();
   const [report, setReport] = useState<CompanyCampaignReport | null>(null);
   const [channels, setChannels] = useState<MarketplaceChannel[]>([]);
   const [syncReport, setSyncReport] = useState<MarketplaceSyncReport | null>(null);
@@ -54,15 +56,23 @@ export function CompanyCampaignSchedulingPanel({
     try {
       setReport(await getCompanyCampaignReport(company.id));
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Painel de campanhas indisponível.");
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : t("companyCampaign.load.panelFailed"),
+      );
     }
     try {
       const catalog = await getMarketplaceChannels(company.id);
       setChannels(catalog.channels ?? []);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Catálogo de marketplaces indisponível.");
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : t("companyCampaign.load.channelsFailed"),
+      );
     }
-  }, [company.id]);
+  }, [company.id, t]);
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -76,7 +86,11 @@ export function CompanyCampaignSchedulingPanel({
       await refresh();
     } catch (error) {
       // Falha aparece como falha: nada é marcado como concluído sem confirmação do servidor.
-      setNotice(error instanceof Error ? error.message : "A operação de campanha falhou.");
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : t("companyCampaign.action.failed"),
+      );
     } finally {
       setBusy(false);
     }
@@ -114,9 +128,11 @@ export function CompanyCampaignSchedulingPanel({
       // decisão humana e escondê-los daria a impressão de sincronização completa.
       const applied = new Set(result.outcomes?.filter((outcome) => outcome.result === "aplicado").map((outcome) => `${outcome.sku}#${outcome.version}`));
       setItems((current) => current.filter((item) => !applied.has(`${item.sku}#${item.version}`)));
-      setNotice("Sincronização executada contra o dublê de sandbox.");
+      setNotice(t("companyCampaign.sync.done"));
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "A sincronização falhou.");
+      setNotice(
+        error instanceof Error ? error.message : t("companyCampaign.sync.failed"),
+      );
     } finally {
       setBusy(false);
     }
@@ -126,21 +142,22 @@ export function CompanyCampaignSchedulingPanel({
     <section className="mt-5 rounded-2xl border border-amber-200/80 bg-amber-50/40 p-5 dark:border-amber-900/60 dark:bg-amber-950/10">
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <div className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">Campanhas e marketplaces</div>
-          <h2 className="mt-1 text-lg font-semibold text-neutral-950 dark:text-white">Agendamento, métricas medidas e sincronização em sandbox</h2>
+          <div className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">{t("companyCampaign.eyebrow")}</div>
+          <h2 className="mt-1 text-lg font-semibold text-neutral-950 dark:text-white">{t("companyCampaign.title")}</h2>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-neutral-600 dark:text-neutral-400">
-            Agendar exige campanha aprovada e início no futuro; métrica exige campanha que já executou e apenas soma. A
-            sincronização de marketplace envia <strong>os itens que você montar</strong> contra um dublê local:{" "}
-            <strong>nada é publicado em plataforma externa</strong>.
+            {t("companyCampaign.intro.before")}{" "}
+            <strong>{t("companyCampaign.intro.items")}</strong>{" "}
+            {t("companyCampaign.intro.after")}{" "}
+            <strong>{t("companyCampaign.intro.never")}</strong>.
           </p>
         </div>
         <button type="button" className="rounded-xl border border-amber-300 px-3 py-2 text-xs dark:border-amber-800" onClick={() => void refresh()}>
-          Atualizar painel
+          {t("companyCampaign.refresh")}
         </button>
       </div>
 
       <div role="status" aria-live="polite" className="mt-3 rounded-xl border border-amber-300 bg-white px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-neutral-900 dark:text-amber-200">
-        Publicação externa: <strong>{declaredExternal}</strong>
+        {t("companyCampaign.external.label")} <strong>{declaredExternal}</strong>
         {declaredReason ? ` — ${declaredReason}` : ""}
       </div>
       {notice && (
@@ -151,32 +168,36 @@ export function CompanyCampaignSchedulingPanel({
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-          <h3 className="text-sm font-semibold">Agendar e medir campanha</h3>
+          <h3 className="text-sm font-semibold">{t("companyCampaign.schedule.heading")}</h3>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             <label className="text-xs text-neutral-500" htmlFor="campaign-hours">
-              Início em horas
+              {t("companyCampaign.fields.hours")}
               <input id="campaign-hours" className={field} type="number" min="1" value={hours} onChange={(event) => setHours(event.target.value)} />
             </label>
             <label className="text-xs text-neutral-500" htmlFor="campaign-impressions">
-              Impressões medidas
+              {t("companyCampaign.fields.impressions")}
               <input id="campaign-impressions" className={field} type="number" min="0" value={impressions} onChange={(event) => setImpressions(event.target.value)} />
             </label>
             <label className="text-xs text-neutral-500" htmlFor="campaign-clicks">
-              Cliques medidos
+              {t("companyCampaign.fields.clicks")}
               <input id="campaign-clicks" className={field} type="number" min="0" value={clicks} onChange={(event) => setClicks(event.target.value)} />
             </label>
           </div>
           <div className="mt-3 space-y-2">
-            {campaigns.length === 0 && <p className="text-xs text-neutral-500">Nenhuma campanha ainda: crie uma no painel Growth OS acima.</p>}
+            {campaigns.length === 0 && <p className="text-xs text-neutral-500">{t("companyCampaign.campaigns.empty")}</p>}
             {campaigns.map((campaign) => (
               <div key={campaign.id} className="rounded-lg border border-neutral-200 p-3 text-xs dark:border-neutral-800">
                 <div className="flex flex-wrap justify-between gap-2">
                   <span className="font-medium">{campaign.name}</span>
                   <span>{campaign.status}</span>
                 </div>
-                {campaign.scheduled_at && <div className="mt-1 text-neutral-500">Agendada para {new Date(campaign.scheduled_at).toLocaleString()}</div>}
+                {campaign.scheduled_at && <div className="mt-1 text-neutral-500">{t("companyCampaign.scheduledFor", { date: new Date(campaign.scheduled_at).toLocaleString() })}</div>}
                 <div className="mt-1 text-neutral-500">
-                  Medido: {campaign.impressions ?? 0} impressões · {campaign.clicks ?? 0} cliques · {campaign.conversions ?? 0} conversões
+                  {t("companyCampaign.measured", {
+                    impressions: campaign.impressions ?? 0,
+                    clicks: campaign.clicks ?? 0,
+                    conversions: campaign.conversions ?? 0,
+                  })}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {/* Só aparece quando o servidor aceitaria: aprovada e ainda não agendada. */}
@@ -185,9 +206,9 @@ export function CompanyCampaignSchedulingPanel({
                       type="button"
                       className="rounded-lg border px-2 py-1"
                       disabled={busy}
-                      onClick={() => void run(() => scheduleCompanyCampaign(company.id, campaign.id, Number(hours)), "Campanha agendada no sandbox.")}
+                      onClick={() => void run(() => scheduleCompanyCampaign(company.id, campaign.id, Number(hours)), t("companyCampaign.success.scheduled"))}
                     >
-                      Agendar
+                      {t("companyCampaign.action.schedule")}
                     </button>
                   )}
                   {/* Só aparece quando existe execução: medir rascunho seria inventar resultado. */}
@@ -204,9 +225,9 @@ export function CompanyCampaignSchedulingPanel({
                           spend_cents: 0,
                         });
                         return company;
-                      }, "Métricas medidas registradas (somam ao total).")}
+                      }, t("companyCampaign.success.metrics"))}
                     >
-                      Registrar métricas
+                      {t("companyCampaign.action.metrics")}
                     </button>
                   )}
                 </div>
@@ -215,8 +236,13 @@ export function CompanyCampaignSchedulingPanel({
           </div>
           {report && (
             <div className="mt-3 rounded-lg border border-neutral-200 p-3 text-xs dark:border-neutral-800">
-              Total medido: {report.total.impressions} impressões · {report.total.clicks} cliques · CTR {report.total.click_rate} ·
-              conversão {report.total.conversion_rate} · gasto {(report.total.spend_cents / 100).toFixed(2)}
+              {t("companyCampaign.total", {
+                impressions: report.total.impressions,
+                clicks: report.total.clicks,
+                ctr: report.total.click_rate,
+                conversion: report.total.conversion_rate,
+                spend: (report.total.spend_cents / 100).toFixed(2),
+              })}
               {/*
                 VISIBILIDADE DA INGESTAO (E-268): sem esta linha o operador nao distingue "o provedor nao mandou"
                 de "recebemos e IGNORAMOS por duplicidade" - e a segunda e' justamente a prova de que o total e'
@@ -224,7 +250,10 @@ export function CompanyCampaignSchedulingPanel({
               */}
               {report.ingestoes && report.ingestoes.length > 0 ? (
                 <div className="mt-2 text-neutral-500">
-                  Entregas aceitas (idempotência): {report.ingestoes.length} — reentrega com a mesma chave <strong>não soma</strong>.
+                  {t("companyCampaign.ingestions.prefix", {
+                    count: report.ingestoes.length,
+                  })}{" "}
+                  <strong>{t("companyCampaign.ingestions.noSum")}</strong>.
                   <ul className="mt-1 list-disc pl-4">
                     {report.ingestoes.map((entrega) => (
                       <li key={entrega}>{entrega.replace("|", " · ")}</li>
@@ -233,7 +262,8 @@ export function CompanyCampaignSchedulingPanel({
                 </div>
               ) : (
                 <div className="mt-2 text-neutral-500">
-                  Nenhuma entrega automática registrada: os números acima vêm de <strong>registro manual</strong>.
+                  {t("companyCampaign.manual.prefix")}{" "}
+                  <strong>{t("companyCampaign.manual.badge")}</strong>.
                 </div>
               )}
             </div>
@@ -241,29 +271,30 @@ export function CompanyCampaignSchedulingPanel({
         </div>
 
         <div className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-          <h3 className="text-sm font-semibold">Marketplaces</h3>
+          <h3 className="text-sm font-semibold">{t("companyCampaign.marketplaces.heading")}</h3>
           <p className="mt-1 text-xs text-neutral-500">
-            O catálogo informa o estado <strong>real</strong> do canal. Sem credencial configurada, o canal não está pronto — e o
-            painel diz isso em vez de exibir um selo verde.
+            {t("companyCampaign.marketplaces.descriptionBefore")}{" "}
+            <strong>{t("companyCampaign.marketplaces.descriptionStrong")}</strong>{" "}
+            {t("companyCampaign.marketplaces.descriptionAfter")}
           </p>
           <div className="mt-3 space-y-2">
-            {channels.length === 0 && <p className="text-xs text-neutral-500">Nenhum canal no catálogo.</p>}
+            {channels.length === 0 && <p className="text-xs text-neutral-500">{t("companyCampaign.channels.empty")}</p>}
             {channels.map((channel) => (
               <div key={channel.id} className="rounded-lg border border-neutral-200 p-3 text-xs dark:border-neutral-800">
                 <div className="flex flex-wrap justify-between gap-2">
                   <span className="font-medium">{channel.name}</span>
                   <span>{channel.state}</span>
                 </div>
-                <div className="mt-1 text-neutral-500">Testado ao vivo: {channel.live_tested ? "sim" : "não"}</div>
+                <div className="mt-1 text-neutral-500">{t("companyCampaign.liveTested", { value: channel.live_tested ? t("companyCampaign.yes") : t("companyCampaign.no") })}</div>
                 {channel.unblock_procedure && <div className="mt-1 text-neutral-500">{channel.unblock_procedure}</div>}
               </div>
             ))}
           </div>
 
           <div className="mt-3 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800">
-            <div className="text-xs font-medium text-neutral-700 dark:text-neutral-300">Itens a sincronizar</div>
+            <div className="text-xs font-medium text-neutral-700 dark:text-neutral-300">{t("companyCampaign.items.heading")}</div>
             {products.length === 0 ? (
-              <p className="mt-2 text-xs text-neutral-500">Nenhum produto no catálogo: cadastre um produto no Growth OS para montar o item.</p>
+              <p className="mt-2 text-xs text-neutral-500">{t("companyCampaign.items.noProducts")}</p>
             ) : (
               <div className="mt-2 grid gap-2 sm:grid-cols-[2fr_1fr_auto]">
                 <label className="text-xs text-neutral-500" htmlFor="sync-sku">
@@ -277,11 +308,11 @@ export function CompanyCampaignSchedulingPanel({
                   </select>
                 </label>
                 <label className="text-xs text-neutral-500" htmlFor="sync-quantity">
-                  Estoque
+                  {t("companyCampaign.items.stock")}
                   <input id="sync-quantity" className={field} type="number" min="0" value={pendingQuantity} onChange={(event) => setPendingQuantity(event.target.value)} />
                 </label>
                 <button type="button" className={`${button} self-end`} disabled={busy} onClick={addItem}>
-                  Adicionar item
+                  {t("companyCampaign.items.add")}
                 </button>
               </div>
             )}
@@ -289,7 +320,12 @@ export function CompanyCampaignSchedulingPanel({
               <ul className="mt-2 space-y-1 text-xs text-neutral-600 dark:text-neutral-400">
                 {items.map((item) => (
                   <li key={`${item.sku}#${item.version}`}>
-                    {item.entity} · {item.sku} · versão {item.version} · estoque {item.quantity}
+                    {t("companyCampaign.items.line", {
+                      entity: item.entity,
+                      sku: item.sku,
+                      version: item.version,
+                      quantity: item.quantity ?? "",
+                    })}
                   </li>
                 ))}
               </ul>
@@ -304,16 +340,27 @@ export function CompanyCampaignSchedulingPanel({
             disabled={busy || channels.length === 0 || items.length === 0}
             onClick={() => void syncCatalog()}
           >
-            Sincronizar {items.length} item(ns) (sandbox)
+            {t(
+              items.length === 1
+                ? "companyCampaign.items.syncOne"
+                : "companyCampaign.items.syncMany",
+              { count: items.length },
+            )}
           </button>
           {items.length === 0 && channels.length > 0 && (
-            <p className="mt-2 text-xs text-neutral-500">Adicione ao menos um item: sincronizar sem item é recusado pelo servidor.</p>
+            <p className="mt-2 text-xs text-neutral-500">{t("companyCampaign.items.needOne")}</p>
           )}
           {syncReport && (
             <div className="mt-3 rounded-lg border border-neutral-200 p-3 text-xs dark:border-neutral-800">
               <div>
-                {syncReport.applied} aplicados · {syncReport.skipped} ignorados · {syncReport.conflicts} conflitos ·{" "}
-                {syncReport.operations_used}/{syncReport.operation_limit} operações · {syncReport.homologacao_live}
+                {t("companyCampaign.sync.summary", {
+                  applied: syncReport.applied,
+                  skipped: syncReport.skipped,
+                  conflicts: syncReport.conflicts,
+                  used: syncReport.operations_used,
+                  limit: syncReport.operation_limit,
+                  homologation: syncReport.homologacao_live ?? "",
+                })}
               </div>
               {/* Conflito e ignorado ficam VISÍVEIS: esconder daria a impressão de sincronização completa. */}
               {syncReport.outcomes

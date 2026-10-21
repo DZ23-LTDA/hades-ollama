@@ -968,4 +968,244 @@ export const enMessages: Record<string, string> = {
   "onboarding.claude.statusConnecting": "Connecting…",
   "onboarding.claude.statusLaunching": "Opening…",
   "onboarding.claude.statusDisconnecting": "Disconnecting…",
+
+  // Agent Center (AgentCenterPanel)
+  "agentCenter.title": "Agents and Teams",
+  "agentCenter.subtitle": "deterministic ledger · drift by hash",
+  "agentCenter.actions.list": "List agents",
+  "agentCenter.actions.catalog": "View catalog",
+  "agentCenter.actions.evaluation": "View evaluation criteria",
+  "agentCenter.actions.teams": "View teams",
+  "agentCenter.actions.runEvaluation": "Run real evaluation",
+  "agentCenter.actions.quarantine": "Hold in quarantine",
+  "agentCenter.actions.triage": "Triage import",
+  "agentCenter.actions.backup": "Backup and restore",
+  "agentCenter.actions.drift": "Check integrity",
+  "agentCenter.actions.remove": "Remove installation",
+  "agentCenter.actions.update": "Update (with backup)",
+  "agentCenter.actions.install": "Record installation",
+  "agentCenter.target.aria": "Destination format",
+  "agentCenter.destination.placeholder": "relative destination",
+  "agentCenter.destination.aria": "Relative destination",
+  "agentCenter.idle": "Nothing queried in this session.",
+  "agentCenter.loading": "Querying...",
+  "agentCenter.list.countOne": "{count} installation recorded",
+  "agentCenter.list.countMany": "{count} installations recorded",
+  "agentCenter.catalog.version":
+    "version {version} · {total} persona(s) · {evaluated} evaluated",
+  "agentCenter.catalog.noneEvaluated":
+    "No catalog persona has been evaluated. This is not «approved»: it is «not measured».",
+  "agentCenter.catalog.unrated": "NOT EVALUATED",
+  "agentCenter.evaluation.noNote": "no note from the server",
+  "agentCenter.evaluation.inferenceOn": "execution bound to an engine",
+  "agentCenter.evaluation.inferenceOff":
+    "execution against a model NOT bound in this runtime",
+  "agentCenter.evaluation.suiteLine":
+    "{division} · v{version} · {cases} case(s) · {refusals} for refusal/injection",
+  "agentCenter.evaluation.states":
+    "{count} declared states · {terminal} terminal(s)",
+  "agentCenter.teams.summary":
+    "{total} team(s) · {functional} functional · {missing} with missing tools · {invalid} invalid",
+  "agentCenter.teams.noneProven":
+    "no team has been proven in a real mission",
+  "agentCenter.teams.rolesOne": "{count} role",
+  "agentCenter.teams.rolesMany": "{count} roles",
+  "agentCenter.teams.valid": "valid",
+  "agentCenter.teams.invalid": "INVALID ({count})",
+  "agentCenter.teams.missingTools": "missing: {tools}",
+  "agentCenter.teams.noMissingTools": "no missing tools declared",
+  "agentCenter.triage.placeholder":
+    "Paste the persona manifest (JSON) to triage",
+  "agentCenter.triage.status":
+    "state: {state} · {blocks} blocker(s) · {warnings} warning(s) · {install}",
+  "agentCenter.triage.installed": "INSTALLED",
+  "agentCenter.triage.notInstalled": "nothing installed",
+  "agentCenter.triage.note":
+    "triage reads and refuses; it writes nothing and activates nothing",
+  "agentCenter.realEval.status":
+    "state: {state} · {cases} case(s) · {failed} failure(s) · engine: {engine}",
+  "agentCenter.realEval.note":
+    "runs the suite against the local engine; it does not approve for production",
+  "agentCenter.realEval.passed": "passed",
+  "agentCenter.realEval.failed": "failed",
+  "agentCenter.quarantine.countOne": "{count} persona held",
+  "agentCenter.quarantine.countMany": "{count} personas held",
+  "agentCenter.quarantine.release": "release",
+  "agentCenter.quarantine.empty":
+    "No persona held. Holding one creates the first entry.",
+  "agentCenter.quarantine.reviewerPlaceholder":
+    "reviewer (required to release)",
+  "agentCenter.quarantine.releaseNote":
+    "Releasing moves to SECURITY_REVIEWED and requires a reviewer. It does not approve for production.",
+  "agentCenter.backups.countOne": "{count} backup stored",
+  "agentCenter.backups.countMany": "{count} backups stored",
+  "agentCenter.backups.restore": "restore",
+  "agentCenter.backups.restored": "Restored from backup",
+  "agentCenter.backups.empty":
+    "No backup yet. Storing one creates the first.",
+  "agentCenter.backups.restoreNote":
+    "Restoring requires choosing an id: there is no «restore the latest».",
+  "agentCenter.install.created":
+    "201 created · {id} · {bytes} bytes rendered",
+  "agentCenter.install.existing":
+    "200 already recorded · {id} · {bytes} bytes rendered",
+  "agentCenter.install.noId": "no id",
+  "agentCenter.update.done": "Updated with backup",
+  "agentCenter.update.bytes": "bytes",
+  "agentCenter.remove.line": "Removed from the ledger: {id} · {state}",
+  "agentCenter.remove.fileKept": "the file at the destination was preserved",
+  "agentCenter.remove.noFile": "no file to preserve",
+  "agentCenter.error.centerMissing":
+    "The Agent Center is not connected in this runtime (503): this is not «no agents», it is «no storage».",
+  "agentCenter.error.conflict":
+    "A record with this key and different hashes already exists: resolve the conflict, do not reinstall over it.",
+  "agentCenter.error.generic": "Could not run.",
+  "agentCenter.footer":
+    "Recording an installation does not write to the destination: it computes the hashes and saves them to the ledger. The destination must be relative and the server refuses `..` — a destination the client writes is a destination the client chooses.",
+  // Settings (Settings.tsx)
+  "settings.interfaceMode.title": "Interface mode",
+  "settings.interfaceMode.description":
+    "Simple shows only the essentials. Advanced also shows MCP, diagnostics and technical details.",
+  "settings.interfaceMode.simple": "Simple",
+  "settings.interfaceMode.advanced": "Advanced",
+  "settings.discardDrafts.message":
+    "Discard the model changes for apps that have not been applied yet?",
+  "settings.discardDrafts.confirm": "Discard",
+  "settings.reset.failed":
+    "Could not restore all settings. Check the options above and try again.",
+  "settings.reset.restoring": "Restoring…",
+  "settings.reset.action": "Restore defaults",
+  "settings.native.loading": "Querying native configuration…",
+  "settings.native.unavailable": "Native configuration unavailable right now",
+  "settings.native.unavailableHint":
+    "The agentic panel above remains available for sanitized diagnostics; start the Ollama server to edit the native preferences.",
+  "settings.account.upgrade": "Upgrade",
+  "settings.account.manage": "Manage",
+  "settings.account.disconnect": "Disconnect",
+  "settings.account.connect": "Sign in",
+  "settings.account.label": "Ollama account",
+  "settings.account.notConnected":
+    "Not connected · sign in to use cloud models and web search",
+  "settings.account.title": "Account & Operator ({name})",
+  "settings.account.storageLabel": "Local storage:",
+  "settings.account.storageFallback": "Local workspace active",
+  "settings.account.databaseLabel": "Database:",
+  "settings.account.databaseValue": "SQLite (local storage)",
+  "settings.account.modeLabel": "Mode:",
+  "settings.account.modeValue": "Local-first (no cloud dependency)",
+  "settings.cloud.label": "Cloud",
+  "settings.cloud.forcedOff":
+    "The OLLAMA_NO_CLOUD environment variable is forcing the cloud off.",
+  "settings.cloud.description": "Enable cloud models and web search.",
+  "settings.appsMenu.label": "Show apps in the menu",
+  "settings.appsMenu.description":
+    "Show connected apps at the top of the Ollama menu.",
+  "settings.autoUpdate.label": "Download updates automatically",
+  "settings.autoUpdate.on": "Download updates automatically when available.",
+  "settings.autoUpdate.off": "Updates will not be downloaded automatically.",
+  "settings.expose.label": "Expose Hades on the network",
+  "settings.expose.description":
+    "Allow other devices or services to access Hades.",
+  "settings.modelsDir.label": "Models location",
+  "settings.modelsDir.description": "Where the models are stored.",
+  "settings.modelsDir.browse": "Browse",
+  "settings.context.label": "Context size",
+  "settings.context.description":
+    "The context size defines how much of the conversation the model can remember and use to generate answers. Larger values keep more history but consume more memory.",
+  "settings.apps.heading": "Apps",
+  "settings.agentMode.label": "Enable agent mode",
+  "settings.agentMode.description":
+    "Use tools in multiple steps to fulfil requests",
+  "settings.toolsMode.label": "Enable tools mode",
+  "settings.toolsMode.description":
+    "Use tools in a single step to fulfil requests",
+  "settings.personalization.title": "Personalisation",
+  "settings.personalization.description":
+    "Custom instructions and long-term memory to guide the agent's behaviour.",
+  "settings.personalization.languageLabel": "Language:",
+  "settings.personalization.languageBefore": "Hades always answers in",
+  "settings.personalization.languageName": "Brazilian Portuguese",
+  "settings.personalization.languageAfter":
+    "by default (unless you ask for another language in the conversation). This is already active.",
+  "settings.personalization.instructionsLabel": "Custom instructions",
+  "settings.personalization.instructionsBefore":
+    "Write down style/response preferences. These instructions are saved on this computer and",
+  "settings.personalization.instructionsStrong":
+    "sent to the model in every conversation",
+  "settings.personalization.instructionsAfter":
+    ", together with Hades' default behaviour.",
+  "settings.personalization.instructionsPlaceholder":
+    "E.g. short, direct answers; always with examples.",
+  "settings.personalization.memoryTitle": "Long-Term Memory",
+  "settings.personalization.memoryDescription":
+    "Cross-session context lookup is not configured in this environment yet.",
+  "settings.personalization.memoryUnavailable": "Unavailable",
+  "settings.saved": "Saved",
+  "settings.operator.defaultName": "Local operator",
+  "settings.operator.defaultPlan": "Local-first mode",
+  "settings.error.connectUrl": "Failed to get connect URL",
+  "settings.error.connectFailed": "Failed to connect to Ollama account",
+  "settings.error.disconnectFailed": "Failed to disconnect Ollama account",
+  // Company campaign scheduling (CompanyCampaignSchedulingPanel)
+  "companyCampaign.load.panelFailed": "Campaign panel unavailable.",
+  "companyCampaign.load.channelsFailed": "Marketplace catalog unavailable.",
+  "companyCampaign.action.failed": "The campaign operation failed.",
+  "companyCampaign.sync.done":
+    "Synchronisation ran against the sandbox double.",
+  "companyCampaign.sync.failed": "Synchronisation failed.",
+  "companyCampaign.eyebrow": "Campaigns and marketplaces",
+  "companyCampaign.title":
+    "Scheduling, measured metrics and sandbox synchronisation",
+  "companyCampaign.intro.before":
+    "Scheduling requires an approved campaign and a start time in the future; metrics require a campaign that has already run and only add up. Marketplace synchronisation sends",
+  "companyCampaign.intro.items": "the items you build",
+  "companyCampaign.intro.after": "against a local double:",
+  "companyCampaign.intro.never": "nothing is published to an external platform",
+  "companyCampaign.refresh": "Refresh panel",
+  "companyCampaign.external.label": "External publication:",
+  "companyCampaign.schedule.heading": "Schedule and measure a campaign",
+  "companyCampaign.fields.hours": "Starts in hours",
+  "companyCampaign.fields.impressions": "Measured impressions",
+  "companyCampaign.fields.clicks": "Measured clicks",
+  "companyCampaign.campaigns.empty":
+    "No campaign yet: create one in the Growth OS panel above.",
+  "companyCampaign.scheduledFor": "Scheduled for {date}",
+  "companyCampaign.measured":
+    "Measured: {impressions} impressions · {clicks} clicks · {conversions} conversions",
+  "companyCampaign.action.schedule": "Schedule",
+  "companyCampaign.action.metrics": "Record metrics",
+  "companyCampaign.success.scheduled": "Campaign scheduled in the sandbox.",
+  "companyCampaign.success.metrics":
+    "Measured metrics recorded (added to the total).",
+  "companyCampaign.total":
+    "Total measured: {impressions} impressions · {clicks} clicks · CTR {ctr} · conversion {conversion} · spend {spend}",
+  "companyCampaign.ingestions.prefix":
+    "Accepted deliveries (idempotency): {count} — redelivery with the same key",
+  "companyCampaign.ingestions.noSum": "does not add up",
+  "companyCampaign.manual.prefix":
+    "No automatic delivery recorded: the numbers above come from",
+  "companyCampaign.manual.badge": "manual entry",
+  "companyCampaign.marketplaces.heading": "Marketplaces",
+  "companyCampaign.marketplaces.descriptionBefore":
+    "The catalog reports the channel's",
+  "companyCampaign.marketplaces.descriptionStrong": "real",
+  "companyCampaign.marketplaces.descriptionAfter":
+    "state. Without a configured credential the channel is not ready — and the panel says so instead of showing a green badge.",
+  "companyCampaign.channels.empty": "No channel in the catalog.",
+  "companyCampaign.liveTested": "Live tested: {value}",
+  "companyCampaign.yes": "yes",
+  "companyCampaign.no": "no",
+  "companyCampaign.items.heading": "Items to synchronise",
+  "companyCampaign.items.noProducts":
+    "No product in the catalog: register a product in Growth OS to build the item.",
+  "companyCampaign.items.stock": "Stock",
+  "companyCampaign.items.add": "Add item",
+  "companyCampaign.items.line":
+    "{entity} · {sku} · version {version} · stock {quantity}",
+  "companyCampaign.items.syncOne": "Synchronise {count} item (sandbox)",
+  "companyCampaign.items.syncMany": "Synchronise {count} items (sandbox)",
+  "companyCampaign.items.needOne":
+    "Add at least one item: synchronising without an item is refused by the server.",
+  "companyCampaign.sync.summary":
+    "{applied} applied · {skipped} skipped · {conflicts} conflicts · {used}/{limit} operations · {homologation}",
 };

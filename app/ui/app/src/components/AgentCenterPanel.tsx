@@ -47,6 +47,7 @@ import {
   type RelatorioDeDrift,
   type ResultadoDeInstalacao,
 } from "@/lib/agentCenterClient";
+import { useT } from "@/i18n";
 
 type Estado =
   | "pronto"
@@ -79,6 +80,7 @@ const PERSONA_MINIMA = {
 };
 
 export function AgentCenterPanel() {
+  const { t } = useT();
   const [estado, setEstado] = useState<Estado>("pronto");
   const [erro, setErro] = useState<string | null>(null);
   const [actualizacao, setActualizacao] = useState<{ backup_id?: string; bytes?: number; note?: string } | null>(null);
@@ -174,12 +176,12 @@ export function AgentCenterPanel() {
         }
       } catch (causa) {
         if (causa instanceof CentroAusenteError) {
-          setErro("O Agent Center não está ligado neste runtime (503): não é «nenhum agente», é «sem armazenamento».");
+          setErro(t("agentCenter.error.centerMissing"));
           setEstado("ausente");
           return;
         }
         if (causa instanceof ConflitoDeInstalacaoError) {
-          setErro("Já existe um registo com esta chave e hashes diferentes: resolva o conflito, não reinstale por cima.");
+          setErro(t("agentCenter.error.conflict"));
           setEstado("conflito");
           return;
         }
@@ -188,11 +190,11 @@ export function AgentCenterPanel() {
           setEstado("recusado");
           return;
         }
-        setErro(causa instanceof Error ? causa.message : "Não foi possível correr.");
+        setErro(causa instanceof Error ? causa.message : t("agentCenter.error.generic"));
         setEstado("erro");
       }
     },
-    [alvo, destino],
+    [alvo, destino, t],
   );
 
   const itens: ItemDeDrift[] = relatorio?.items ?? [];
@@ -206,9 +208,9 @@ export function AgentCenterPanel() {
     >
       <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 id="agent-center-titulo" className="text-sm font-semibold text-neutral-100">
-          Agentes e Equipas
+          {t("agentCenter.title")}
         </h3>
-        <span className="text-[11px] text-neutral-500">ledger determinístico · drift por hash</span>
+        <span className="text-[11px] text-neutral-500">{t("agentCenter.subtitle")}</span>
       </header>
 
       {/* A nota do catalogo vem do SERVIDOR, nao do painel. */}
@@ -223,7 +225,7 @@ export function AgentCenterPanel() {
           onClick={() => void correr("list")}
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
-          Listar agentes
+          {t("agentCenter.actions.list")}
         </button>
         <button
           type="button"
@@ -231,7 +233,7 @@ export function AgentCenterPanel() {
           onClick={() => void correr("catalog")}
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
-          Ver catálogo
+          {t("agentCenter.actions.catalog")}
         </button>
         <button
           type="button"
@@ -239,7 +241,7 @@ export function AgentCenterPanel() {
           onClick={() => void correr("evaluation")}
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
-          Ver critérios de avaliação
+          {t("agentCenter.actions.evaluation")}
         </button>
         <button
           type="button"
@@ -247,7 +249,7 @@ export function AgentCenterPanel() {
           onClick={() => void correr("teams")}
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
-          Ver equipas
+          {t("agentCenter.actions.teams")}
         </button>
         <button
           type="button"
@@ -255,7 +257,7 @@ export function AgentCenterPanel() {
           onClick={() => void correr("aval-real")}
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
-          Correr avaliação real
+          {t("agentCenter.actions.runEvaluation")}
         </button>
         <button
           type="button"
@@ -263,7 +265,7 @@ export function AgentCenterPanel() {
           onClick={() => void correr("quarentena")}
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
-          Reter em quarentena
+          {t("agentCenter.actions.quarantine")}
         </button>
         <button
           type="button"
@@ -271,7 +273,7 @@ export function AgentCenterPanel() {
           onClick={() => void correr("triagem")}
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
-          Triar importação
+          {t("agentCenter.actions.triage")}
         </button>
         <button
           type="button"
@@ -279,7 +281,7 @@ export function AgentCenterPanel() {
           onClick={() => void correr("backups")}
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
-          Backup e restauro
+          {t("agentCenter.actions.backup")}
         </button>
         <button
           type="button"
@@ -287,7 +289,7 @@ export function AgentCenterPanel() {
           onClick={() => void correr("drift")}
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
-          Verificar integridade
+          {t("agentCenter.actions.drift")}
         </button>
         <button
           type="button"
@@ -295,7 +297,7 @@ export function AgentCenterPanel() {
           onClick={() => void correr("remover")}
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
-          Remover instalacao
+          {t("agentCenter.actions.remove")}
         </button>
         <button
           type="button"
@@ -303,13 +305,13 @@ export function AgentCenterPanel() {
           onClick={() => void correr("atualizar")}
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
-          Actualizar (com backup)
+          {t("agentCenter.actions.update")}
         </button>
         <select
           data-testid="agent-center-alvo"
           value={alvo}
           onChange={(e) => setAlvo(e.target.value)}
-          aria-label="Formato de destino"
+          aria-label={t("agentCenter.target.aria")}
           className="rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-xs text-neutral-200"
         >
           <option value="hades">hades</option>
@@ -320,8 +322,8 @@ export function AgentCenterPanel() {
           data-testid="agent-center-destino"
           value={destino}
           onChange={(e) => setDestino(e.target.value)}
-          placeholder="destino relativo"
-          aria-label="Destino relativo"
+          placeholder={t("agentCenter.destination.placeholder")}
+          aria-label={t("agentCenter.destination.aria")}
           className="w-64 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 font-mono text-xs text-neutral-200"
         />
         <button
@@ -330,26 +332,31 @@ export function AgentCenterPanel() {
           onClick={() => void correr("install")}
           className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
         >
-          Registar instalação
+          {t("agentCenter.actions.install")}
         </button>
       </div>
 
       {estado === "pronto" && (
         <p data-testid="agent-center-pronto" className="text-xs text-neutral-400">
-          Nada consultado nesta sessão.
+          {t("agentCenter.idle")}
         </p>
       )}
 
       {estado === "a-carregar" && (
         <p data-testid="agent-center-a-carregar" className="text-xs text-neutral-400">
-          A consultar...
+          {t("agentCenter.loading")}
         </p>
       )}
 
       {estado === "carregado" && (
         <div className="space-y-1">
           <p data-testid="agent-center-contagem" className="text-xs font-semibold text-emerald-300">
-            {agentes.length} instalação(ões) registada(s)
+            {t(
+              agentes.length === 1
+                ? "agentCenter.list.countOne"
+                : "agentCenter.list.countMany",
+              { count: agentes.length },
+            )}
           </p>
           <ul data-testid="agent-center-lista" className="font-mono text-[11px] text-neutral-300">
             {agentes.map((a) => (
@@ -364,20 +371,25 @@ export function AgentCenterPanel() {
       {estado === "catalogo" && (
         <div className="space-y-1">
           <p data-testid="agent-center-cat-versao" className="text-[11px] text-neutral-300">
-            versão {catalogo?.version ?? "?"} · {coberturaDeAvaliacao(catalogo).total} persona(s) ·{" "}
-            {coberturaDeAvaliacao(catalogo).avaliadas} avaliada(s)
+            {t("agentCenter.catalog.version", {
+              version: catalogo?.version ?? "?",
+              total: coberturaDeAvaliacao(catalogo).total,
+              evaluated: coberturaDeAvaliacao(catalogo).avaliadas,
+            })}
           </p>
           {/* *Um numero sem a sua qualidade ao lado e' um numero que se cita mal.* */}
           {coberturaDeAvaliacao(catalogo).avaliadas === 0 && (
             <p data-testid="agent-center-cat-sem-avaliacao" className="text-[11px] text-amber-300">
-              Nenhuma persona do catálogo foi avaliada. Isto não é «aprovado»: é «não medido».
+              {t("agentCenter.catalog.noneEvaluated")}
             </p>
           )}
           <ul data-testid="agent-center-cat-lista" className="space-y-1 font-mono text-[11px] text-neutral-300">
             {(catalogo?.personas ?? []).map((p) => (
               <li key={p.id}>
                 {p.id} v{p.version} · {p.division ?? "?"} · {p.license ?? "?"} ·{" "}
-                {(p.evaluation ?? "").trim() === "" ? "NÃO AVALIADO" : p.evaluation}
+                {(p.evaluation ?? "").trim() === ""
+                  ? t("agentCenter.catalog.unrated")
+                  : p.evaluation}
               </li>
             ))}
           </ul>
@@ -387,12 +399,12 @@ export function AgentCenterPanel() {
       {estado === "avaliacao" && (
         <div className="space-y-1">
           <p data-testid="agent-center-aval-nota" className="text-[11px] text-amber-300">
-            {avaliacao?.note ?? "sem nota do servidor"}
+            {avaliacao?.note ?? t("agentCenter.evaluation.noNote")}
           </p>
           <p data-testid="agent-center-aval-inferencia" className="text-[11px] text-neutral-400">
             {avaliacao?.inference_available === true
-              ? "execução ligada a um motor"
-              : "execução contra modelo NÃO ligada neste runtime"}
+              ? t("agentCenter.evaluation.inferenceOn")
+              : t("agentCenter.evaluation.inferenceOff")}
           </p>
           <ul data-testid="agent-center-aval-suits" className="space-y-1 font-mono text-[11px] text-neutral-300">
             {(avaliacao?.divisions ?? []).map((d) => {
@@ -400,14 +412,21 @@ export function AgentCenterPanel() {
               const n = contarCasos(s);
               return (
                 <li key={d}>
-                  {d} · v{s?.version ?? "?"} · {n.total} caso(s) · {n.negativos} de recusa/injeção
+                  {t("agentCenter.evaluation.suiteLine", {
+                    division: d,
+                    version: s?.version ?? "?",
+                    cases: n.total,
+                    refusals: n.negativos,
+                  })}
                 </li>
               );
             })}
           </ul>
           <p data-testid="agent-center-aval-estados" className="text-[11px] text-neutral-500">
-            {(avaliacao?.states ?? []).length} estados declarados ·{" "}
-            {(avaliacao?.states ?? []).filter((s) => s.terminal).length} terminal(is)
+            {t("agentCenter.evaluation.states", {
+              count: (avaliacao?.states ?? []).length,
+              terminal: (avaliacao?.states ?? []).filter((s) => s.terminal).length,
+            })}
           </p>
         </div>
       )}
@@ -415,24 +434,41 @@ export function AgentCenterPanel() {
       {estado === "equipas" && (
         <div className="space-y-1">
           <p data-testid="agent-center-eq-resumo" className="text-[11px] text-neutral-300">
-            {resumoDeEquipas(equipas).total} equipa(s) · {resumoDeEquipas(equipas).funcionais} funcional(is)
-            · {resumoDeEquipas(equipas).comFalta} com ferramentas em falta ·{" "}
-            {resumoDeEquipas(equipas).invalidas} inválida(s)
+            {t("agentCenter.teams.summary", {
+              total: resumoDeEquipas(equipas).total,
+              functional: resumoDeEquipas(equipas).funcionais,
+              missing: resumoDeEquipas(equipas).comFalta,
+              invalid: resumoDeEquipas(equipas).invalidas,
+            })}
           </p>
           {/* *Um preset que nunca correu nao e' uma equipa: e' uma proposta de equipa.* */}
           {resumoDeEquipas(equipas).funcionais === 0 && (
             <p data-testid="agent-center-eq-nao-provado" className="text-[11px] text-amber-300">
-              {equipas?.note ?? "nenhuma equipa foi provada numa missão real"}
+              {equipas?.note ?? t("agentCenter.teams.noneProven")}
             </p>
           )}
           <ul data-testid="agent-center-eq-lista" className="space-y-1 text-[11px] text-neutral-300">
             {(equipas?.teams ?? []).map((i) => (
               <li key={i.team.id}>
-                <span className="font-mono">{i.team.id}</span> · {i.team.roles.length} papel(is) ·{" "}
-                {i.validation.ok ? "válida" : `INVÁLIDA (${(i.validation.problems ?? []).length})`} ·{" "}
+                <span className="font-mono">{i.team.id}</span> ·{" "}
+                {t(
+                  i.team.roles.length === 1
+                    ? "agentCenter.teams.rolesOne"
+                    : "agentCenter.teams.rolesMany",
+                  { count: i.team.roles.length },
+                )}{" "}
+                ·{" "}
+                {i.validation.ok
+                  ? t("agentCenter.teams.valid")
+                  : t("agentCenter.teams.invalid", {
+                      count: (i.validation.problems ?? []).length,
+                    })}{" "}
+                ·{" "}
                 {(i.validation.missing_tools ?? []).length > 0
-                  ? `falta: ${(i.validation.missing_tools ?? []).join(", ")}`
-                  : "sem ferramentas em falta declaradas"}
+                  ? t("agentCenter.teams.missingTools", {
+                      tools: (i.validation.missing_tools ?? []).join(", "),
+                    })
+                  : t("agentCenter.teams.noMissingTools")}
               </li>
             ))}
           </ul>
@@ -445,17 +481,23 @@ export function AgentCenterPanel() {
             data-testid="agent-center-triagem-texto"
             value={manifesto}
             onChange={(e) => setManifesto(e.target.value)}
-            placeholder='Cole o manifesto da persona (JSON) para triagem'
+            placeholder={t("agentCenter.triage.placeholder")}
             rows={4}
             className="w-full rounded border border-neutral-700 bg-neutral-900 p-1 font-mono text-[11px] text-neutral-200"
           />
           <p data-testid="agent-center-triagem-estado" className="text-[11px] text-neutral-300">
-            estado: {triagem?.state ?? "—"} · {contarAchados(triagem?.report ?? null).bloqueios} bloqueio(s) ·{" "}
-            {contarAchados(triagem?.report ?? null).avisos} aviso(s) ·{" "}
-            {triagem?.installed === true ? "INSTALADO" : "nada instalado"}
+            {t("agentCenter.triage.status", {
+              state: triagem?.state ?? "—",
+              blocks: contarAchados(triagem?.report ?? null).bloqueios,
+              warnings: contarAchados(triagem?.report ?? null).avisos,
+              install:
+                triagem?.installed === true
+                  ? t("agentCenter.triage.installed")
+                  : t("agentCenter.triage.notInstalled"),
+            })}
           </p>
           <p data-testid="agent-center-triagem-nota" className="text-[11px] text-neutral-500">
-            {triagem?.note ?? "a triagem lê e recusa; não escreve nem ativa nada"}
+            {triagem?.note ?? t("agentCenter.triage.note")}
           </p>
           {(triagem?.report?.findings ?? []).length > 0 && (
             <ul data-testid="agent-center-triagem-achados" className="space-y-0.5 text-[11px] text-amber-300">
@@ -472,16 +514,21 @@ export function AgentCenterPanel() {
       {estado === "aval-real" && (
         <div className="space-y-1">
           <p data-testid="agent-center-aval-real-estado" className="text-[11px] text-neutral-300">
-            estado: {avalReal?.state ?? "—"} · {avalReal?.report?.cases?.length ?? 0} caso(s) ·{" "}
-            {avalReal?.report?.failed ?? 0} falha(s) · motor: {avalReal?.engine?.model ?? "—"}
+            {t("agentCenter.realEval.status", {
+              state: avalReal?.state ?? "—",
+              cases: avalReal?.report?.cases?.length ?? 0,
+              failed: avalReal?.report?.failed ?? 0,
+              engine: avalReal?.engine?.model ?? "—",
+            })}
           </p>
           <p data-testid="agent-center-aval-real-nota" className="text-[11px] text-neutral-500">
-            {avalReal?.note ?? "corre a suite contra o motor local; não aprova para produção"}
+            {avalReal?.note ?? t("agentCenter.realEval.note")}
           </p>
           <ul data-testid="agent-center-aval-real-casos" className="space-y-0.5 text-[11px]">
             {(avalReal?.report?.cases ?? []).map((c) => (
               <li key={c.id} className={c.passed ? "text-emerald-300" : "text-amber-300"}>
-                [{c.kind}] {c.id}: {c.passed ? "passou" : c.reason ?? "falhou"}
+                [{c.kind}] {c.id}:{" "}
+                {c.passed ? t("agentCenter.realEval.passed") : c.reason ?? t("agentCenter.realEval.failed")}
               </li>
             ))}
           </ul>
@@ -491,7 +538,12 @@ export function AgentCenterPanel() {
       {estado === "quarentena" && (
         <div className="space-y-1">
           <p data-testid="agent-center-qr-contagem" className="text-[11px] text-neutral-300">
-            {quarentena?.count ?? 0} persona(s) retida(s)
+            {t(
+              (quarentena?.count ?? 0) === 1
+                ? "agentCenter.quarantine.countOne"
+                : "agentCenter.quarantine.countMany",
+              { count: quarentena?.count ?? 0 },
+            )}
           </p>
           <ul data-testid="agent-center-qr-lista" className="space-y-1 font-mono text-[11px] text-neutral-300">
             {(quarentena?.entries ?? []).map((e) => (
@@ -507,26 +559,26 @@ export function AgentCenterPanel() {
                   }}
                   className="rounded border border-neutral-700 px-1 text-[10px] hover:bg-neutral-800"
                 >
-                  libertar
+                  {t("agentCenter.quarantine.release")}
                 </button>
               </li>
             ))}
           </ul>
           {(quarentena?.count ?? 0) === 0 && (
             <p data-testid="agent-center-qr-vazio" className="text-[11px] text-neutral-500">
-              Nenhuma persona retida. Reter uma cria a primeira entrada.
+              {t("agentCenter.quarantine.empty")}
             </p>
           )}
           <input
             data-testid="agent-center-qr-revisor"
             value={revisor}
             onChange={(e) => setRevisor(e.target.value)}
-            placeholder="revisor (obrigatório para libertar)"
+            placeholder={t("agentCenter.quarantine.reviewerPlaceholder")}
             className="w-full rounded border border-neutral-700 bg-neutral-900 p-1 text-[11px] text-neutral-200"
           />
           {/* *Uma revisao de seguranca que aprova para producao nao e uma revisao: e um atalho.* */}
           <p className="text-[11px] text-neutral-500">
-            Libertar leva a SECURITY_REVIEWED e exige revisor. Não aprova para produção.
+            {t("agentCenter.quarantine.releaseNote")}
           </p>
         </div>
       )}
@@ -534,7 +586,12 @@ export function AgentCenterPanel() {
       {estado === "backups" && (
         <div className="space-y-1">
           <p data-testid="agent-center-bk-contagem" className="text-[11px] text-neutral-300">
-            {backups?.count ?? 0} backup(s) guardado(s)
+            {t(
+              (backups?.count ?? 0) === 1
+                ? "agentCenter.backups.countOne"
+                : "agentCenter.backups.countMany",
+              { count: backups?.count ?? 0 },
+            )}
           </p>
           <ul data-testid="agent-center-bk-lista" className="space-y-1 font-mono text-[11px] text-neutral-300">
             {(backups?.backups ?? []).map((id) => (
@@ -549,24 +606,25 @@ export function AgentCenterPanel() {
                   }}
                   className="rounded border border-neutral-700 px-1 text-[10px] hover:bg-neutral-800"
                 >
-                  restaurar
+                  {t("agentCenter.backups.restore")}
                 </button>
               </li>
             ))}
           </ul>
           {restauro && (
           <p data-testid="agent-center-restaurado" className="text-[11px] text-emerald-400">
-            Restaurado do backup <span className="font-mono">{restauro.restored ?? "?"}</span>
+            {t("agentCenter.backups.restored")}{" "}
+            <span className="font-mono">{restauro.restored ?? "?"}</span>
           </p>
         )}
         {(backups?.count ?? 0) === 0 && (
             <p data-testid="agent-center-bk-vazio" className="text-[11px] text-neutral-500">
-              Nenhum backup ainda. Guardar um cria o primeiro.
+              {t("agentCenter.backups.empty")}
             </p>
           )}
           {/* *O ultimo a escrever nao ganha por ser o ultimo, e o mais recente tambem nao.* */}
           <p className="text-[11px] text-neutral-500">
-            Restaurar exige escolher um id: não há «restaurar o mais recente».
+            {t("agentCenter.backups.restoreNote")}
           </p>
         </div>
       )}
@@ -588,23 +646,35 @@ export function AgentCenterPanel() {
 
       {estado === "instalado" && (
         <p data-testid="agent-center-instalado" className="text-xs font-semibold text-emerald-300">
-          {instalacao?.created === true ? "201 criado" : "200 já registado"} ·{" "}
-          {instalacao?.entry?.persona_id ?? "sem id"} · {instalacao?.bytes ?? 0} bytes renderizados
+          {t(
+            instalacao?.created === true
+              ? "agentCenter.install.created"
+              : "agentCenter.install.existing",
+            {
+              id: instalacao?.entry?.persona_id ?? t("agentCenter.install.noId"),
+              bytes: instalacao?.bytes ?? 0,
+            },
+          )}
         </p>
       )}
 
       {estado === "actualizado" && (
         <p data-testid="agent-center-actualizado" className="text-xs text-emerald-400">
-          Actualizado com backup <span className="font-mono">{actualizacao?.backup_id ?? "?"}</span> ·{" "}
-          {actualizacao?.bytes ?? 0} bytes
+          {t("agentCenter.update.done")}{" "}
+          <span className="font-mono">{actualizacao?.backup_id ?? "?"}</span> ·{" "}
+          {actualizacao?.bytes ?? 0} {t("agentCenter.update.bytes")}
           {actualizacao?.note ? " · " + actualizacao.note : ""}
         </p>
       )}
 
       {estado === "removido" && (
         <p data-testid="agent-center-removido" className="text-xs text-emerald-400">
-          Removido do ledger: {remocao?.removed ?? "sem id"} ·{" "}
-          {remocao?.file_kept ? "o ficheiro no destino foi preservado" : "sem ficheiro a preservar"}
+          {t("agentCenter.remove.line", {
+            id: remocao?.removed ?? t("agentCenter.install.noId"),
+            state: remocao?.file_kept
+              ? t("agentCenter.remove.fileKept")
+              : t("agentCenter.remove.noFile"),
+          })}
           {remocao?.note ? " · " + remocao.note : ""}
         </p>
       )}
@@ -634,9 +704,7 @@ export function AgentCenterPanel() {
       )}
 
       <p data-testid="agent-center-fronteira" className="mt-3 text-[11px] leading-relaxed text-neutral-500">
-        Registar uma instalação não escreve no destino: calcula os hashes e grava no ledger. O destino tem de
-        ser relativo e o servidor recusa `..` — um destino que o cliente escreve é um destino que o cliente
-        escolhe.
+        {t("agentCenter.footer")}
       </p>
     </section>
   );
