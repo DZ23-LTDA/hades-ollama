@@ -19,7 +19,7 @@
 | B9 | Dados e privacidade (sem segredos em texto, telemetria desligável) | **INTERNO** | parcial (ver nota B9) |
 | B10 | Documentação de utilizador final | **INTERNO** | parcial (ver nota B10) |
 | B11 | Acessibilidade e i18n mínimos | **INTERNO** | **PROVADO** (acessibilidade) |
-| B12 | Performance medida | **INTERNO** | `NÃO EXECUTADO` |
+| B12 | Performance medida | **INTERNO** | **PROVADO** (ver abaixo) |
 
 ## B2 — primeiro arranque (INTERNO, PROVADO)
 
@@ -100,10 +100,44 @@ Existem `README.md`, `README.en.md`, `docs/images/screens/SCREEN_CAPTURE_NOTES.m
 estado verificável. O que **não** existe: um guia de utilizador com «os 5 erros mais comuns» e a sua
 resolução. `NÃO EXECUTADO`.
 
-## B12 — performance (NÃO EXECUTADO)
+## B12 — performance medida (INTERNO, PROVADO)
 
-Nenhuma medição de tempo de arranque ou de uma jornada núcleo foi feita com método e número. Fica
-explicitamente por fazer: **não** se declara «rápido» sem medição.
+**Método (reproduzível):** `scripts/hades_medir_performance.ps1` — constrói o binário com o toolchain
+do `go.mod`, arranca-o em porta dedicada com store em `_tmp`, e mede com `Stopwatch` o tempo desde
+`Start-Process` até `GET /api/version` devolver **200**. Depois faz 20 chamadas de seguida a
+`GET /api/agent/v1/projects` e reporta min/p50/p95/max.
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\hades_medir_performance.ps1 -Corridas 3
+```
+
+**Saída colada (2026-10-21, máquina de desenvolvimento, sem isolamento de cache):**
+
+```
+build do binário ......... exit 0 em 10.8 s
+arranque #1 .............. 282 ms (ok=True)
+arranque #2 .............. 523 ms (ok=True)
+arranque #3 .............. 543 ms (ok=True)
+RESUMO n=3 ............... min=282 ms  mediana=543 ms  max=543 ms
+
+latência /api/agent/v1/projects (20 chamadas)
+min=9,3 ms  p50=10,2 ms  p95=11,3 ms  max=11,4 ms
+```
+
+| grandeza | valor medido |
+| --- | --- |
+| Arranque até servir HTTP | **282 ms** (min) · **543 ms** (mediana) |
+| Latência de endpoint núcleo | **p50 10,2 ms** · p95 11,3 ms |
+| Build do binário | **10,8 s** |
+
+**Limitações declaradas (importantes):**
+- é a **máquina de desenvolvimento**, não um perfil de utilizador final limpo;
+- não há controlo de cache frio/quente: o arranque #1 (282 ms) é mais rápido que #2/#3, o que sugere
+  cache do SO — por isso reporta-se a **mediana**, não o melhor número;
+- a «jornada núcleo» medida é uma **chamada HTTP**, não o fluxo completo na UI. Para o fluxo completo
+  existem os tempos dos E2E (`1.1 min` para acessibilidade+primeira execução+shell+smoke;
+  `39,4 s` para as jornadas), que incluem build da UI e arranque de browsers e **não** são
+  latência do produto.
 
 ## Limitações deste documento
 
