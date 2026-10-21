@@ -5623,3 +5623,11 @@ passo a passo: #22 checkers self-test, #23 architecture, #24 agent contract, #25
 hermeticity, traceability) sao **dez**. O job passou a **27 passos** (25 de verificacao) e continua a
 levar **28 s** -- a recuperacao nao custou tempo de runner. **32 checkers continuam so' locais** (eram
 41). `release_state` continua `NOT_RELEASE_READY`.
+
+**Actualizacao de retomada (E-1513..E-1518):** registo formal dos seis passos da segunda vaga de
+cobertura, **incluindo os dois que falharam**: `E-1513` lote de sete (erro de metodo: ligar de uma vez),
+`E-1514` a correcao do `native_host` (`--check-repo`, conclusao minha errada), `E-1515` lote de seis +
+refinamento da divida (*a divida real de gates e' 4, nao 41 nem 17*), `E-1516` `ci_timeout` retirado
+(falhou no runner e desligou o gofmt), `E-1517` `native_host_roundtrip` retirado (mesmo padrao; classe
+do erro: instrumentos que dependem de estado da maquina), `E-1518` 14 instrumentos provados verdes
+(#17-#40 de `833a1dca5`) -- **job continua vermelho ate' o gofmt voltar a correr**.
