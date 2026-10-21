@@ -23,7 +23,10 @@ import re
 import sys
 from pathlib import Path
 
-RAIZ = Path(r"C:\Users\DZ23\Documents\deepseek-harness\default-workspace\hades-ollama")
+# A raiz vem do FICHEIRO, nao de um caminho absoluto da maquina de quem o escreveu.
+# Antes: um `Path(r"C:\Users\<utilizador>\...\hades-ollama")` escrito a mao -- funcionava aqui e dava
+# runner Linux, que foi como este instrumento falhou no CI (E-1517).
+RAIZ = Path(__file__).resolve().parents[1]
 WORKFLOWS = RAIZ / ".github" / "workflows"
 
 # *o minimo aceitavel: o package leva 353 s e o runner e' 2-3x mais lento => >= 20 min*

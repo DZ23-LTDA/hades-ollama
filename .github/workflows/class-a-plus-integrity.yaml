@@ -236,19 +236,17 @@ jobs:
         run: python3 scripts/hades_approval_hook_ratchet.py
       - name: Verify the bridge opt-in ratchet
         run: python3 scripts/hades_bridge_optin_ratchet.py
-      # E-1517: `hades_ci_timeout_check.py` foi ligado no `E-1513` e **FALHOU no runner** em
-      # `20a22c948` (passo 29), com duas linhas medidas no log:
+      # E-1519: o `E-1517` retirou este passo porque falhou no runner. A CAUSA-RAIZ foi encontrada e
+      # corrigida no proprio instrumento: `RAIZ` era um **caminho absoluto do Windows de quem o escreveu**
+      # (`C:\Users\...\hades-ollama`), que nao existe no runner Linux -- dai `ha' workflows para
+      # verificar -- 0 ficheiros`. Agora `RAIZ = Path(__file__).resolve().parents[1]` e o instrumento
+      # encontra **16 workflows** em vez de 0. A assercao (3) verifica
+      # `internal/agent/commerce_budget_test.go`, que **esta' versionado** -- logo tambem passa no CI.
       #
-      #     FALHA (0) ha' workflows para verificar  -- 0 ficheiros
-      #     FALHA (3) o teste de volume existe
-      #
-      # Localmente mediu `exit 0`. Como o passo falhou, o GitHub **saltou os passos seguintes**
-      # (30-34), incluindo o `gofmt` -- ou seja: um instrumento mal ligado desligou os outros cinco.
-      # Retirado ate' haver diagnostico: nao se deixa um gate vermelho a bloquear os restantes, nem se
-      # "resolve" apagando a verificacao. As duas assercoes acima sao a pista: as duas dependem de
-      # ficheiros/paths que existem LOCALMENTE e nao no checkout do CI.
-      #
-      #   *Um passo que falha por engano custa mais do que um passo que falta: desliga os vizinhos.*
+      #   *A mesma linha explicava os outros 8: procurar "C:\Users" em scripts/ encontrava NOVE
+      #   instrumentos. Nenhum deles podia funcionar no runner, e todos pareciam saudaveis aqui.*
+      - name: Verify CI timeouts are declared
+        run: python3 scripts/hades_ci_timeout_check.py
       - name: Verify the companion documents
         run: python3 scripts/hades_companion_doc_check.py
       - name: Verify the scope classifier itself (self-test)
