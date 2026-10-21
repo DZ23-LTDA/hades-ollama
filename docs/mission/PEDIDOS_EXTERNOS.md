@@ -271,3 +271,19 @@ que a api key e o webhook secret NAO sao devolvidos. Contra servidor real, nao.
 **Estado:** o motor escuta apenas em 127.0.0.1 (loopback). A recusa por omissao esta' deliberada e
 mantem-se: uma API local sem autenticacao exposta na LAN e' um risco que ninguem pediu. Para habilitar,
 e' preciso decisao escrita + autenticacao ANTES da exposicao.
+---
+
+## 10. E2E de painel da publicacao (BLOCKED por pre-requisito interno)
+
+**O que falta:** uma MISSAO REAL com ARTEFACTO no armazem, para poder clicar em Publicar e abrir o URL.
+
+**Medido agora:** a app esta de pe (janela "Hades", `/api/tags` 200, pids activos) mas a pasta de
+configuracao so' tem `dz23-providers.json` -- nenhum artefacto de missao disponivel para publicar.
+
+**Como destravar (executavel):** correr uma missao que produza um artefacto (pela UI ou pela API com o
+token da sessao), e entao: abrir o painel Studio, separador de construcao ao vivo, clicar Publicar, e
+PROVAR com a resposta HTTP do URL publicado (200 + conteudo), nao com print.
+
+**Porque nao foi feito ja:** produzir o artefacto exige exercitar o pipeline de agente com modelo, que e'
+trabalho de outra dimensao e nao cabe numa verificacao rapida; declarar a publicacao como provada sem
+este passo seria exactamente a mentira que o contrato proibe.
