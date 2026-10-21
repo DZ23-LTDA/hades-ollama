@@ -20,7 +20,7 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$Memoria = 'C:\Users\DZ23\Documents\Obsidian Vault\Memoria-Compartilhada-IA',
+  [string]$Memoria = $(if ($env:HADES_MEMORIA) { $env:HADES_MEMORIA } else { 'C:\Users\DZ23\Documents\Obsidian Vault\Memoria-Compartilhada-IA' }),
   [string]$Motivo = 'post-commit',
   [switch]$Silencioso
 )

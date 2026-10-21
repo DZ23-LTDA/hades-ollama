@@ -66,8 +66,7 @@ $userProfileReal = $env:USERPROFILE
 $browsersDoPlaywright = $null
 foreach ($candidato in @(
     (Join-Path $localAppDataReal 'ms-playwright'),
-    (Join-Path $userProfileReal 'AppData\Local\ms-playwright'),
-    'C:\Users\DZ23\AppData\Local\ms-playwright'
+    (Join-Path $userProfileReal 'AppData\Local\ms-playwright')
 )) {
   if ($candidato -and (Test-Path $candidato)) { $browsersDoPlaywright = $candidato; break }
 }

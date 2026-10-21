@@ -14,8 +14,9 @@ import io
 import os
 import re
 import sys
+from pathlib import Path
 
-RAIZ = sys.argv[1] if len(sys.argv) > 1 else r'C:\Users\DZ23\Documents\deepseek-harness\default-workspace\hades-ollama'
+RAIZ = sys.argv[1] if len(sys.argv) > 1 else str(Path(__file__).resolve().parents[1])
 
 # ---------------------------------------------------------------- A. artefactos em disco
 PADROES_ART = re.compile(

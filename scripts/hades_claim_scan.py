@@ -19,8 +19,9 @@ import io
 import os
 import re
 import sys
+from pathlib import Path
 
-RAIZ = sys.argv[1] if len(sys.argv) > 1 else r'C:\Users\DZ23\Documents\deepseek-harness\default-workspace\hades-ollama'
+RAIZ = sys.argv[1] if len(sys.argv) > 1 else str(Path(__file__).resolve().parents[1])
 
 # A afirmacao tem de ser EXPLICITA -- verbo de producao + nome de ficheiro na mesma frase.
 VERBOS = r"(?:e' a fonte|é a fonte|fonte de|gera|gerado|escreve|escrito|produz|produzido|deriva|derivado)"
