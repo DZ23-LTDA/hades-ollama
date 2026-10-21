@@ -6649,3 +6649,10 @@ contem.* Verificacoes no job: **43**.
 421 s**, com `TestCaminhoAutorizadoRecusaTravessia` **PASS** -- a falha prioritaria da REGRA 1 **ja estava
 corrigida** por `b144d8c08` (`E-1444`, raiz PEDIDA em vez de resolvida). **Verde neste job nao e' CI verde
 da PR**: os outros checks tem runs proprios e nao foram lidos; merge e' proibido.
+
+**Actualizacao de retomada (E-1523):** `#7` do job **Windows = SUCCESS** no runner em `2094b9af7`
+(`Agent runtime tests`, **5 min 03 s**, job concluido 00:43:12Z) -- a falha prioritaria da REGRA 1 esta
+fechada **no CI**, nao so' local. E a **bateria local fechou 81/81, exit 0, 0 falhas**, com o passo 81
+(`GOFUMPT`) **OK** -- depois de duas corridas anteriores cada uma com uma causa propria (PATH do
+`golangci-lint`; drift nos artefactos, corrigido em `3ad181fc3`). A divida de portabilidade `E-1520`
+fica assim provada: 7 scripts alterados, 81 gates sem regressao.
