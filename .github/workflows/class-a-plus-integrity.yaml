@@ -271,6 +271,21 @@ jobs:
         run: python3 scripts/hades_derivados_check.py
       - name: Verify the findings revalidation
         run: python3 scripts/hades_findings_revalidation.py
+      # E-1516: seis medidos (exit 0, so' leitura, <= 5.7 s). Excluido, com razao medida:
+      #   hades_t2_contexto.py -- escreveu no repositorio quando corrido (conferido com `git status`);
+      #   um passo que altera a arvore em cada PR seria uma alteracao silenciosa, nao um gate.
+      - name: Verify the native host roundtrip
+        run: python3 scripts/hades_native_host_roundtrip.py
+      - name: Verify the Linux package
+        run: python3 scripts/hades_linux_package.py
+      - name: Verify the competitive surface
+        run: python3 scripts/hades_competitive_check.py
+      - name: Verify the worktree inventory
+        run: python3 scripts/hades_worktree_inventory.py
+      - name: Verify the findings report
+        run: python3 scripts/hades_findings_report.py
+      - name: Verify the Firefox E2E
+        run: python3 scripts/hades_firefox_e2e.py
       # E-661: o gate anterior era `test -z "$(gofmt -l ...)"` - e um arquivo que NAO PARSEIA faz o gofmt
       # escrever o erro em STDERR e sair com STDOUT VAZIO => `test -z ""` PASSAVA. Verde por construcao:
       # foi assim que um `internal/agent/adaptive_router.go` com um `}` faltando atravessou o CI verde.
