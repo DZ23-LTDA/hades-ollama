@@ -13,10 +13,10 @@
 | **Commit medido** (`measured_commit`) | `31487dca404a71dbb1216c4ae863e8b8b4f74fa9` |
 | **Commit da `main`** (`git.main_sha`) | `4b3e21854` |
 | **Gerado em** (`measured_at`) | 2026-10-20T23:10:53-03:00 |
-| **Snapshot real** (`gate_head`) | `b804853d35ce65cb6217958486b19702449d6896` |
+| **Snapshot real** (`gate_head`) | `3f49849627690828d990cc73d6e87c80d29c8d54` |
 | **Ramo do snapshot** (`gate_branch`) | `fix/checker-relogio` |
-| **Entradas nao commitadas** (`gate_dirty`) | 1 |
-| **O gate prova o snapshot candidato?** (`gate_snapshot`) | **DIVERGENTE** - 18 commits depois do `measured_commit` |
+| **Entradas nao commitadas** (`gate_dirty`) | 7 |
+| **O gate prova o snapshot candidato?** (`gate_snapshot`) | **DIVERGENTE** - 25 commits depois do `measured_commit` |
 
 *Dois campos, e não um: o `E-552` mediu que este derivado **não** citava commit nenhum, e que o
 `HADES_BASELINE_REPORT.md` citava **só** a `main` — *o que não está errado (*ele mede o baseline, e o baseline é da
@@ -42,7 +42,7 @@ Resumo: BLOCKED_BY_EXTERNAL_DEPENDENCY: 4 · DONE: 20
 | 5 | APIs externas configuradas são testadas e usadas | **BLOCKED_BY_EXTERNAL_DEPENDENCY** | B-07: chaves de provedor | Credencial de provedor (estágio 4) |
 | 6 | A troca de modelo preserva contexto autorizado | **DONE** | Bootstrap de contexto reconstruído por modelo, com teste (estágio 5) | — |
 | 7 | O sistema de permissões é aplicado pelo servidor | **DONE** | Autorização server-side com testes de escopo (estágios 5 e 18) | — |
-| 8 | Plugins têm instalação e execução verificáveis | **BLOCKED_BY_EXTERNAL_DEPENDENCY** | **Provado (30 testes PASS)**: instalação com verificação de assinatura, rejeição de conteúdo adulterado, rollback que restaura a versão anterior UMA vez, isolamento por organização, sete caminhos de recusa e **delegação ao sandbox governado** com trilha de auditoria. **E-293**: o desfecho da execução passou a ser **afirmado, não tolerado** (o teste anterior aceitava sucesso OU falha). Medido neste host: `sandbox.exec requires the Linux namespace executor; host-process fallback is disabled` — o Hades **recusa cair para processo de host** (fail-closed, correto por segurança), logo a execução real é `BLOCKED_BY_EXTERNAL_DEPENDENCY` | Executar em **Linux/WSL2 com o executor de namespace** (mantendo o fallback de host desabilitado) |
+| 8 | Plugins têm instalação e execução verificáveis | **BLOCKED_BY_EXTERNAL_DEPENDENCY** | **Provado (30 testes PASS)**: instalação com verificação de assinatura, rejeição de conteúdo adulterado, rollback que restaura a versão anterior UMA vez, isolamento por organização, sete caminhos de recusa e **delegação ao sandbox governado** com trilha de auditoria. **E-293**: o desfecho da execução passou a ser **afirmado, não tolerado**. **Correção de um defeito real (commit 3f4984962)**: `sandbox_linux.go` comparava `cgroup.controllers` com `strings.Contains(" "+conteudo+" ", ...)` e o ficheiro termina em newline, pelo que o **último** controlador (`pids`) nunca casava -- o sandbox estrito respondia `NOT_CONFIGURED` em **qualquer** Linux real. Corrigido para comparação por campos. **Medido depois do fix, em WSL2 Ubuntu com cgroup v2 delegado (cpu memory pids), `node` v22.22.1 em `/usr/bin` e `chroot` real em caminho confiável**: 27 PASS, 0 FAIL, 2 SKIP -- e os 2 SKIP mostram agora a causa exacta: `exit status 127` com `stderr="setpriv: setgroups failed: Operation not permitted"`. **O bloqueio real é o WSL2 negar `setgroups`**, não o produto. Medido neste host: `sandbox.exec requires the Linux namespace executor; host-process fallback is disabled` quando falta o executor -- o Hades **recusa cair para processo de host** (fail-closed, correto por segurança) | Um host Linux **nativo** (ou runner) onde `setpriv`/`setgroups` seja permitido; em WSL2 o `setgroups` é negado e a execução não conclui |
 | 9 | MCPs têm instalação e execução verificáveis | **DONE** | MCP local/stdio exercitado com testes de revogação e auditoria (estágio 7) | — |
 | 10 | Skills têm ativação e execução verificáveis | **DONE** | Ativação por projeto/agente/modelo com testes (estágio 8) | — |
 | 11 | Agentes e subagentes executam missões reais | **DONE** | Orquestração com cotas e artefatos verificáveis (estágio 9) | — |
