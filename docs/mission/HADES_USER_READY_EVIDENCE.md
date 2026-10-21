@@ -330,3 +330,39 @@ a passar por inercia.
 
 Verificacao: `vitest run` 174 ficheiros / 1547 testes (baseline 173/1544 + 3 novos, nenhum
 removido); `tsc` exit 0; 6 gates de documento a 0; `check-class-a-plus-integrity.sh` EXIT=0.
+## B1 / #23: o artefacto de distribuicao passou a ser CONSTRUIDO — e medido
+
+Ate aqui o bloqueio declarado era «sem `ISCC.exe`» (Inno Setup). Medido: nao existia em
+`C:\Program Files (x86)` nem `C:\Program Files`. **O `winget` reportou-o como ja instalado, e ele
+estava em `%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe`** (6.7.3) — que e' exactamente o caminho
+por omissao de `scripts/hades_installer_windows.ps1`. Ou seja: *o instrumento existia fora do
+caminho que o gate procurava.*
+
+Execucao (HEAD `688c4b425`, `dist\` com os 3 alvos exigidos):
+
+```
+powershell -NoProfile -File scripts/hades_installer_windows.ps1 -OutDir _tmp\hades-installer -Versao 0.2.0.541 -Iscc <ISCC>
+  Successful compile (44,016 sec)
+  HadesSetup-688c4b425.exe  39,21 MB   SHA256 243C52BF6E875549D6C42E61E8BB8DE5AC8326F451C4E248AB8F8B7BCE00B75D
+  versao PE 0.2.0.541 | produto 'Hades'
+  *** AVISO GRAVADO: artefacto e' COMPOSICAO, nao build do HEAD ***   (3 de 3 alvos anteriores ao HEAD)
+```
+
+Conferencia independente da assinatura (`Get-AuthenticodeSignature`):
+
+```
+Status = NotSigned      Signer = (vazio)
+```
+
+**O que isto muda:** B1 e #23 deixam de estar bloqueados por *ferramenta ausente*. Passam a estar
+bloqueados por duas coisas que sao de facto externas:
+
+1. **Certificado de assinatura de codigo** — sem ele o `Status` fica `NotSigned`, e B6 exige
+   «instalador com assinatura verificada no sistema do utilizador».
+2. **Perfil/maquina limpa** — B1 pede explicitamente instalacao «numa maquina/perfil sem o ambiente
+   de dev»; este host tem o ambiente de dev, logo nao serve como prova de B1.
+
+**O que isto NAO prova, e fica escrito:** o instalador nao foi executado. Construir e instalar sao
+coisas diferentes; o unico facto medido e' que ele COMPILA e que o binario resultante esta
+`NotSigned`. E o proprio script declarou o artefacto como **COMPOSICAO** (os alvos em `dist\` sao
+de 16-18/10, anteriores ao HEAD), portanto ele nao e' um build reproduzivel desta fonte.
