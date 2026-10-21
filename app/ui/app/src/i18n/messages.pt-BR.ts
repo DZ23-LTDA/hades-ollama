@@ -2103,4 +2103,5 @@ export const ptBRMessages: Record<string, string> = {
   "missionPermissions.summary.withElevated": "Leitura + {count} escopo(s) elevado(s)",
   "missionPermissions.summary.risk": "risco",
   "missionPermissions.summary.approval": "exige aprovacao humana",
+  "chat.queue.queued": "{count} mensagem(ns) na fila. Serao enviadas quando a resposta atual terminar.",
 };

@@ -2081,4 +2081,5 @@ export const enMessages: Record<string, string> = {
   "missionPermissions.summary.withElevated": "Read + {count} elevated scope(s)",
   "missionPermissions.summary.risk": "risk",
   "missionPermissions.summary.approval": "requires human approval",
+  "chat.queue.queued": "{count} message(s) queued. They will be sent when the current reply finishes.",
 };

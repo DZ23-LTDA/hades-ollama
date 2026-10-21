@@ -1,4 +1,6 @@
 import Logo from "@/components/Logo";
+import { enfileirar, tirarProximo } from "@/lib/filaEnvio";
+import { useT } from "@/i18n";
 import { ModelPicker } from "@/components/ModelPicker";
 import { WebSearchButton } from "@/components/WebSearchButton";
 import { ImageThumbnail } from "@/components/ImageThumbnail";
@@ -126,6 +128,11 @@ function ChatForm({
   const { mutate: sendMessageMutation } = useSendMessage(chatId);
   const navigate = useNavigate();
   const isStreaming = useIsStreaming(chatId);
+  // Defeito D: fila de envio. Enquanto a IA responde, a mensagem e' ENFILEIRADA em vez de
+  // descartada (antes havia `if (... || isStreaming) return;` que a perdia em silencio).
+  const { t } = useT();
+  const [filaEnvio, setFilaEnvio] = useState<string[]>([]);
+  const enviandoDaFila = useRef(false);
   const cancelMessage = useCancelMessage();
   const isDownloading = isDownloadingModel;
   const { selectedModel } = useSelectedModel();
@@ -378,7 +385,31 @@ function ChatForm({
     }
   };
 
+  // D2: quando o stream termina e o campo esta' vazio, entrega a proxima da fila.
+  useEffect(() => {
+    if (isStreaming || isDownloading) return;
+    if (filaEnvio.length === 0) return;
+    if (message.content.trim() !== "") return; // o utilizador esta' a escrever: nao atropelar
+    const { proximo, resto } = tirarProximo(filaEnvio);
+    if (!proximo) return;
+    setFilaEnvio(resto);
+    enviandoDaFila.current = true;
+    setMessage((prev) => ({ ...prev, content: proximo }));
+  }, [isStreaming, isDownloading, filaEnvio, message.content]);
+
+  // Dispara o envio do texto que veio da fila, depois de o estado assentar.
+  useEffect(() => {
+    if (!enviandoDaFila.current) return;
+    if (isStreaming || isDownloading) return;
+    enviandoDaFila.current = false;
+    void handleSubmit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [message.content, isStreaming, isDownloading]);
+
   const handleCancel = useCallback(() => {
+    // D4: parar e' parar -- a fila tambem e' limpa.
+    setFilaEnvio([]);
+    setSlashHint(null);
     cancelMessage(chatId);
   }, [cancelMessage, chatId]);
 
@@ -530,7 +561,15 @@ function ChatForm({
   ]);
 
   const handleSubmit = async () => {
-    if (!message.content.trim() || isStreaming || isDownloading) return;
+    if (!message.content.trim() || isDownloading) return;
+    if (isStreaming) {
+      // D1: nao descartar. Vai para a fila e o campo limpa; nada se perde em silencio.
+      const proxima = enfileirar(filaEnvio, message.content);
+      setFilaEnvio(proxima);
+      setMessage((prev) => ({ ...prev, content: "" }));
+      setSlashHint(t("chat.queue.queued", { count: proxima.length }));
+      return;
+    }
 
     const parsedSlash = parseSlashCommand(message.content);
     const slashURL = slashCommandURL(message.content);

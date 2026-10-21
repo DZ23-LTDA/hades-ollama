@@ -85,3 +85,25 @@ Falta edição e execução real.
 **Aceite:** escolher local / Ollama Cloud / externo por missão; **fallback explicável**
 (qual provedor foi usado, porquê, e o que falhou antes); teste negativo (provedor sem
 credencial → erro claro, sem cair para outro em silêncio).
+
+---
+
+## D — Enviar enquanto a IA responde (fila de envio)
+
+**Aceite (escrito antes):**
+
+| # | critério | prova |
+| --- | --- | --- |
+| D1 | Submeter durante o stream **enfileira** a mensagem; não descarta nem cancela a resposta em curso. | teste negativo do texto vazio + teste da fila |
+| D2 | Ao terminar o stream, a fila é enviada por ordem, automaticamente. | teste positivo da fila |
+| D3 | A UI mostra a contagem de mensagens na fila. | componente + i18n |
+| D4 | **Parar** (botão ■) esvazia a fila: parar é parar. | teste da função de limpeza |
+| D5 | Nada é perdido em silêncio: o texto enfileirado aparece na contagem. | teste |
+
+**Causa-raiz medida** (`ChatForm.tsx:533`):
+
+```ts
+if (!message.content.trim() || isStreaming || isDownloading) return;   // descarta em silêncio
+```
+
+e os botões do composer em `ChatForm.tsx:1103/1108` usam `isStreaming || isDownloading`.
