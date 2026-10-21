@@ -107,3 +107,31 @@ if (!message.content.trim() || isStreaming || isDownloading) return;   // descar
 ```
 
 e os botões do composer em `ChatForm.tsx:1103/1108` usam `isStreaming || isDownloading`.
+---
+
+## I1 — Preview ao vivo COMPLETO — **medição feita, aceite revisto**
+
+**Medido em 2026-10-21 (antes de escrever código):**
+
+| facto | evidência |
+| --- | --- |
+| O artefacto de missão é servido por **HTTP** pelo próprio servidor, com `X-Artifact-SHA256` — **não** é `srcdoc` nem mock | `server/agent_routes.go:4435` (`artifact`), rota `GET /missions/:id/artifacts/:artifact_id` |
+| Existe histórico por artefacto e **restauro** | rotas `.../versions` e `.../restore`; testes `artifact_restore_*` |
+| O builder tem **Preview, Export, Undo, Redo** | `internal/agent/builder.go:270/309/396/430` |
+| O builder tem **staging, publish e rollback** com testes de realidade | `builder_staging.go`, `builder_publish_report*.go`, `builder_rollback_test.go`, `builder_published_e2e_test.go` |
+| O painel «Construção ao vivo» já mostra passos + preview do artefacto com reload a cada 4 s | `LiveBuildPanel` (separador do Studio) |
+
+**Consequência:** «correr a app gerada» **já existe do lado do servidor** (HTTP + staging/publish). O que falta é
+(a) **ligar** esse caminho ao painel de forma explícita (mostrar a URL de execução e o estado de publish, não
+um blob), e (b) a **edição** — que NÃO deve ser um textarea a escrever ficheiros arbitrários: tem de usar o
+caminho versionado (versões + restauro) ou o `UpdateVisual` do builder, com limites e auditoria.
+
+**Aceite revisto, em dois passos (um commit cada):**
+
+| passo | critério | prova exigida |
+| --- | --- | --- |
+| **I1a — correr** | O painel mostra a app gerada **servida por HTTP** (URL do artefacto/publish) em vez de um blob temporário; erro de fetch mostra mensagem, nunca preview em branco. | teste positivo (200 + SHA256) e negativo (404 → erro visível) |
+| **I1b — editar** | Editar o conteúdo passa pelo **caminho versionado** (nova versão + possibilidade de restauro), com limite de tamanho e recusa de payload inválido. | positivo (salvar → nova versão → preview muda) e negativo (payload inválido/grande → 400) |
+
+**Decisão de segurança registada:** não será criado um endpoint que escreva ficheiros arbitrários no
+workspace. A edição usa o versionamento existente.
