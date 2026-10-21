@@ -80,12 +80,17 @@ function ResourceRow({ children, onDelete, deleteLabel, deleteDisabled = false }
 	  return <div className="flex items-center justify-between gap-3 rounded-xl border border-neutral-200/80 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"><div className="min-w-0 flex-1">{children}</div>{onDelete && <button type="button" onClick={onDelete} disabled={deleteDisabled} className="rounded-lg p-2 text-neutral-400 hover:bg-red-50 hover:text-red-600 disabled:cursor-wait disabled:opacity-40 dark:hover:bg-red-950/30" aria-label={resolvedDeleteLabel} title={resolvedDeleteLabel}><TrashIcon className="h-4 w-4" /></button>}</div>;
 }
 
-function skillActivationsFromSelection(selection: AgentSkillSelection | null): AgentSkillActivation[] {
+export function skillActivationsFromSelection(selection: AgentSkillSelection | null): AgentSkillActivation[] {
   // O painel é por contexto: as duas listas do servidor (selecionadas e
   // excluídas) são exatamente as skills ATIVADas para aquele contexto — as
   // excluídas saíram por orçamento/estado, não por falta de ativação.
   if (!selection) return [];
-  const ids = [...selection.selected.map((skill) => skill.id), ...(selection.skipped ?? []).map((skip) => skip.id)];
+  // `selected` e `skipped` chegam do servidor e podem vir null quando o contexto ainda nao
+  // tem skills associadas. Sem as duas guardas, a pagina /skills rebentava com
+  // "Cannot read properties of null (reading 'map')" e caia no ecra de erro.
+  const selecionadas = selection.selected ?? [];
+  const ignoradas = selection.skipped ?? [];
+  const ids = [...selecionadas.map((skill) => skill.id), ...ignoradas.map((skip) => skip.id)];
   return [...new Set(ids)].map((id) => ({ skill_id: id }));
 }
 

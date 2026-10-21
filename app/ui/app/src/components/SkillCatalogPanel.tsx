@@ -186,8 +186,8 @@ export function SkillCatalogPanel({
             A ordem é determinística e o orçamento é aplicado pelo servidor — a tela não decide sozinha.
           </p>
           <ul className="mt-2 space-y-1 text-[11px] text-neutral-600 dark:text-neutral-300">
-            {selection.selected.length === 0 ? <li>Nenhuma skill entrou para este contexto.</li> : null}
-            {selection.selected.map((skill) => (
+            {(selection.selected ?? []).length === 0 ? <li>Nenhuma skill entrou para este contexto.</li> : null}
+            {(selection.selected ?? []).map((skill) => (
               <li key={skill.id}>
                 • {skill.id} {skill.category ? `(${skill.category})` : ""} — {skill.token_budget || 0} tokens
               </li>

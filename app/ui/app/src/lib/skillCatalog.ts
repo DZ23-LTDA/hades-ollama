@@ -34,8 +34,11 @@ export type AgentSkillSkip = {
 };
 
 export type AgentSkillSelection = {
-  selected: AgentActiveSkill[];
-  skipped?: AgentSkillSkip[];
+  // O servidor devolve selected: null quando o contexto ainda nao tem skills associadas
+  // (observado na pagina /skills, que caia no ecra de erro com 'reading map'). O tipo tem de
+  // dizer a verdade para o TypeScript obrigar a guarda em quem consome.
+  selected: AgentActiveSkill[] | null;
+  skipped?: AgentSkillSkip[] | null;
   used_tokens: number;
   token_budget: number;
   budget_defined: boolean;
@@ -58,10 +61,12 @@ export const emptySkillContext: SkillContextInput = {
 /** Resumo honesto do orçamento: sem orçamento declarado, nada é "usado". */
 export function skillUsageLabel(selection: AgentSkillSelection | null): string {
   if (!selection) return "Nenhuma seleção resolvida ainda.";
+  // `selected` pode vir null do servidor quando o contexto ainda nao tem skills associadas.
+  const selecionadas = selection.selected ?? [];
   if (!selection.budget_defined) {
-    return `${selection.selected.length} skill(s) selecionada(s) sem orçamento declarado.`;
+    return `${selecionadas.length} skill(s) selecionada(s) sem orçamento declarado.`;
   }
-  return `${selection.used_tokens} de ${selection.token_budget} tokens usados · ${selection.selected.length} skill(s)`;
+  return `${selection.used_tokens} de ${selection.token_budget} tokens usados · ${selecionadas.length} skill(s)`;
 }
 
 export function skillSkipLabel(skip: AgentSkillSkip): string {

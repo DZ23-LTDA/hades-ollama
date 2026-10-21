@@ -539,3 +539,76 @@ operativo. E' o primeiro numero **do produto instalado**, onde antes so' havia o
 do repositorio.
 
 **Limpeza:** a instancia de 11500 foi encerrada; a principal (11434) continuou de pe' e respondeu 200.
+## B1/B2 — A APP NAO ABRIA: causa medida, corrigida e ENTREGUE pelo .exe
+
+**Medido em 2026-10-21, no PC do dono.**
+
+### Defeito 1: o binario entregue nao tinha janela NEM base de dados
+
+O instalador entregava `ollama app.exe` compilado com `CGO_ENABLED=0`. Duas consequencias, ambas
+visiveis no `%LOCALAPPDATA%\Ollama\app.log`:
+
+```
+level=ERROR msg="failed to load onboarding state"
+  error="open database: ping database: Binary was compiled with 'CGO_ENABLED=0',
+         go-sqlite3 requires cgo to work. This is a stub"
+```
+
+e no codigo: `app/webview/webview_stub.go` tem `//go:build !cgo` e o stub devolve
+`func (*unavailableWebView) Run() {}` / `Window() unsafe.Pointer { return nil }` — **sem cgo nao existe
+janela**, por construcao. O icone da bandeja aparecia (processo Go vivo, UI servida em porta aleatoria),
+mas clicar nao abria nada porque nao havia janela para abrir.
+
+**Correcao:** build com `CGO_ENABLED=1 GOOS=windows GOARCH=amd64` no WSL com mingw-w64.
+Tres obstaculos reais, todos medidos e resolvidos:
+
+| obstaculo | erro observado | solucao |
+| --- | --- | --- |
+| falta `g++` | `app/webview: exec: "g++": executable file not found` | `g++-mingw-w64-x86-64` + `CXX=x86_64-w64-mingw32-g++` |
+| sem Windows SDK | `WebView2.h: fatal error: EventToken.h: No such file` | — |
+| **maiusculas** | o mingw tem `eventtoken.h`; o codigo inclui `EventToken.h`; FS Linux e' case-sensitive | symlink `EventToken.h` -> `eventtoken.h` (idem `Wrl.h`, `Rpc.h`) |
+
+Resultado: `BUILD_EXIT=0`, binario de **85.143.722 bytes** (o stub tinha 44.749.312) — o tamanho maior
+e' o webview C++ real a entrar.
+
+### Defeito 2: `/skills` caia no ecra de erro
+
+Varridas as 21 rotas da UI no produto instalado (navegador real, Playwright): 20 OK, **1 quebrada**:
+
+```
+/skills -> TypeError: Cannot read properties of null (reading 'map')
+```
+
+Causa: `ProductWorkspacePage.tsx` linha 88 fazia `selection.selected.map(...)` — e `skipped` tinha
+`?? []`, mas `selected` nao. O tipo declarava `selected: AgentActiveSkill[]` (mentira: o servidor devolve
+`null`). Corrigido em tres camadas:
+
+1. **guarda** em `skillActivationsFromSelection` (`selected` e `skipped` normalizados);
+2. **tipo honesto** `AgentActiveSkill[] | null` — o que expos mais **4 sitios** com o mesmo defeito
+   (`SkillCatalogPanel.tsx` x2, `skillCatalog.ts` x2), todos corrigidos;
+3. **teste de regressao** `ProductWorkspacePage.selecaoNula.test.tsx` (4 casos), com **mutacao**:
+   removendo a guarda o teste falha (`1 failed`), repondo-a passa (`4 passed`).
+
+### Entrega pelo .exe, verificada
+
+```
+instalador reconstruido .... HadesSetup-c5dcb230b.exe  52,33 MB  (era 39,21 MB com o stub)
+desinstalacao .............. exit=0
+instalacao (Downloads) ..... exit=0
+%LOCALAPPDATA%\Programs\Hades\ollama app.exe = 85.143.722 bytes
+janela ..................... "Hades" aberta e estavel (60s+)
+motor ...................... /api/version -> 200
+registo + atalho ........... presentes
+paginas .................... 21/21 sem ecra de erro
+suite frontend ............. 176 ficheiros / 1555 testes, exit 0
+tsc ........................ 0 erros · BUNDLE_BUDGET=PASS
+```
+
+**Achado colateral do instalador:** com um ficheiro em uso ele aborta — `exit=5`, e o log diz
+`Setup was unable to automatically close all applications` + `User canceled the installation process`.
+Com `/FORCECLOSEAPPLICATIONS` passa a `exit=0`. O script do instalador deve usar esse flag.
+
+**Limite declarado:** continua a faltar assinatura do instalador (B6/#23) e homologacao independente
+(Camada C). E o teste da UI foi feito com uma build de teste que dispensava o cookie de sessao
+(`HADES_TEST_UI_NO_TOKEN=1`); esse patch foi **revertido** antes do build entregue — `git diff` de
+`app/cmd/app/app.go` esta' vazio.
