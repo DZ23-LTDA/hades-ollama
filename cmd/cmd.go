@@ -1181,7 +1181,7 @@ func ListHandler(cmd *cobra.Command, args []string) error {
 				size = format.HumanBytes(m.Size)
 			}
 
-			data = append(data, []string{m.Name, m.Digest[:12], size, format.HumanTime(m.ModifiedAt, "Never")})
+			data = append(data, []string{m.Name, shortDigest(m.Digest), size, format.HumanTime(m.ModifiedAt, "Never")})
 		}
 	}
 
@@ -1233,7 +1233,7 @@ func ListRunningHandler(cmd *cobra.Command, args []string) error {
 				until = format.HumanTime(m.ExpiresAt, "Never")
 			}
 			ctxStr := strconv.Itoa(m.ContextLength)
-			data = append(data, []string{m.Name, m.Digest[:12], format.HumanBytes(m.Size), procStr, ctxStr, until})
+			data = append(data, []string{m.Name, shortDigest(m.Digest), format.HumanBytes(m.Size), procStr, ctxStr, until})
 		}
 	}
 
@@ -2750,4 +2750,18 @@ func renderToolCalls(toolCalls []api.ToolCall, plainText bool) string {
 		out += readline.ColorDefault
 	}
 	return out
+}
+
+// shortDigest devolve os primeiros 12 caracteres do digest SEM rebentar.
+//
+// Defeito medido em 2026-10-21: `ollama list` panicava com
+// "slice bounds out of range [:12] with length 11" porque o codigo fazia m.Digest[:12]
+// directamente. Qualquer aplicacao que use o CLI via crash -- o endpoint /api/tags
+// respondia bem, o binario e' que morria.
+func shortDigest(digest string) string {
+	const n = 12
+	if len(digest) <= n {
+		return digest
+	}
+	return digest[:n]
 }
