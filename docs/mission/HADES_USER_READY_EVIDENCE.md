@@ -316,3 +316,17 @@ Superfície da mudança, medida: **1 consumidor** (`mergeConnectorCatalog`, valo
 O que continua por provar: não existe hoje teste de UI que **alterne o idioma em tempo de execução**
 e verifique o repintar. A correção é de desenho e está justificada; a prova comportamental dessa
 alternância segue em aberto.
+### A lacuna do teste comportamental FOI FECHADA — com prova por mutação
+
+O paragrafo anterior dizia «nao existe teste de UI que alterne o idioma em tempo de execucao».
+Deixou de ser verdade: `app/ui/app/src/i18n/troca-idioma.test.tsx` tem 3 testes que provam
+(1) `t()` muda com o idioma, (2) o catalogo de conectores nao congela descricoes, (3) um
+componente com `useT()` repinta.
+
+**Prova por mutacao, medida:** ao cachear o catalogo na primeira leitura (mutacao), o teste
+falha com `expected 'Redija respostas, pesquise a caixa de…' not to be 'Redija respostas…'`
+-> `1 failed | 2 passed`. Revertida a mutacao, `9/9` verdes. Sem isto, o teste poderia estar
+a passar por inercia.
+
+Verificacao: `vitest run` 174 ficheiros / 1547 testes (baseline 173/1544 + 3 novos, nenhum
+removido); `tsc` exit 0; 6 gates de documento a 0; `check-class-a-plus-integrity.sh` EXIT=0.
