@@ -233,3 +233,49 @@ lote.
   empacotado. Provam a UI e os fluxos, não a instalação.
 - Uma execução verde local **não** é homologação independente (Camada C).
 - Os `skipped` das specs são modos de backend real e **não** contam como prova.
+
+## Bateria local (81 passos): BLOQUEADA neste host por antivírus — medido, não suposto
+
+Registro isto porque uma lacuna declarada não é omissão: é afirmação verificável. Explica também
+por que a condição (f) da SAÍDA 1 não pode ser satisfeita **nesta máquina**.
+
+**O que acontece.** O `go.mod` exige `go >= 1.26.10`. O `go.exe` dessa versão é **apagado pelo
+antivírus do host** sempre que é extraído; a bateria cai para o toolchain `1.26.9` ainda presente
+em `_tmp\goroot1269` e falha:
+
+```
+--- 2. go build ./...
+    go: go.mod requires go >= 1.26.10 (running go 1.26.9; GOTOOLCHAIN=local)
+
+--- 3. golangci-lint run ./internal/agent/... ./server/...
+    context loading failed: ... exit status 1: stderr: go: go.mod requires go >= 1.26.10
+    (running go 1.26.9; GOTOOLCHAIN=local)
+
+--- 12. TESTES GO (o 16o checker, E-488)
+    TESTES GO: 4 de 4 FALHARAM: ./internal/agent, ./server, ./internal/proxy, ./internal/multillm
+```
+
+**Prova de que é o antivírus e não o repositório.** `_tmp/go1.26.10.zip` existe (75.004.774 B).
+A extracção corre e o `go.exe` não aparece:
+
+```
+Expand-Archive -Path _tmp\go1.26.10.zip -DestinationPath _tmp\goroot12610 -Force
+  -> go.exe NAO apareceu apos extracao (antivirus)
+  -> 3s depois: go.exe APAGADO pelo antivirus
+```
+
+**Alcance real desta execução.** A bateria **abortou no passo 12** (fail-fast): o log tem
+**23 marcadores `---`** e **126 linhas**, não os 81 passos. Portanto **não** afirmo 81/81 nesta
+máquina; afirmo 23 passos executados, 4 falhados, todos por ausência do toolchain.
+
+**O que isto NÃO invalida.** O CI instala o Go com `setup-go` e prova os mesmos passos:
+`Go agentic Windows portability` e `PR gate` deram **pass** em `f56b0bd1d` (29 pass / 0 fail),
+incluindo `go test ./internal/agent` e `./server`.
+
+**O que fica proibido, e não foi feito.** Baixar o `go.mod` para 1.26.9 faria a bateria passar
+escondendo a causa; desactivar a protecção do host contornaria um controlo de segurança. Nenhuma
+das duas.
+
+**O que desbloqueia.** Uma excepção de antivírus para `_tmp\goroot12610\go\bin\go.exe` (decisão do
+dono da máquina), ou um host com o toolchain 1.26.10 estável. Quando chegar, a bateria completa
+torna-se executável e o 81/81 passa a ser medível aqui.
