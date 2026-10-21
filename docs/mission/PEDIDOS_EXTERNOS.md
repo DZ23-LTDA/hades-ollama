@@ -221,3 +221,53 @@ volte a correr. Se ele **falhar de novo**, o passo seguinte dentro do repositór
 **Excepção de processo registada:** com o gate vermelho e a fila travada, o trabalho de código retoma
 (I1b) com esta excepção **escrita** — para não confundir «bloqueado por infra» com «parado por opção».
 O verde continua a ser exigido para marcar qualquer item como DONE.
+---
+
+## 5. Homologacao independente (Camada C)
+
+**O que e:** uma pessoa que NAO seja o autor executa o roteiro de homologacao, tenta falsificar a
+entrega e assina com nome, data e SHA.
+
+**Como:** `python -X utf8 scripts/hades_homologacao_verificar.py` no checkout, no SHA a homologar.
+
+**Porque bloqueia:** um autor nao se homologa a si proprio. Sem esta assinatura nenhuma afirmacao de
+"pronto" e' legitima, por muitos testes verdes que existam.
+
+---
+
+## 6. Instalador assinado (Authenticode)
+
+**O que e:** certificado de assinatura de codigo + chave, e o passo de assinatura no empacotamento.
+
+**Estado medido:** o instalador e' gerado e NAO assinado (o proprio script avisa "nao assinado, nao
+publicado"). Sem assinatura o Windows mostra aviso e o SmartScreen pode bloquear.
+
+---
+
+## 7. Runners multi-OS / desinstalacao limpa
+
+**O que e:** execucao real em macOS e Linux (build e testes), e uma bateria de instalacao/desinstalacao
+em perfil Windows limpo.
+
+**Estado medido:** a propria UI reporta "5 de 8 alvos bloqueados" (ios, linux, macos, windows,
+windows-installer) e 3 incompletos (android, oci, web). A desinstalacao foi medida UMA vez neste host
+(exit 0, registo e PATH limpos) -- nao e' bateria.
+
+---
+
+## 8. Instancia real do Evolution (WhatsApp)
+
+**O que e:** URL e instancia de um servidor Evolution real, para provar o QR contra servidor verdadeiro.
+
+**Estado medido:** o caminho do QR esta' provado com um servidor falso (httptest) e testes que garantem
+que a api key e o webhook secret NAO sao devolvidos. Contra servidor real, nao.
+
+---
+
+## 9. Decisao de exposicao de rede (OLLAMA_HOST)
+
+**O que e:** decisao escrita do dono sobre expor o motor para outras maquinas da rede.
+
+**Estado:** o motor escuta apenas em 127.0.0.1 (loopback). A recusa por omissao esta' deliberada e
+mantem-se: uma API local sem autenticacao exposta na LAN e' um risco que ninguem pediu. Para habilitar,
+e' preciso decisao escrita + autenticacao ANTES da exposicao.
