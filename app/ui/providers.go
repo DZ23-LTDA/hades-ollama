@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -35,7 +36,22 @@ type ProviderStatus struct {
 }
 
 func providerConfigPath() string {
-	return strings.TrimSpace(os.Getenv("OLLAMA_DZ23_CONFIG"))
+	if p := strings.TrimSpace(os.Getenv("OLLAMA_DZ23_CONFIG")); p != "" {
+		return p
+	}
+	// DEFEITO MEDIDO pelo dono: ao cadastrar um provedor, a app respondia
+	// "OLLAMA_DZ23_CONFIG nao esta definido; instale novamente o aplicativo".
+	//
+	// O valor e' DERIVAVEL: o instalador define exatamente
+	// "{userappdata}\Ollama DZ23\dz23-providers.json". Recusar a operacao quando a variavel
+	// falta (app arrancada com ambiente herdado de antes da instalacao, ou valor limpo por uma
+	// desinstalacao) obrigava a reinstalar por causa de uma variavel que o proprio codigo pode
+	// reconstruir. A variavel continua a funcionar como OVERRIDE.
+	base, err := os.UserConfigDir()
+	if err != nil || strings.TrimSpace(base) == "" {
+		return ""
+	}
+	return filepath.Join(base, "Ollama DZ23", "dz23-providers.json")
 }
 
 func providerSecretsDir() (string, error) {
