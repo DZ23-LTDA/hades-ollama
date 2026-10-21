@@ -218,3 +218,31 @@ tem de poder distinguir.
 **Limite declarado:** a prova de fallback com **falha real de rede** exige provedor externo; será feita com
 servidor HTTP falso que devolve erro conhecido (httptest), e a prova com provedor verdadeiro fica em
 PEDIDOS_EXTERNOS (credencial real).
+---
+
+## FATIA 4 — FERRAMENTAS NO CHAT (decisao do dono: 2026-10-21)
+
+**Report que originou:** "ELE NAO FAZ" -- o dono pediu uma pasta com ficheiros no chat e recebeu instrucoes
+de terminal (e comandos INVENTADOS: create-dir, create-file, list-files, open-browser nao existem no binario;
+reais: serve, create, show, run, stop, pull, push, signin, signout, list, ps, cp).
+
+**Medicao que descartou a hipotese anterior:** o dono trocou de modelo por TODOS e nada mudou. Logo nao era
+o modelo. As ferramentas existem no runtime (a.runtime.ListTools()) e sao expostas pelas MISSOES; o chat
+envia por useSendMessage (app/ui/app/src/hooks/useChats.ts:198), um caminho SEM ferramentas.
+
+**Decisao do dono:** ligar as ferramentas AO CHAT. A fatia e' essa.
+
+**Aceite:**
+
+| # | criterio | prova exigida |
+| --- | --- | --- |
+| T1 | Pedido de execucao no chat ("cria a pasta X com index.html") produz FICHEIROS no disco, e nao uma lista de instrucoes. | teste positivo: ficheiro existe com o conteudo pedido |
+| T2 | O chat mostra que executou (ferramenta + resultado), nao so texto. | teste positivo: evento de ferramenta visivel no stream |
+| T3 | Comando/ferramenta inexistente e' RECUSADO na validacao -- o modelo nao pode inventar CLI. | teste negativo: pedido que so' existe na alucinacao -> recusa explicita |
+| T4 | Quando a superficie nao tem ferramentas, a resposta NAO finge: diz que nao pode executar ali. | teste negativo: mensagem explicita, sem passos falsos |
+| T5 | Nada escreve fora do workspace, como na edicao de artefactos. | teste negativo: caminho com travessia recusado |
+
+**Restricao:** manter o default seguro (loopback). Nada de expor rede.
+
+**Limite declarado:** T1/T2 exigem app instalada com modelo que emita tool calls (llama3.1:8b, qwen2.5:7b,
+deepseek-v4.1-flash) -- modelos -coder e deepseek-r1 nao emitem, e o chat deve dize-lo em vez de fingir.
