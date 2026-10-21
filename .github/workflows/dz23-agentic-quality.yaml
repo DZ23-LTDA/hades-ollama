@@ -1,8 +1,11 @@
 name: dz23-agentic-quality
 
 concurrency:
-  # PRs preempt previous attempts; each push/re-run gets an independent group
-  # so long integration jobs cannot cancel one another on the recovery branch.
+  # PRs preempt previous attempts: `group` usa o NUMERO DA PR, entao todo push na mesma PR
+  # cai no MESMO grupo e `cancel-in-progress: true` CANCELA o run em curso.
+  # *O texto anterior dizia "independent group ... cannot cancel one another" -- era FALSO:*
+  # medido em 2026-10-21: o job 118966988946 terminou `cancelled` 5 min depois do push
+  # seguinte, a meio da suite. Consequencia pratica: nao empurrar enquanto um job critico correr.
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
