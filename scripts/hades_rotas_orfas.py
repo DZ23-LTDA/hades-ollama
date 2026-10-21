@@ -228,7 +228,11 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #   ***ZERO NAO QUER DIZER PRODUTO PRONTO. Quer dizer que TODAS as rotas do backend tem' superficie no
 #   frontend ou sao consumidor externo deliberado. O build continua NAO assinado e NAO instalado, a FASE 30
 #   nao esta' iniciada, e o MFA nao reautentica. Um gate a zero mede uma propriedade; nao absolve o resto.***
-TETO_ORFAS = 7
+TETO_ORFAS = 6
+# 7 -> 6 (2026-10-21): as tres rotas `/build/pare*` passaram a CONSUMIDOR_EXTERNO com razao
+# escrita (controlo de operador, sem botao na UI). O numero desceu por classificacao correcta,
+# nao por trabalho novo -- por isso o teto BAIXA com ele: guardar a folga seria converter um
+# acerto de leitura em credito para a proxima rota orfa.
 # RAZAO DA SUBIDA (4 -> 7), escrita porque o tecto nao sobe em silencio:
 #
 # TRES rotas novas, todas API SEM UI pela mesma decisao do bloco abaixo -- e o adendo que as criou
@@ -348,6 +352,10 @@ CONSUMIDOR_EXTERNO = (
     ("/mcp/rpc", "o cliente MCP chama"),
     ("/devices/pair/complete", "o celular completa o pareamento"),
     ("/egress/", "diagnostico de rede do operador"),
+    # O pare e' um controlo de OPERADOR, nao um botao do produto: o estado (GET) serve a
+    # monitorizacao e o comando (POST) vive no canal autorizado (`HADES_PARE_AUTORIDADE`).
+    # Um botao "parar tudo" na UI do utilizador final seria um footgun, nao uma funcionalidade.
+    ("/build/pare", "controlo de OPERADOR: estado e comando no canal autorizado"),
     ("/commands", "superficie de CLI"),
 )
 
