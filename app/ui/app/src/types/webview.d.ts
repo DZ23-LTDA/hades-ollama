@@ -4,6 +4,9 @@ interface ImageData {
   filename: string;
   path: string;
   dataURL: string; // base64 encoded file data
+  // I0a: preenchido quando o ficheiro/arquivo NAO pode ser anexado (ex.: zip rejeitado por
+  // limite, ou sem ficheiros de texto). Sem isto o anexo desaparecia sem mensagem.
+  error?: string;
 }
 
 interface MenuItem {

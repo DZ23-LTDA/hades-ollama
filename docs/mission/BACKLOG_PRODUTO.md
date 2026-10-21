@@ -1,0 +1,85 @@
+# BACKLOG_PRODUTO — itens autorizados, com ACEITE ESCRITO ANTES
+
+Regra desta lista: **um item por commit**, com verde da PR lido **por id de job** antes do
+próximo. Cada item só é DONE quando os critérios de aceite abaixo estiverem provados com
+**teste positivo + negativo** e, havendo UI, **E2E real** (captura de ecrã não é prova).
+
+Estimativa não é medição. Tudo o que tocar build/instalador/antivírus deve ser multiplicado
+por 2–3.
+
+---
+
+## I0a — Anexos/zip: o erro deixa de ser silencioso
+
+**Aceite (escrito antes da implementação):**
+
+| # | critério | prova exigida |
+| --- | --- | --- |
+| A1 | Um zip cujo conteúdo excede os limites (`ErrZipLimit`) produz **mensagem visível ao utilizador**, com o limite que foi excedido — não apenas `slog.Warn`. | teste negativo em Go + saída |
+| A2 | Um zip **sem** ficheiros de texto suportados produz **erro explícito** com a contagem de entradas ignoradas. | teste negativo em Go |
+| A3 | Um zip válido com ficheiros suportados continua a produzir os anexos esperados — **sem regressão**. | teste positivo em Go |
+| A4 | As entradas ignoradas passam a ser **resumidas ao utilizador** (contagem + motivo), não só `slog.Debug`. | teste + saída |
+| A5 | O ficheiro problemático **não desaparece em silêncio**: o utilizador sabe que o anexo falhou. | E2E/medição |
+
+**Causa-raiz medida** (`app/cmd/app/webview.go:348-361`):
+
+```go
+report, err := attachments.ReadZipText(filename, textExts, attachments.DefaultZipLimits)
+if err != nil {
+    slog.Warn("zip attachment rejected", ...)   // <- so' LOGA
+}
+for _, skipped := range report.Skipped { slog.Debug(...) }   // <- so' DEBUG
+for _, entry := range report.Entries { files = append(...) } // <- vazio quando falha
+```
+
+Quando `ReadZipText` devolve erro (ou quando todas as entradas são filtradas), o utilizador
+recebe **zero anexos e nenhuma mensagem**: o zip «quebra» sem explicação.
+
+---
+
+## I0b — QR do Evolution
+
+**Aceite:**
+
+| # | critério |
+| --- | --- |
+| B1 | O painel mostra o QR de emparelhamento da instância Evolution configurada, obtido do **próprio servidor Evolution** (proxy autenticado), não inventado. |
+| B2 | Sem Evolution configurado, a UI diz o que falta — não mostra um QR vazio. |
+| B3 | Instância já ligada (`state=open`) → a UI diz «ligado», não pede QR. |
+| B4 | Segredo do webhook/API key **nunca** aparece na resposta do proxy. |
+| B5 | Teste negativo: Evolution inacessível → erro claro, sem QR falso. |
+
+**Medido hoje:** não existe endpoint de QR no Hades (`/whatsapp`: webhook, status, send, dlq,
+allowlist, config). O QR é gerado pelo servidor Evolution do utilizador.
+
+---
+
+## I0c — Barra de permissões por missão
+
+**Aceite:**
+
+| # | critério |
+| --- | --- |
+| C1 | Ao criar/editar uma missão, o nível de acesso é escolhido num controlo **sempre visível** (não escondido num passo). |
+| C2 | O servidor **recusa** a missão quando a capacidade pedida não foi concedida (já medido: `400 tool capability is not granted to this mission: workspace.write`). |
+| C3 | A UI mostra o nível efetivo da missão em execução e permite mudar antes de aprovar. |
+| C4 | Teste negativo: pedir `workspace:write` sem conceder → recusa com mensagem; positivo: concedido → aceita. |
+
+---
+
+## I1 — Preview ao vivo COMPLETO
+
+**Aceite:** editar o artefacto e **correr** a app gerada (servidor real, não `srcdoc` mock),
+com reload automático; teste positivo (ficheiro alterado → preview muda) e negativo
+(artefacto inválido → erro visível, sem preview em branco).
+
+**Estado:** existe painel de passos + preview de artefacto (Studio → «Construção ao vivo»).
+Falta edição e execução real.
+
+---
+
+## I2 — Roteamento multi-provedor
+
+**Aceite:** escolher local / Ollama Cloud / externo por missão; **fallback explicável**
+(qual provedor foi usado, porquê, e o que falhou antes); teste negativo (provedor sem
+credencial → erro claro, sem cair para outro em silêncio).

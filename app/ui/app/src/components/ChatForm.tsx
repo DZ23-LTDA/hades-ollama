@@ -769,9 +769,14 @@ function ChatForm({
         // Convert native dialog results to File objects
         // Decode with the browser's native data: URL handling instead of a
         // per-byte JavaScript loop, which froze the UI on larger files.
+        const zipErrors: Array<{ filename: string; error: string }> = [];
         const files = (
           await Promise.all(
             results.map(async (result: ImageData) => {
+              if (result.error) {
+                zipErrors.push({ filename: result.filename, error: result.error });
+                return null;
+              }
               if (!result.dataURL) return null;
               const blob = await (await fetch(result.dataURL)).blob();
               return new File([blob], result.filename, { type: blob.type });
@@ -779,15 +784,16 @@ function ChatForm({
           )
         ).filter(Boolean) as File[];
 
-        if (files.length > 0) {
+        if (files.length > 0 || zipErrors.length > 0) {
           const { validFiles, errors } = await processFiles(files, {
             selectedModel,
             hasVisionCapability,
           });
 
           // Send processed files and errors to the same handler as FileUpload
-          if (validFiles.length > 0 || errors.length > 0) {
-            handleFilesReceived(validFiles, errors);
+          const todosErros = [...errors, ...zipErrors];
+            if (validFiles.length > 0 || todosErros.length > 0) {
+              handleFilesReceived(validFiles, todosErros);
           }
         }
       }
