@@ -932,6 +932,11 @@ func (a *agentAPI) register(r *gin.Engine) {
 	group.POST("/build/start", a.iniciarBuild)
 	// So' LEITURA: nao ha' rota para acionar o pare -- essa exige a decisao de autorizacao.
 	group.GET("/build/pare", a.estadoDoPare)
+	// Acionar e rearmar o pare: o MECANISMO vive aqui; a AUTORIDADE (quem pode)
+	// vive em HADES_PARE_AUTORIDADE e e' decisao humana. Sem a variavel, as rotas
+	// respondem 403 com o motivo -- nunca autorizam por omissao.
+	group.POST("/build/pare", a.acionarOPare)
+	group.POST("/build/pare/rearmar", a.rearmarOPare)
 	// CALCULO, nao medicao: o servidor NAO mede a VRAM do cliente -- quem a mede passa-a.
 	group.GET("/systems/recomendacao", a.recomendacaoPorVRAM)
 	// PROPOE, nao cria: o corpo traz a conversa, a identidade vem da sessao.
