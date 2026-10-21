@@ -1,3 +1,24 @@
+## 0. COMANDO UNICO (faz isto primeiro)
+
+Antes de seguir o resto do runbook, corre:
+
+```
+python -X utf8 scripts/hades_homologacao_verificar.py
+```
+
+Ele executa, na ordem da missao, os **10 geradores** e os **6 gates de documento**, recolhe a saida
+literal de cada um e escreve `_tmp/HOMOLOGACAO_<sha>.md` com uma tabela `exit` + ultima linha. Termina
+com `HOMOLOGACAO_VERIFICAR=PASS` (exit 0) ou `FAIL` (exit 1).
+
+**O que esse relatorio NAO e':** nao e' homologacao. Foi produzido por uma ferramenta do repositorio,
+nao por ti. Ele existe para te poupar a copia manual dos comandos -- a leitura, o juizo e a assinatura
+continuam a ser teus. Em particular, **o requisito C2 (tentar falsificar a entrega) nao tem comando**:
+tem de ser feito por uma pessoa a procurar testes fracos, gates desligados e promessas sem prova.
+
+O sha do relatorio e' o do HEAD no momento em que correste. Se depois mexeres no repositorio, volta a
+correr: um relatorio de outro SHA nao serve para homologar este.
+
+---
 # HADES — runbook de homologação independente (Camada C)
 
 > **Quem executa:** um revisor que **não** seja o autor do diff (pessoa ou agente de contexto limpo).

@@ -64,6 +64,7 @@ ISENTOS = {
     "hades_tenant_scope_fixture_subpasta.py": "fixture gerada por teste; nao e' executavel por si",
     # *Geradores/ferramentas de manutencao, e nao gates:* escrevem artefato, nao medem estado.
     "dz23_provider_smoke.py": "sonda opt-in de provedor; exige credencial (BLOCKED_EXTERNAL)",
+    "hades_homologacao_verificar.py": "verificador da Camada A para o revisor independente: corre os 10 geradores e os 6 gates de documento, recolhe a saida literal e escreve _tmp/HOMOLOGACAO_<sha>.md; por desenho NAO e chamado por nenhum gate (um gate que chamasse o verificador de homologacao estaria a homologar-se a si proprio) e so escreve em _tmp/",
     "hades_browser_homologacao.py": "sonda opt-in de homologacao de browser; exige playwright+chromium instalados no host, e falha com instrucao de instalacao quando ausentes -- e' a evidencia executavel do requisito 17 do gate, nao um gate de rotina",
     "hades_third_party_notices.py": "gera THIRD_PARTY_NOTICES.md; chamado pelo FASE-5, e nao por gate",
     "hades_checkers_autoteste_controle.py": "controle negativo do autoteste; roda junto com ele",
