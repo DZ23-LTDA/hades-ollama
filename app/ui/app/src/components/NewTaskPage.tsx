@@ -47,7 +47,7 @@ export function NewTaskPage() {
       });
       await navigate({ to: "/tasks", search: { created: mission.id } });
     } catch (cause) {
-      setSubmitError(agentErrorMessage(cause, t("newTask.error.create")));
+      setSubmitError(agentErrorMessage(cause, t("newTask.error.create"), t));
       setSubmitting(false);
     }
   };

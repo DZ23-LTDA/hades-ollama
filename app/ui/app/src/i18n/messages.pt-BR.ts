@@ -2043,4 +2043,10 @@ export const ptBRMessages: Record<string, string> = {
   "newTask.submit": "Criar tarefa",
   "newTask.submit.pending": "Criando tarefa…",
   "common.cancel": "Cancelar",
+
+  // Erros visíveis ao utilizador nas chamadas à Agent API (lib/agenticClient.ts)
+  "agenticClient.error.loginRequired": "O Ollama está exposto na rede, então os recursos de agente exigem login. Entre em Configurações → Workspace ou desative \"Expose Ollama to the network\" em Configurações.",
+  "agenticClient.error.unexpectedHtml": "Agent API indisponível: resposta inesperada do servidor",
+  "agenticClient.error.requestFailed": "Falha na requisição à Agent API.",
+  "agenticClient.error.connectRuntime": "Não foi possível conectar ao runtime agentic local. Verifique se ele está em execução e tente novamente.",
 };

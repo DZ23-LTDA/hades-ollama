@@ -2021,4 +2021,10 @@ export const enMessages: Record<string, string> = {
   "newTask.submit": "Create task",
   "newTask.submit.pending": "Creating task…",
   "common.cancel": "Cancel",
+
+  // User-visible errors raised by the Agent API client (lib/agenticClient.ts)
+  "agenticClient.error.loginRequired": "Ollama is exposed on the network, so agent features require sign-in. Open Settings → Workspace or turn off \"Expose Ollama to the network\" in Settings.",
+  "agenticClient.error.unexpectedHtml": "Agent API unavailable: unexpected response from the server",
+  "agenticClient.error.requestFailed": "Agent API request failed.",
+  "agenticClient.error.connectRuntime": "Could not connect to the local agentic runtime. Check that it is running and try again.",
 };

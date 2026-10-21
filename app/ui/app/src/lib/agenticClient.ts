@@ -1,3 +1,5 @@
+import { t, type Translator } from "@/i18n";
+import { ptBRMessages } from "@/i18n/messages.pt-BR";
 import { API_BASE } from "@/lib/config";
 import type { AgentPluginStatus } from "@/lib/pluginStatus";
 import type { AgentScheduleRunReport } from "@/lib/scheduleRun";
@@ -643,8 +645,13 @@ function agentHeaders(): Record<string, string> {
 export function agentSessionHeaders(): Record<string, string> {
   return agentHeaders();
 }
+/**
+ * Mensagem canonica em pt-BR sobre a exigencia de login quando o Ollama esta
+ * exposto na rede. O texto vem do dicionario base para nao divergir do que
+ * `t()` devolve; o idioma activo e' aplicado no momento do `throw`.
+ */
 export const AGENT_LOGIN_REQUIRED_MESSAGE =
-  'O Ollama está exposto na rede, então os recursos de agente exigem login. Entre em Configurações → Workspace ou desative "Expose Ollama to the network" em Configurações.';
+  ptBRMessages["agenticClient.error.loginRequired"];
 /**
  * ErroDaApi: o erro do transporte que NAO perde o que o servidor disse.
  *
@@ -705,13 +712,13 @@ export async function agentFetch<T>(
     contentType.includes("text/html")
   ) {
     // An API route falling through to the SPA must never be parsed as empty JSON.
-    throw new Error("Agent API indisponível: resposta inesperada do servidor");
+    throw new Error(t("agenticClient.error.unexpectedHtml"));
   }
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
     if (response.status === 401) clearAgentSession();
     if (response.status === 401 && body?.error === "bearer token is required") {
-      throw new Error(AGENT_LOGIN_REQUIRED_MESSAGE);
+      throw new Error(t("agenticClient.error.loginRequired"));
     }
     // `ErroDaApi` e nao `Error`: a mensagem e' a mesma, mas o status e o corpo deixam de se perder.
     throw new ErroDaApi(
@@ -728,7 +735,7 @@ export async function agentFetch<T>(
         ? body.erro
         : typeof body?.error === "string"
           ? body.error
-          : response.statusText || "Agent API request failed",
+          : response.statusText || t("agenticClient.error.requestFailed"),
       response.status,
       body,
     );
@@ -751,12 +758,12 @@ export async function agentFetchBlob(
     if (response.status === 401) clearAgentSession();
     const body = await response.json().catch(() => ({}));
     if (response.status === 401 && body?.error === "bearer token is required") {
-      throw new Error(AGENT_LOGIN_REQUIRED_MESSAGE);
+      throw new Error(t("agenticClient.error.loginRequired"));
     }
     throw new Error(
       typeof body?.error === "string"
         ? body.error
-        : response.statusText || "Agent API request failed",
+        : response.statusText || t("agenticClient.error.requestFailed"),
     );
   }
   return response.blob();
@@ -2125,8 +2132,17 @@ export const deployBuilder = (
     { method: "POST", body: JSON.stringify(payload) },
   );
 
-export function agentErrorMessage(cause: unknown, fallback: string): string {
+/**
+ * Traduz a causa de uma falha de chamada a API para texto visivel ao utilizador.
+ * `tr` existe para os chamadores React passarem o tradutor que ja subscrevem
+ * (`useT()`); por omissao usa o `t` global, lido no momento da chamada.
+ */
+export function agentErrorMessage(
+  cause: unknown,
+  fallback: string,
+  tr: Translator = t,
+): string {
   if (cause instanceof TypeError)
-    return "Não foi possível conectar ao runtime agentic local. Verifique se ele está em execução e tente novamente.";
+    return tr("agenticClient.error.connectRuntime");
   return cause instanceof Error && cause.message ? cause.message : fallback;
 }
