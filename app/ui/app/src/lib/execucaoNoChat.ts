@@ -79,3 +79,18 @@ export function citaComandoInventado(texto: string): boolean {
   const t = (texto ?? "").toLowerCase();
   return COMANDOS_INVENTADOS.some((c) => t.includes(c));
 }
+
+/**
+ * Decide se o envio deve ser INTERCEPTADO com a recusa honesta.
+ *
+ * Regras (aprendidas com os testes): pergunta NAO e' pedido de execucao -- textos com "?" ou
+ * começados por palavras interrogativas seguem o curso normal, mesmo que contenham um verbo.
+ */
+export function deveRecusarExecucaoNoChat(texto: string): boolean {
+  const t = (texto ?? "").trim().toLowerCase();
+  if (t === "") return false;
+  if (t.includes("?")) return false;
+  const interrogativas = ["como ", "o que ", "por que ", "porque ", "qual ", "quando ", "onde ", "quem "];
+  if (interrogativas.some((p) => t.startsWith(p))) return false;
+  return pedidoDeExecucao(t);
+}

@@ -1,4 +1,5 @@
 import Logo from "@/components/Logo";
+import { deveRecusarExecucaoNoChat, respostaSemFerramentas } from "@/lib/execucaoNoChat";
 import { enfileirar, tirarProximo } from "@/lib/filaEnvio";
 import { useT } from "@/i18n";
 import { ModelPicker } from "@/components/ModelPicker";
@@ -591,6 +592,13 @@ function ChatForm({
       setSlashHint(
         `Descreva o objetivo após ${parsedSlash.command.label} (ex.: "${parsedSlash.command.label} revisar a tela de login").`,
       );
+      return;
+    }
+
+    // FATIA 4 / T4: pedido de execucao numa superficie SEM ferramentas nao pode virar instrucoes
+    // inventadas (create-dir, create-file, ...). Diz o que e' verdade e aponta a que executa.
+    if (deveRecusarExecucaoNoChat(message.content)) {
+      setSlashHint(respostaSemFerramentas());
       return;
     }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   citaComandoInventado,
+  deveRecusarExecucaoNoChat,
   pedidoDeExecucao,
   respostaSemFerramentas,
 } from "./execucaoNoChat";
@@ -51,5 +52,31 @@ describe("Comandos inventados", () => {
     for (const c of ["create-dir", "create-file", "list-files", "open-browser"]) {
       expect(citaComandoInventado("hades " + c + " --path x")).toBe(true);
     }
+  });
+});
+
+describe("deveRecusarExecucaoNoChat (ligacao ao envio)", () => {
+  it("POSITIVO: o pedido real do dono e' interceptado", () => {
+    expect(
+      deveRecusarExecucaoNoChat(
+        "vamos criar uma estrutura básica de teste: mkdir teste-hades, com index.html, test.js e README.md",
+      ),
+    ).toBe(true);
+  });
+
+  it("NEGATIVO: perguntas seguem o curso normal (nao sao bloqueadas)", () => {
+    for (const t of [
+      "como cria um projeto em Go?",
+      "o que é um repositório git",
+      "por que devo usar pastas separadas?",
+      "qual o melhor formato de ficheiro",
+    ]) {
+      expect(deveRecusarExecucaoNoChat(t)).toBe(false);
+    }
+  });
+
+  it("NEGATIVO: conversa pura nao e' interceptada", () => {
+    expect(deveRecusarExecucaoNoChat("obrigado!")).toBe(false);
+    expect(deveRecusarExecucaoNoChat("")).toBe(false);
   });
 });
