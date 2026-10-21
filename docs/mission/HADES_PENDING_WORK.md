@@ -6637,3 +6637,9 @@ workflows** e foi **religado**; dois dos corrigidos (`linux_package`, `firefox_e
 (`checkpoint_note.ps1` L23, `local_gates.ps1` L70, `resume.ps1` L28, `claim_scan.py` L23,
 `link_scan.py` L18, `verify-linux-benchmark.ps1` L39, `verify-linux-parity.ps1` L65) -- **nao corrigidos**,
 com pre-condicao escrita: so' numa ronda com orcamento para correr a bateria antes e depois.
+
+**Actualizacao de retomada (E-1521):** `linux_package` e `firefox_e2e` **retirados** do job de integridade.
+Falha medida no runner: `o binario nao existe em .../_tmp/hades-linux-amd64` -- medem **artefacto
+construido/browser**, nao o checkout. O mesmo run provou **#13 bookkeeping SUCCESS** (fantasma fechado) e
+41 passos verdes antes do #42. Regra: *um gate do job de integridade so' pode medir o que o `git checkout`
+contem.* Verificacoes no job: **43**.
