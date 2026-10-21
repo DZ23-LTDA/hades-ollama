@@ -2108,4 +2108,7 @@ export const ptBRMessages: Record<string, string> = {
   "liveBuild.saving": "Salvando...",
   "liveBuild.saved": "Salvo na versao {version}.",
   "liveBuild.editHint": "Editar aqui cria uma VERSAO NOVA; a anterior continua restauravel.",
+  "liveBuild.publish": "Publicar",
+  "liveBuild.publishing": "Publicando...",
+  "liveBuild.published": "Publicado: {url}",
 };

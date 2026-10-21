@@ -2086,4 +2086,7 @@ export const enMessages: Record<string, string> = {
   "liveBuild.saving": "Saving...",
   "liveBuild.saved": "Saved as version {version}.",
   "liveBuild.editHint": "Editing here creates a NEW VERSION; the previous one stays restorable.",
+  "liveBuild.publish": "Publish",
+  "liveBuild.publishing": "Publishing...",
+  "liveBuild.published": "Published: {url}",
 };

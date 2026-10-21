@@ -1930,6 +1930,11 @@ export const configureWhatsAppCloud = (
     }),
   });
 export type WhatsAppQR = { state: string; qr?: string; pairing_code?: string };
+export const publicarArtefacto = (missionId: string, artifactId: string) =>
+  agentFetch<{ url: string; artifact_id: string; version: number }>(
+    `/api/agent/v1/missions/${encodeURIComponent(missionId)}/artifacts/${encodeURIComponent(artifactId)}/publish`,
+    { method: "POST", body: "{}" },
+  );
 export const editarArtefacto = (
   missionId: string,
   artifactId: string,

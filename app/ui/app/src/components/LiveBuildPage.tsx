@@ -5,6 +5,7 @@ import { useT } from "@/i18n";
 import {
   agentFetchBlob,
   editarArtefacto,
+  publicarArtefacto,
   getMission,
   listMissionEvents,
   listMissions,
@@ -78,6 +79,9 @@ export function LiveBuildPanel() {
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
   const [edicaoSalva, setEdicaoSalva] = useState<string | null>(null);
   const [recarregar, setRecarregar] = useState(0);
+  // FATIA 1: publicar devolve um URL servido pela API; guardo-o para o utilizador poder abrir.
+  const [publicando, setPublicando] = useState(false);
+  const [urlPublicada, setUrlPublicada] = useState<string | null>(null);
   const feedRef = useRef<HTMLDivElement | null>(null);
 
   const passos = useMemo(() => eventos.map(descreverEvento), [eventos]);
@@ -168,6 +172,20 @@ export function LiveBuildPanel() {
       if (url) URL.revokeObjectURL(url);
     };
   }, [missaoId, chaveArtefacto, emExecucao, recarregar]);
+
+  const handlePublicar = async () => {
+    if (!missaoId || !artefactoAtual) return;
+    setPublicando(true);
+    setUrlPublicada(null);
+    try {
+      const r = await publicarArtefacto(missaoId, artefactoAtual.id);
+      setUrlPublicada(r.url);
+    } catch (e) {
+      setErro(String(e));
+    } finally {
+      setPublicando(false);
+    }
+  };
 
   const handleSalvarEdicao = async () => {
     if (!missaoId || !artefactoAtual) return;
@@ -324,7 +342,24 @@ export function LiveBuildPanel() {
                     >
                       {salvandoEdicao ? t("liveBuild.saving") : t("liveBuild.save")}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => void handlePublicar()}
+                      disabled={publicando || !artefactoAtual}
+                      className="rounded-lg bg-sky-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-40 hover:bg-sky-700"
+                    >
+                      {publicando ? t("liveBuild.publishing") : t("liveBuild.publish")}
+                    </button>
                   </div>
+                  {urlPublicada ? (
+                    <p className="px-3 pt-2 text-[11px] text-sky-600 break-all" role="status">
+                      {t("liveBuild.published", { url: urlPublicada })}
+                      {" "}
+                      <a href={urlPublicada} target="_blank" rel="noreferrer" className="underline">
+                        {urlPublicada}
+                      </a>
+                    </p>
+                  ) : null}
                   {edicaoSalva ? (
                     <p className="px-3 pt-2 text-[11px] text-emerald-600" role="status">{edicaoSalva}</p>
                   ) : null}
