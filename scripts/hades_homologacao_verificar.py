@@ -128,7 +128,47 @@ def main() -> int:
         "- A bateria local completa (`scripts/hades_local_gates.ps1`), que depende de host Windows com",
         "  toolchain Go disponivel.",
         "- A verificacao adversarial (Camada C, requisito C2), que so' um revisor humano pode fazer.",
+        "",
+        "## SHAs citados nos documentos da missao (informativo, nao falha o script)",
+        "",
+        "Um identificador citado e' insubstituivel: se um SHA for inventado, tudo o que esta' correto ao",
+        "lado perde credito. Esta verificacao existe porque o autor deste repositorio escreveu uma vez um",
+        "SHA que nao existia num relatorio, e a leitura nao o apanharia -- so' o `git cat-file`.",
+        "",
     ]
+
+    # Caça aos SHAs fantasma: varre docs/mission/*.md por `abc123456` e confirma cada um.
+    # Informativo de proposito: documentos antigos podem citar commits que ja' nao existem
+    # localmente (histórico reescrito), e transformar isso em falha criaria ruido permanente.
+    try:
+        import re
+
+        citados: set[str] = set()
+        for doc in (RAIZ / "docs" / "mission").glob("*.md"):
+            texto = doc.read_text(encoding="utf-8", errors="replace")
+            citados.update(re.findall(r"`([0-9a-f]{9})`", texto))
+        fantasma = []
+        for candidato in sorted(citados):
+            # `git cat-file -e <sha>` SEM `^{commit}`: nos documentos aparecem tambem SHAs de
+            # BLOB (ex.: «restaurei-o byte a byte do blob `b5f7aefeb`»). Exigir tipo commit dava
+            # falso positivo -- foi o que aconteceu na primeira versao deste check.
+            verificado = subprocess.run(
+                ["git", "cat-file", "-e", candidato],
+                capture_output=True,
+                cwd=RAIZ,
+            )
+            if verificado.returncode != 0:
+                fantasma.append(candidato)
+        linhas.append(f"- SHAs distintos citados: **{len(citados)}**")
+        linhas.append(f"- SHAs inexistentes neste clone: **{len(fantasma)}**")
+        if fantasma:
+            linhas.append("")
+            linhas.append("| SHA citado | existe? |")
+            linhas.append("| --- | --- |")
+            for f in fantasma:
+                linhas.append(f"| `{f}` | **nao** |")
+    except Exception as erro:  # pragma: no cover - informativo
+        linhas.append(f"- (verificacao de SHAs indisponivel: {type(erro).__name__})")
 
     destino_dir = RAIZ / "_tmp"
     destino_dir.mkdir(exist_ok=True)
