@@ -283,20 +283,23 @@ def main() -> int:
             None,
             "NÃO MEDIDO", "NÃO MEDIDO", "não assinado (unsigned)",
             # ***A CAUSA MEDIDA NO `E-1112` (nao uma suposicao).*** *O cross-compile `GOOS=darwin` com
-            # **`CGO_ENABLED=0`** falha:*
+            # **`CGO_ENABLED=0`** falhava:*
             #     `discover/gpu.go:28:18: undefined: GetCPUMem`
             #     `discover/types.go:49:13: undefined: GetCPUMem`
-            # => *e a causa e': o `GetCPUMem` do darwin esta' em **`discover/gpu_darwin.go`**, que usa
-            # **`import "C"`** (`#cgo LDFLAGS: -framework Foundation -framework CoreGraphics -framework
-            # Metal`) => *e o Go **exclui automaticamente** qualquer ficheiro com `import "C"` quando
-            # `CGO_ENABLED=0`* => ***logo o macOS exige CGO, e o CGO exige a toolchain Apple.*** => *nao e'
-            # «o build nao foi tentado»: foi tentado, e **chegou ao limite** -- e o limite e' a **toolchain
-            # nativa**, nao o codigo.* => ***`BLOCKED_EXTERNAL` legitimo: o passo de desbloqueio e' o
-            # `dz23-macos-build.yaml` em `macos-latest` (que tem Xcode e CGO).`***
-            "**BLOCKED_EXTERNAL (medido, nao suposto)**: `GOOS=darwin CGO_ENABLED=0` falha com "
-            "`undefined: GetCPUMem` -- o `GetCPUMem` do darwin vive em `discover/gpu_darwin.go`, que usa "
-            "`import \"C\"` (Metal/Foundation), e o Go exclui ficheiros com `import \"C\"` quando CGO=0. "
-            "Desbloqueio: o `dz23-macos-build.yaml` em `macos-latest` (Xcode + CGO)."),
+            # => *e a causa era: o `GetCPUMem` do darwin estava em **`discover/gpu_darwin.go`**, que usa
+            # **`import "C"`**, e o Go exclui esses ficheiros quando `CGO_ENABLED=0`.*
+            #
+            # ***CORRIGIDO no commit `42c184eb7`.*** *Foi acrescentado `discover/cpu_darwin_nocgo.go`
+            # (build tag `darwin && !cgo`) que le a memoria por `golang.org/x/sys/unix` (sysctl).*
+            # *Prova antes/depois na MESMA execucao (WSL, Go 1.26.10):*
+            #     sem o ficheiro -> `discover/gpu.go:28:18: undefined: GetCPUMem`  (exit 1)
+            #     com o ficheiro -> darwin/amd64 **exit 0** · darwin/arm64 **exit 0**
+            # => *Ou seja: isto **nao era** `BLOCKED_EXTERNAL` -- era portabilidade nossa, e ficou fechado.*
+            # *O que continua a faltar em macOS nao e' compilar: e' o **artefacto empacotado** (o
+            # `dz23-macos-build.yaml` corrido num runner macOS para produzir o pacote assinado).*
+            "**COMPILA sem cgo desde `42c184eb7`** (antes falhava com `undefined: GetCPUMem`). "
+            "Falta o **artefacto empacotado** e assinado: o `dz23-macos-build.yaml` tem de correr num "
+            "runner macOS para produzir o pacote (o cross-compile provado aqui nao empacota a app)."),
         plataforma(
             "Android", "`apps/mobile-agentic/` (Expo/RN + `android/`)",
             existe_wf("dz23-e2e.yaml"),

@@ -21,7 +21,7 @@ não é APK.***
 | **macOS** | `cmd/`, `app/`, `server/` (Go) | `dz23-macos-build.yaml` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | não assinado (unsigned) |
 | **Android** | `apps/mobile-agentic/` (Expo/RN + `android/`) | `dz23-e2e.yaml` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | APK de desenvolvimento (não publicável) |
 | **iOS** | `apps/mobile-agentic/` (Expo/RN) | `AUSENTE` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | não assinado (unsigned) |
-| **Web/PWA** | `app/ui/app/` (React+TS+Vite) | `dz23-e2e.yaml` | `app\ui\app\dist\index.html` | 9 KB | `c930e3cb126dd22b2f9b78873bbfb6eb` | N/A (build de produção) | NÃO MEDIDO (PWA_INSTALADO_NA_UI=NAO) | N/A |
+| **Web/PWA** | `app/ui/app/` (React+TS+Vite) | `dz23-e2e.yaml` | `app\ui\app\dist\index.html` | 9 KB | `cab82a4a48d40555ef9093c840a1ef39` | N/A (build de produção) | NÃO MEDIDO (PWA_INSTALADO_NA_UI=NAO) | N/A |
 
 ## Artefactos de COMPONENTE (nao sao uma das 6 plataformas)
 
@@ -29,7 +29,7 @@ Pacotes que vivem em `dist/` e nao correspondem a um alvo de produto. *Sem esta 
 
 | Componente | Pacote | Tamanho | Hash (SHA-256[:32]) | Proveniencia | Escrito em |
 | --- | --- | --- | --- | --- | --- |
-| `browser-bridge` | `dist\browser-bridge\hades-browser-bridge-0.1.0-unsigned.zip` | 112 KB | `52337e9a9801c6d85852a6ad512ca2ad` | 3ad181fc3c1a | 2026-10-20 22:34 |
+| `browser-bridge` | `dist\browser-bridge\hades-browser-bridge-0.1.0-unsigned.zip` | 112 KB | `1a02a55e1ddbc5a2ef0ea87bf4b8de49` | dc58be359643 | 2026-10-21 02:17 |
 | `browser-bridge-firefox` | `dist\browser-bridge-firefox\hades-browser-bridge-firefox-UNSIGNED.zip` | 108 KB | `bf39475e03ec9ff9bc431f140db83b18` | 0e158f3f58a4 | 2026-10-20 21:15 |
 
 
@@ -48,10 +48,10 @@ Pacotes que vivem em `dist/` e nao correspondem a um alvo de produto. *Sem esta 
 
 - **Windows**: artefacto LEGADO: o PROVENIENCIA.txt nao confirma o SHA do candidato
 - **Linux**: artefacto de SOURCE_SHA 0e158f3f58a4 (declarado no PROVENIENCIA.txt DENTRO do tarball); cross-compile Windows→Linux com CGO=0; **NAO** e' build nativo, **NAO** foi instalado, e **NAO** e' byte-a-byte o artefacto do `dz23-linux-package.yaml` (que usa CGO=1)
-- **macOS**: **BLOCKED_EXTERNAL (medido, nao suposto)**: `GOOS=darwin CGO_ENABLED=0` falha com `undefined: GetCPUMem` -- o `GetCPUMem` do darwin vive em `discover/gpu_darwin.go`, que usa `import "C"` (Metal/Foundation), e o Go exclui ficheiros com `import "C"` quando CGO=0. Desbloqueio: o `dz23-macos-build.yaml` em `macos-latest` (Xcode + CGO).
+- **macOS**: **COMPILA sem cgo desde `42c184eb7`** (antes falhava com `undefined: GetCPUMem`). Falta o **artefacto empacotado** e assinado: o `dz23-macos-build.yaml` tem de correr num runner macOS para produzir o pacote (o cross-compile provado aqui nao empacota a app).
 - **Android**: **o `app.json`/`eas.json` existem; o APK não**
 - **iOS**: **BLOCKED_EXTERNAL**: exige macOS/Xcode + conta Apple
-- **Web/PWA**: bundle auto-coerente: 5/5 assets referenciados presentes; build de 2026-10-19 20:13 (sem SHA de fonte -- Vite nao o declara); servido por HTTP; o `manifest` existe
+- **Web/PWA**: bundle auto-coerente: 6/6 assets referenciados presentes; build de 2026-10-21 03:41 (sem SHA de fonte -- Vite nao o declara); servido por HTTP; o `manifest` existe
 
 ## Os workflows, contados
 
