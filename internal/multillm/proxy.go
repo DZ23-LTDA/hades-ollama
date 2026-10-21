@@ -153,9 +153,21 @@ func (g *Gateway) Middleware() gin.HandlerFunc {
 		}
 		attempts := g.rotationAttempts(requested, c.Request.URL.Path, provider, model)
 		var lastErr error
+		// FATIA 2: cadeia EXPLICAVEL das tentativas que falharam antes desta.
+		var cadeiaExplicavel []string
 		for index, attempt := range attempts {
 			if index > 0 {
 				slog.Warn("DZ23 gateway rotating provider", "requested", requested, "from", attempts[index-1].model.ID, "to", attempt.model.ID, "attempt", index+1, "error", sanitizeErr(lastErr))
+				// Guardar o motivo em texto (sanitizado) para o cliente poder distinguir.
+				cadeiaExplicavel = append(cadeiaExplicavel, attempts[index-1].provider.Name+"/"+attempts[index-1].model.ID+": "+sanitizeErr(lastErr).Error())
+			}
+			// FATIA 2: quem esta a servir e o que falhou antes. Os cabecalhos tem de ser
+			// postos ANTES do dispatch: depois de a resposta comecar, ja nao se alteram.
+			c.Header("X-Hades-Provider", attempt.provider.Name)
+			c.Header("X-Hades-Model", attempt.model.ID)
+			c.Header("X-Hades-Attempt", fmt.Sprintf("%d", index+1))
+			if len(cadeiaExplicavel) > 0 {
+				c.Header("X-Hades-Fallback", strings.Join(cadeiaExplicavel, " | "))
 			}
 			pristine := c.Writer.Header().Clone()
 			lastErr = g.dispatchProvider(c, attempt.provider, attempt.model, envelope)
