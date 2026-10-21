@@ -6628,3 +6628,12 @@ refinamento da divida (*a divida real de gates e' 4, nao 41 nem 17*), `E-1516` `
 (falhou no runner e desligou o gofmt), `E-1517` `native_host_roundtrip` retirado (mesmo padrao; classe
 do erro: instrumentos que dependem de estado da maquina), `E-1518` 14 instrumentos provados verdes
 (#17-#40 de `833a1dca5`) -- **job continua vermelho ate' o gofmt voltar a correr**.
+
+**Actualizacao de retomada (E-1519, E-1520):** **causa-raiz de portabilidade** -- `RAIZ = Path(r"C:\Users\
+DZ23\...\hades-ollama")` estava em **9 checkers**; no runner Linux nao existe e daí `0 workflows`. Corrigido
+para `Path(__file__).resolve().parents[1]` em todos os funcionais; o `ci_timeout` passou a achar **16
+workflows** e foi **religado**; dois dos corrigidos (`linux_package`, `firefox_e2e`) ja' estavam no CI e
+**iam falhar**. **Divida declarada (E-1520):** a mesma doenca em **7 scripts de operacao**
+(`checkpoint_note.ps1` L23, `local_gates.ps1` L70, `resume.ps1` L28, `claim_scan.py` L23,
+`link_scan.py` L18, `verify-linux-benchmark.ps1` L39, `verify-linux-parity.ps1` L65) -- **nao corrigidos**,
+com pre-condicao escrita: so' numa ronda com orcamento para correr a bateria antes e depois.
