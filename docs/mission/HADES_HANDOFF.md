@@ -6800,3 +6800,11 @@ mensagens de commit destas tres fatias citam `E-1509`/`E-1510`/`E-1510` -- **doi
 correctos sao `E-1508`/`E-1509`/`E-1510`. Nao reescrevi historia: declarei. O gate de bookkeeping
 apanhou a duplicacao que eu ia introduzir, e por isso nada foi comitado com o numero errado. Faltam
 **37 checkers** so' locais.
+
+**Actualizacao de retomada (E-1511):** **os cinco instrumentos recuperados CORREM E PASSAM no CI** --
+lidos passo a passo no job `Preserve Class A+ surfaces` de `9f0130005` (success 00:01:35Z): #17
+product-gap, #18 tenant guards, #19 security axes, #20 test hermeticity, #21 traceability, todos
+`success`. O job inteiro levou **28 s** e os cinco somam **~1 s** -- a recuperacao nao penalizou o tempo.
+*«Passo presente no workflow» e «passo executado» sao estados diferentes, e a diferenca so' se ve
+abrindo o job.* Limite: as outras verificacoes desse SHA ainda corriam, logo **nao ha' veredito completo**
+de `9f0130005`; e 37 checkers continuam so' locais.
