@@ -431,3 +431,36 @@ nao consigo ler neste contexto.
 **O que isto muda no gate:** nada de positivo. B1, B7 e B8 continuam `EXTERNO`, mas o pedido fica mais
 preciso: **nao e' «nao ha instalador» (ha e compila) -- e' «o instalador nao pode ser executado neste
 ambiente»**. Quem homologar tem de correr o `.exe` numa sessao Windows real e assinada.
+## CORRECCAO (mesmo dia): a explicacao anterior sobre o instalador estava ERRADA em dois pontos
+
+Escrevi antes que o instalador falhava com `exit=1` por «SmartScreen num executavel nao assinado em
+sessao sem desktop interactivo». **Duas afirmacoes minhas estavam erradas**, e a medicao seguinte
+mostra-o:
+
+**(1) Existe desktop interactivo.** `Get-Process | Where MainWindowTitle -ne ""` devolve varias
+janelas vivas (Chrome, Notepad, o proprio Harness). Logo «sessao sem desktop» era uma suposicao minha,
+nao um facto medido.
+
+**(2) O `exit=1` era artefacto do meu comando, nao do instalador.** A invocacao foi
+`cmd /c ""<exe>" /VERYSILENT ... /LOG=`"<log>`""` -- aspas aninhadas. O `cmd` devolve 1 sem executar
+nada: nao criou processo, nao criou log. Chamar o `exit=1` de «falha do Setup ao inicializar» foi
+**interpretar um erro meu como sintoma do produto**.
+
+**O que se mede agora, com o processo observado directamente:**
+
+```
+Start-Process -PassThru (sem -Wait)  -> processo INICIA e nao termina; morto apos 120 s
+execucao directa com /HELP           -> nao termina em 15 s (morto)
+/LOG=<caminho gravavel>              -> ficheiro de log NUNCA criado
+estado do sistema depois             -> pasta ausente, PATH sem Hades, nenhuma chave HKCU Uninstall
+```
+
+Ou seja: **o instalador inicia e BLOQUEIA antes de inicializar o proprio log** — nao e' um crash, e'
+uma paragem. **A causa NAO foi determinada.** Nao ha Mark-of-the-Web no ficheiro (so o stream
+`:$DATA`), o que retira forca a hipotese de SmartScreen; e o `/HELP`, que nao mostra ecra de
+instalacao, tambem bloqueia -- o que aponta para algo anterior a interface.
+
+**Efeito no gate: nenhum, e por isso e' uma correcao de honestidade e nao de estado.** B1, B7 e B8
+continuam `EXTERNO`; continua a nao haver prova de instalacao. O que muda e' que a **explicacao** fica
+como «nao medido -- inicia e bloqueia, causa desconhecida», em vez de uma causa inventada que soava
+plausivel.

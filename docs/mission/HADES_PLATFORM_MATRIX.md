@@ -21,7 +21,7 @@ não é APK.***
 | **macOS** | `cmd/`, `app/`, `server/` (Go) | `dz23-macos-build.yaml` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | não assinado (unsigned) |
 | **Android** | `apps/mobile-agentic/` (Expo/RN + `android/`) | `dz23-e2e.yaml` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | APK de desenvolvimento (não publicável) |
 | **iOS** | `apps/mobile-agentic/` (Expo/RN) | `AUSENTE` | `AUSENTE` | - | `AUSENTE` | NÃO MEDIDO | NÃO MEDIDO | não assinado (unsigned) |
-| **Web/PWA** | `app/ui/app/` (React+TS+Vite) | `dz23-e2e.yaml` | `app\ui\app\dist\index.html` | 9 KB | `58b5787a6c4390832c02e55bd197aaa0` | N/A (build de produção) | NÃO MEDIDO (PWA_INSTALADO_NA_UI=NAO) | N/A |
+| **Web/PWA** | `app/ui/app/` (React+TS+Vite) | `dz23-e2e.yaml` | `app\ui\app\dist\index.html` | 9 KB | `be25141e0458183ae8b76aed8377d2c9` | N/A (build de produção) | NÃO MEDIDO (PWA_INSTALADO_NA_UI=NAO) | N/A |
 
 ## Artefactos de COMPONENTE (nao sao uma das 6 plataformas)
 
@@ -51,7 +51,7 @@ Pacotes que vivem em `dist/` e nao correspondem a um alvo de produto. *Sem esta 
 - **macOS**: **COMPILA sem cgo desde `42c184eb7`** (antes falhava com `undefined: GetCPUMem`). Falta o **artefacto empacotado** e assinado: o `dz23-macos-build.yaml` tem de correr num runner macOS para produzir o pacote (o cross-compile provado aqui nao empacota a app).
 - **Android**: **o `app.json`/`eas.json` existem; o APK não**
 - **iOS**: **BLOCKED_EXTERNAL**: exige macOS/Xcode + conta Apple
-- **Web/PWA**: bundle auto-coerente: 6/6 assets referenciados presentes; build de 2026-10-21 04:25 (sem SHA de fonte -- Vite nao o declara); servido por HTTP; o `manifest` existe
+- **Web/PWA**: bundle auto-coerente: 6/6 assets referenciados presentes; build de 2026-10-21 05:37 (sem SHA de fonte -- Vite nao o declara); servido por HTTP; o `manifest` existe
 
 ## Os workflows, contados
 
