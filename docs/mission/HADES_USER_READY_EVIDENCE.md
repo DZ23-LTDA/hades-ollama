@@ -301,3 +301,18 @@ camada de tradução, e ela fica escrita porque afecta o critério B11:
 Portanto B11 está **parcialmente** provado: a camada existe, tem 989 chaves com paridade, teste de
 superconjunto e prova em ficheiro; **não** está provado que toda a UI alterna de idioma em tempo
 real, e a lacuna está identificada acima com a sua causa.
+### CORREÇÃO POSTERIOR: a limitação acima deixou de existir para o catálogo de conectores
+
+A limitação descrita («num módulo de dados `.ts`, `t()` é avaliado no carregamento do módulo»)
+foi **corrigida** para `lib/connectorCatalog.ts`: `BUILTIN_CONNECTOR_CATALOG` (constante de módulo)
+passou a **`builtinConnectorCatalog()`** (função). Como `mergeConnectorCatalog` a usa como valor por
+omissão, a avaliação passa a acontecer **na chamada**, e as descrições do catálogo respeitam o
+idioma activo — deixam de ficar congeladas no idioma do arranque.
+
+Superfície da mudança, medida: **1 consumidor** (`mergeConnectorCatalog`, valor por omissão) e
+**0 testes** referenciavam a constante. Verificação: `tsc -p tsconfig.app.json --noEmit` exit 0;
+`vitest run` 173 ficheiros / 1544 testes; `npm run build` OK.
+
+O que continua por provar: não existe hoje teste de UI que **alterne o idioma em tempo de execução**
+e verifique o repintar. A correção é de desenho e está justificada; a prova comportamental dessa
+alternância segue em aberto.

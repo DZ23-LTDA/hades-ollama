@@ -37,7 +37,17 @@ const entry = (
 // `category` NAO e' traduzido de proposito: e' identificador de contrato vindo do
 // backend (`ConnectorsPage` casa por igualdade exacta em `CATEGORY_GROUPS`) e serve
 // de chave em `CATEGORY_ACCENT`. Traduzi-lo quebraria filtro e cor do tile.
-export const BUILTIN_CONNECTOR_CATALOG: BuiltinCatalogEntry[] = [
+/**
+ * Catalogo interno dos conectores.
+ *
+ * E' uma FUNCAO, e nao uma constante, de proposito: as descricoes passam por `t()`, e
+ * uma constante de modulo avaliaria as traducoes UMA vez, no carregamento. Efeito
+ * medido: trocar de idioma nao repintava as descricoes do catalogo sem recarregar a
+ * pagina -- limitacao que estava declarada em docs/mission/HADES_USER_READY_EVIDENCE.md.
+ * Sendo funcao, `t()` corre na chamada e o idioma activo e' respeitado.
+ */
+export function builtinConnectorCatalog(): BuiltinCatalogEntry[] {
+  return [
   // Comunicação
   entry("connectors", "gmail", "Gmail", "Comunicação", "oauth", "OAuth", t("connectorCatalog.gmail.description")),
   entry("connectors", "outlook-mail", "Outlook Mail", "Comunicação", "oauth", "OAuth", t("connectorCatalog.outlookMail.description")),
@@ -71,7 +81,8 @@ export const BUILTIN_CONNECTOR_CATALOG: BuiltinCatalogEntry[] = [
   entry("data_sources", "bigquery", "Google BigQuery", "Fontes de dados", "oauth", "OAuth", t("connectorCatalog.bigquery.description")),
   entry("data_sources", "stripe", "Stripe", "Fontes de dados", "custom_api", "API key", t("connectorCatalog.stripe.description")),
   entry("data_sources", "google-analytics", "Google Analytics", "Fontes de dados", "oauth", "OAuth", t("connectorCatalog.googleAnalytics.description")),
-];
+  ];
+}
 
 const CATEGORY_ACCENT: Record<string, string> = {
   Comunicação: "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
@@ -97,7 +108,7 @@ export function catalogAccentClasses(category: string): string {
  */
 export function mergeConnectorCatalog(
   backend: AgentConnectorCatalogEntry[],
-  builtin: BuiltinCatalogEntry[] = BUILTIN_CONNECTOR_CATALOG,
+  builtin: BuiltinCatalogEntry[] = builtinConnectorCatalog(),
 ): AgentConnectorCatalogEntry[] {
   const seenIds = new Set(backend.map((item) => item.id.toLocaleLowerCase()));
   const seenNames = new Set(backend.map((item) => item.name.toLocaleLowerCase()));
