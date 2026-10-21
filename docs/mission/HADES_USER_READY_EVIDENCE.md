@@ -398,3 +398,36 @@ autoridade para parar o sistema e' um acto de governanca, e eu sou parte interes
 minha propria autoridade seria exactamente o que a regra R3 proibe).
 
 Portanto: **B4 = mecanismo PROVADO; ativacao em producao = BLOCKED_EXTERNAL por decisao de governanca.**
+## B1 / B7 / B8 — o instalador CONSTRÓI mas NÃO INICIALIZA neste host (medido)
+
+Depois de o `ISCC` aparecer e o instalador compilar (ver secção anterior), tentei o passo seguinte:
+**instalar**. Resultado medido, em tres invocacoes diferentes:
+
+| tentativa | resultado |
+| --- | --- |
+| `Start-Process -Wait /VERYSILENT /LOG=...` | ficou pendurado; **nenhum processo** `HadesSetup` criado |
+| `cmd /c "<exe>" /VERYSILENT /LOG="..."` | **exit=1**, sem log |
+| `Start-Process -PassThru` (sem -Wait, a sondar) | nao terminou em 120 s; morto |
+
+Estado do sistema depois das tentativas — **nada foi instalado**:
+
+```
+pasta %LOCALAPPDATA%\Programs\Hades ......... existe=False
+PATH de utilizador com Hades ................ False
+chave HKCU Uninstall com DisplayName Hades .. nenhuma
+ficheiro /LOG ............................... nunca criado (o Setup nao chega a inicializar)
+```
+
+O binario esta intacto e e' o mesmo: `sha256 243C52BF6E875549D6C42E61E8BB8DE5AC8326F451C4E248AB8F8B7BCE00B75D`,
+`Get-AuthenticodeSignature = NotSigned`. As deteccoes do Defender nesta maquina sao do `go.exe`
+(threat 2147738096 em `_tmp\goroot12610\go\bin\go.exe`), **nao** do instalador.
+
+**Interpretacao, e o limite dela:** `exit=1` sem log e' o codigo do Inno para «falha ao inicializar»;
+um executavel **nao assinado** numa sessao **sem desktop interactivo** nao tem como passar o
+SmartScreen/UAC, e este agente nao tem onde clicar «Executar mesmo assim». **Isto e' uma leitura dos
+sintomas, nao uma prova da causa** -- para provar a causa seria preciso o evento do SmartScreen, que
+nao consigo ler neste contexto.
+
+**O que isto muda no gate:** nada de positivo. B1, B7 e B8 continuam `EXTERNO`, mas o pedido fica mais
+preciso: **nao e' «nao ha instalador» (ha e compila) -- e' «o instalador nao pode ser executado neste
+ambiente»**. Quem homologar tem de correr o `.exe` numa sessao Windows real e assinada.
