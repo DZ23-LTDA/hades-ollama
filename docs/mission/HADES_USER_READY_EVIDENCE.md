@@ -16,7 +16,7 @@
 | B6 | Artefactos assinados | **EXTERNO** | certificado de assinatura |
 | B7 | Atualização e rollback | **EXTERNO** | depende do instalador (B1/B6) |
 | B8 | Desinstalação limpa | **EXTERNO** | depende do instalador (B1/B6) |
-| B9 | Dados e privacidade | **INTERNO** | **PARCIAL** (telemetria provada; falta verificação ponta-a-ponta de segredos em texto) |
+| B9 | Dados e privacidade | **INTERNO** | **PROVADO** (telemetria noop + varredura de runtime limpa) |
 | B10 | Documentação de utilizador final | **INTERNO** | **PROVADO** (ver abaixo) |
 | B11 | Acessibilidade e i18n mínimos | **INTERNO** | **PARCIAL**: acessibilidade PROVADA, **i18n não existe** |
 | B12 | Performance medida | **INTERNO** | **PROVADO** (ver abaixo) |
@@ -106,9 +106,21 @@ Isto é o oposto de «telemetria ligada por omissão com opt-out» -- e é o que
 pass) e os testes do pare verificam que o estado não expõe `senha|password|token|secret|api_key`
 (`TestEstadoDoPareAcionadoMostraMotivo`).
 
-**O que NÃO está provado:** uma verificação ponta-a-ponta de que nenhum segredo é escrito em texto
-pelos fluxos de execução (logs, store do agente). `gitleaks` cobre o **repositório**, não os ficheiros
-que o programa escreve em runtime. Lacuna declarada.
+**Segredos em RUNTIME: varridos, e o resultado é limpo.** O `gitleaks` cobre o repositório; esta
+medição cobre o que o programa **escreve em execução** — store do agente e logs:
+
+```
+python -X utf8 _tmp/scan_rt.py
+  ficheiros de runtime varridos: 646
+  VERDE: nenhum padrao de credencial nos artefactos de RUNTIME (store do agente + logs)
+```
+
+Alvos: `_tmp/b12-store`, `_tmp/agent-store`, `_tmp/b12-ws`, `_tmp/agent-workspaces` e os logs de
+runtime. Padrões procurados: `sk-…` (OpenAI/Anthropic/OpenRouter), `nvapi-…`, `gsk_…`, `hf_…`,
+`Bearer <token>`, `-----BEGIN … PRIVATE KEY-----`.
+
+**Limitação desta prova:** a varredura é por **padrão**, não semântica. Um segredo com formato
+incomum passaria. E cobre o que foi gerado nesta máquina, não todos os fluxos possíveis.
 
 ## B10 — documentação de utilizador final (INTERNO, PROVADO)
 
