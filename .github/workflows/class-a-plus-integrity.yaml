@@ -293,16 +293,27 @@ jobs:
       # instalado, browser, pacote do sistema. Um gate so' pode medir o que o checkout contem.
       #
       #   *Nao e' o instrumento que esta' errado: e' o sitio onde o pus.*
-      - name: Verify the Linux package
-        run: python3 scripts/hades_linux_package.py
+      # E-1521: TERCEIRO instrumento da mesma classe, medido no runner em `454978e21` (passo 42):
+      #
+      #     FALHA: o binario nao existe em /home/runner/work/.../_tmp/hades-linux-amd64
+      #
+      # `hades_linux_package.py` verifica um **artefacto construido**, nao o repositorio. Num checkout
+      # limpo o binario nao existe -- e o instrumento esta' correcto a recusar. O sitio errado e' este
+      # job: ele pertence a um job que **construa** o binario primeiro.
+      #
+      # `hades_firefox_e2e.py` e' retirado pela MESMA razao, com uma diferenca declarada: exige um
+      # browser instalado. Nao foi medido no runner (o #42 falhou antes), logo a classificacao e'
+      # **por classe**, nao por observacao directa.
+      #
+      #   *Tres retirados, tres motivos medidos: caminho absoluto (`E-1517`), host instalado (`E-1518`),
+      #   artefacto construido (aqui). A regra que os une: um gate do job de INTEGRIDADE so' pode medir
+      #   o que o `git checkout` contem.*
       - name: Verify the competitive surface
         run: python3 scripts/hades_competitive_check.py
       - name: Verify the worktree inventory
         run: python3 scripts/hades_worktree_inventory.py
       - name: Verify the findings report
         run: python3 scripts/hades_findings_report.py
-      - name: Verify the Firefox E2E
-        run: python3 scripts/hades_firefox_e2e.py
       # E-661: o gate anterior era `test -z "$(gofmt -l ...)"` - e um arquivo que NAO PARSEIA faz o gofmt
       # escrever o erro em STDERR e sair com STDOUT VAZIO => `test -z ""` PASSAVA. Verde por construcao:
       # foi assim que um `internal/agent/adaptive_router.go` com um `}` faltando atravessou o CI verde.
