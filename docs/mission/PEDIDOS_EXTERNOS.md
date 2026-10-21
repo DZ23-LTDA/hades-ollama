@@ -159,3 +159,36 @@ os achados da tentativa de falsificação.
 | acessibilidade WCAG desktop+mobile | **fechado** — axe gate PASS |
 | primeira execução e jornadas núcleo | **fechado** — E2E PASS |
 | comentário do `concurrency` a contradizer a config | **fechado** — corrigido nos 2 workflows, com a medição citada |
+
+---
+
+## ATUALIZAÇÃO 2026-10-21 — o pedido 3 ficou mais ESTREITO (medido, não estimado)
+
+Quando este ficheiro foi escrito, o requisito #23 dizia «artefacto existe mas não assinado, só
+Windows» e a bateria local reportava `BLOCKED_BY_EXTERNAL_DEPENDENCY: sem ISCC.exe`. **Medido agora,
+o `ISCC.exe` existia** — `%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe` (6.7.3), que é exactamente
+o caminho por omissão de `scripts/hades_installer_windows.ps1`. Estava fora do sítio onde a bateria
+o procurava, e isso fazia o bloqueio parecer maior do que era.
+
+**O que passou a estar provado do nosso lado:**
+
+```
+scripts/hades_installer_windows.ps1 -Versao 0.2.0.541 -Iscc <ISCC>
+  Successful compile (44,016 sec)
+  HadesSetup-688c4b425.exe  39,21 MB
+  SHA256 243C52BF6E875549D6C42E61E8BB8DE5AC8326F451C4E248AB8F8B7BCE00B75D
+  versao PE 0.2.0.541 | produto 'Hades'
+  Get-AuthenticodeSignature -> Status = NotSigned
+```
+
+**Portanto o pedido 3 deixa de ser «faltam ferramentas» e passa a ser duas coisas, ambas mesmo externas:**
+
+| # | O que falta | Por que é externo | Quem decide | O que muda no gate quando chegar |
+|---|---|---|---|---|
+| 3a | Certificado Authenticode + chave privada para assinar `HadesSetup-*.exe` | É emitido/comprovado por terceiro; a chave privada nunca entra no repositório | Dono do produto / financeiro | `Get-AuthenticodeSignature` passa de `NotSigned` a `Valid`; **B6** e **#23** deixam de estar bloqueados |
+| 3b | Um perfil Windows **sem o ambiente de dev** para correr o instalador | Este host tem toolchain, caches e variáveis de dev; **B1** exige explicitamente «máquina/perfil sem o ambiente de dev» | Quem administra a máquina de teste | **B1** passa a ter prova de instalação limpa, não apenas de compilação |
+
+**O que continua NÃO provado, e está escrito no dossiê:** o instalador **não foi executado**. Construir
+não é instalar. E o próprio script classificou o artefacto como **COMPOSICAO** (3 de 3 alvos em
+`dist\` são de 16–18/10, anteriores ao HEAD), logo **não** é um build reproduzível desta fonte — o que
+reforça o pedido 3b: quem testar deve saber que está a testar uma composição declarada como tal.
