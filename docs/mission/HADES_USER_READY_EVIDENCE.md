@@ -366,3 +366,35 @@ bloqueados por duas coisas que sao de facto externas:
 coisas diferentes; o unico facto medido e' que ele COMPILA e que o binario resultante esta
 `NotSigned`. E o proprio script declarou o artefacto como **COMPOSICAO** (os alvos em `dist\` sao
 de 16-18/10, anteriores ao HEAD), portanto ele nao e' um build reproduzivel desta fonte.
+## B4 — O PARE DE EMERGENCIA E' ACIONAVEL (medido, e o dossie estava desatualizado)
+
+O dossie dizia: «Hoje e' observavel mas NAO acionavel: isto e' trabalho a fazer, nao a declarar.»
+**Medido em 2026-10-21: essa frase ja' nao e' verdadeira.** Existe `server/pare_acionavel.go` com rotas
+de acionar/rearmar/ler estado, e `server/pare_acionavel_http_test.go` prova a cadeia completa.
+
+```
+go test ./server -run 'Pare' -count=1 -v     ->  ok  github.com/ollama/ollama/server  0.246s
+```
+
+12 testes PASS, e cada um cobre uma linha do B4:
+
+| exigencia do B4 | teste medido |
+| --- | --- |
+| acionar bloqueia a execucao | `TestAcionarPareAutorizadoAcionaEBloqueia` |
+| a execucao RECUSA (nao so' avisa) | `TestRotaDeBuildRecusaComOPareDoServidorAcionado` |
+| sobrevive a reinicio | `TestAcionarParePersisteESobreviveAReinicio` + `TestArranqueAdoptaOParePersistido` |
+| rearme registado (com justificacao) | `TestRearmarPareExigeJustificacaoEDesarma` |
+| sem autoridade configurada -> recusa | `TestAcionarPareSemAutoridadeConfiguradaRecusa` |
+| identidade fora da autoridade -> recusa | `TestAcionarPareIdentidadeForaDaAutoridadeRecusa` |
+| identidade vem da SESSAO, nunca do corpo | `TestAcionarPareIgnoraIdentidadeDoCorpo` |
+| sem motivo -> recusa | `TestAcionarPareSemMotivoRecusa` |
+| leitura do estado exige sessao | `TestEstadoDoPareSemSessaoRecusa` |
+| estado desarmado / acionado com motivo | `TestEstadoDoPareDesarmado` · `TestEstadoDoPareAcionadoMostraMotivo` |
+
+**O que continua a faltar, e e' externo:** definir `HADES_PARE_AUTORIDADE` (a lista de organizacoes
+autorizadas a acionar e a rearmar). Sem ela as rotas recusam -- e isso e' **fail-closed correto**, foi
+provado por `TestAcionarPareSemAutoridadeConfiguradaRecusa`. **Nao a defino eu**: decidir quem tem
+autoridade para parar o sistema e' um acto de governanca, e eu sou parte interessada (autoaprovar a
+minha propria autoridade seria exactamente o que a regra R3 proibe).
+
+Portanto: **B4 = mecanismo PROVADO; ativacao em producao = BLOCKED_EXTERNAL por decisao de governanca.**
